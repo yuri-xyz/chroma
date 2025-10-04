@@ -1,0 +1,48 @@
+# Term Shaders Configuration
+# Edit this file while the app is running - changes apply in real-time!
+
+[shader]
+# Shader type: "plasma", "mandelbrot", "noise", etc.
+type = "plasma"
+
+[parameters]
+# Animation speed multiplier (0.1 to 10.0)
+speed = 1.0
+
+# Pattern frequency/density (0.1 to 10.0)
+frequency = 1.0
+
+# Effect amplitude/intensity (0.1 to 5.0)
+amplitude = 1.0
+
+# Zoom level (0.1 to 10.0)
+scale = 1.0
+
+# Color hue shift (0.0 to 6.28, in radians)
+color_shift = 0.0
+
+# Detail level/octaves for noise-based shaders (1 to 8)
+octaves = 4
+
+[display]
+# ASCII palette: "standard", "extended", "simple", "blocks"
+palette = "standard"
+
+# Use ANSI colors (true/false)
+use_color = true
+
+# Target frames per second (10 to 60)
+target_fps = 30
+
+[audio]
+# Enable audio reactivity (requires --features audio)
+enabled = false
+
+# Audio influence on amplitude (0.0 to 1.0)
+bass_influence = 0.5
+
+# Audio influence on color shift (0.0 to 1.0)
+mid_influence = 0.3
+
+# Audio influence on frequency (0.0 to 1.0)
+treble_influence = 0.2
