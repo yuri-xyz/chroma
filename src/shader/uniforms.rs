@@ -31,7 +31,9 @@ pub struct ShaderUniforms {
     pub vignette_softness: f32,
     pub glyph_sharpness: f32,
 
-    _padding2: [u32; 3],
+    pub color_mode: u32,
+    pub pattern_type: u32,
+    _padding2: u32,
     pub background_tint: [f32; 3],
     _padding3: u32,
 }
@@ -68,7 +70,9 @@ impl ShaderUniforms {
             vignette_softness: params.vignette_softness,
             glyph_sharpness: params.glyph_sharpness,
 
-            _padding2: [0; 3],
+            color_mode: params.color_mode.to_u32(),
+            pattern_type: params.pattern_type.to_u32(),
+            _padding2: 0,
             background_tint: [
                 params.background_tint_r,
                 params.background_tint_g,

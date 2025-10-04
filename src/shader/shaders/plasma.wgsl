@@ -19,6 +19,8 @@ struct Uniforms {
     vignette: f32,
     vignette_softness: f32,
     glyph_sharpness: f32,
+    color_mode: u32,
+    pattern_type: u32,
     background_tint: vec3<f32>,
 }
 
@@ -98,23 +100,123 @@ fn apply_color_adjustments(color: vec3<f32>) -> vec3<f32> {
     return adjusted;
 }
 
+fn simple_hash(p: vec2<f32>) -> f32 {
+    let p3 = fract(vec3<f32>(p.x, p.y, p.x) * 0.1031);
+    let p3_dot = dot(p3, vec3<f32>(p3.y, p3.z, p3.x) + 33.33);
+    return fract((p3.x + p3.y + p3.z) * p3_dot);
+}
+
+fn apply_color_mode(base_value: f32, gradient: f32, mode: u32) -> vec3<f32> {
+    var color: vec3<f32>;
+    
+    if mode == 0u {
+        let red = sin(base_value * 3.14159 + uniforms.color_shift) * 0.5 + 0.5;
+        let green = sin(base_value * 3.14159 + uniforms.color_shift + 2.094) * 0.5 + 0.5;
+        let blue = sin(base_value * 3.14159 + uniforms.color_shift + 4.189) * 0.5 + 0.5;
+        color = vec3<f32>(red, green, blue);
+    } else if mode == 1u {
+        let gray = base_value * 0.5 + 0.5;
+        color = vec3<f32>(gray);
+    } else if mode == 2u {
+        let t = base_value * 0.5 + 0.5;
+        color = mix(vec3<f32>(0.1, 0.1, 0.2), vec3<f32>(0.9, 0.7, 0.5), t);
+    } else if mode == 3u {
+        let t = base_value * 0.5 + 0.5;
+        color = vec3<f32>(
+            0.8 + t * 0.2,
+            0.4 + t * 0.3,
+            0.2 + t * 0.1
+        );
+    } else if mode == 4u {
+        let t = base_value * 0.5 + 0.5;
+        color = vec3<f32>(
+            0.2 + t * 0.3,
+            0.5 + t * 0.3,
+            0.7 + t * 0.3
+        );
+    } else if mode == 5u {
+        let t = base_value * 0.5 + 0.5;
+        let r = sin(t * 6.28) * 0.5 + 0.5;
+        let g = sin(t * 6.28 + 2.0) * 0.5 + 0.5;
+        let b = sin(t * 6.28 + 4.0) * 0.5 + 0.5;
+        color = vec3<f32>(r * 1.2, g * 1.2, b * 1.2);
+    } else if mode == 6u {
+        let t = base_value * 0.5 + 0.5;
+        color = vec3<f32>(
+            0.7 + t * 0.2,
+            0.6 + t * 0.2,
+            0.7 + t * 0.2
+        );
+    } else if mode == 7u {
+        let t = base_value * 0.5 + 0.5;
+        let r = step(0.5, fract(t * 3.0)) * 0.9;
+        let g = sin(t * 10.0) * 0.3 + 0.5;
+        let b = cos(t * 15.0) * 0.3 + 0.7;
+        color = vec3<f32>(r, g, b);
+    } else {
+        let base_gray = base_value * 0.5 + 0.5;
+        let edge_detect = abs(gradient) * 3.0;
+        let color_amount = smoothstep(0.3, 0.8, edge_detect);
+        
+        let hue_shift = base_value * 2.0;
+        let r = sin(hue_shift + uniforms.time * 0.5) * color_amount;
+        let g = sin(hue_shift + uniforms.time * 0.5 + 2.0) * color_amount;
+        let b = sin(hue_shift + uniforms.time * 0.5 + 4.0) * color_amount;
+        
+        color = vec3<f32>(base_gray + r * 0.3, base_gray + g * 0.3, base_gray + b * 0.3);
+    }
+    
+    return color;
+}
+
+fn compute_pattern(uv: vec2<f32>, time: f32, pattern_type: u32) -> vec2<f32> {
+    var value: f32;
+    var gradient: f32;
+    
+    if pattern_type == 0u {
+        let v1 = sin(uv.x * uniforms.frequency + time);
+        let v2 = sin(uniforms.frequency * (uv.x * sin(time / 2.0) + uv.y * cos(time / 3.0)) + time);
+        let cx = uv.x + 0.5 * sin(time / 5.0) * uniforms.distort_amplitude;
+        let cy = uv.y + 0.5 * cos(time / 3.0) * uniforms.distort_amplitude;
+        let v3 = sin(sqrt(100.0 * (cx * cx + cy * cy) + 1.0) + time);
+        value = (v1 + v2 + v3) / 3.0;
+        gradient = v1 - v2;
+    } else if pattern_type == 1u {
+        value = sin(uv.x * uniforms.frequency + time) * cos(uv.y * uniforms.frequency * 0.7 + time * 0.8);
+        gradient = cos(uv.x * uniforms.frequency + time);
+    } else if pattern_type == 2u {
+        let center = vec2<f32>(0.5 + sin(time * 0.3) * 0.2, 0.5 + cos(time * 0.4) * 0.2);
+        let dist = distance(uv, center);
+        value = sin(dist * uniforms.frequency * 10.0 - time * 2.0);
+        gradient = cos(dist * uniforms.frequency * 10.0);
+    } else if pattern_type == 3u {
+        let angle = atan2(uv.y - 0.5, uv.x - 0.5);
+        let radius = distance(uv, vec2<f32>(0.5));
+        value = sin(angle * uniforms.frequency + radius * 10.0 - time);
+        gradient = cos(angle * uniforms.frequency);
+    } else if pattern_type == 4u {
+        let n1 = simple_hash(uv * uniforms.frequency + vec2<f32>(time * 0.5, 0.0));
+        let n2 = simple_hash(uv * uniforms.frequency * 0.7 + vec2<f32>(0.0, time * 0.3));
+        value = (n1 + n2) * 2.0 - 1.0;
+        gradient = n1 - 0.5;
+    } else {
+        let grid_x = floor(uv.x * uniforms.frequency) + sin(time * 0.5);
+        let grid_y = floor(uv.y * uniforms.frequency) + cos(time * 0.3);
+        value = simple_hash(vec2<f32>(grid_x, grid_y)) * 2.0 - 1.0;
+        gradient = fract(uv.x * uniforms.frequency) - 0.5;
+    }
+    
+    return vec2<f32>(value * uniforms.amplitude, gradient);
+}
+
 fn plasma_effect(position: vec2<f32>, time: f32) -> vec3<f32> {
     let uv = position * uniforms.scale;
     
-    let value1 = sin(uv.x * uniforms.frequency + time);
-    let value2 = sin(uniforms.frequency * (uv.x * sin(time / 2.0) + uv.y * cos(time / 3.0)) + time);
+    let pattern_result = compute_pattern(uv, time, uniforms.pattern_type);
+    let combined = pattern_result.x;
+    let gradient = pattern_result.y;
     
-    let cx = uv.x + 0.5 * sin(time / 5.0) * uniforms.distort_amplitude;
-    let cy = uv.y + 0.5 * cos(time / 3.0) * uniforms.distort_amplitude;
-    let value3 = sin(sqrt(100.0 * (cx * cx + cy * cy) + 1.0) + time);
-    
-    let combined = (value1 + value2 + value3) / 3.0 * uniforms.amplitude;
-    
-    let red = sin(combined * 3.14159 + uniforms.color_shift) * 0.5 + 0.5;
-    let green = sin(combined * 3.14159 + uniforms.color_shift + 2.094) * 0.5 + 0.5;
-    let blue = sin(combined * 3.14159 + uniforms.color_shift + 4.189) * 0.5 + 0.5;
-    
-    var color = vec3<f32>(red, green, blue);
+    var color = apply_color_mode(combined, gradient, uniforms.color_mode);
     
     color = apply_color_adjustments(color);
     

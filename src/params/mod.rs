@@ -1,3 +1,3 @@
 pub mod config;
 
-pub use config::{PaletteType, ShaderParams};
+pub use config::{ColorMode, PaletteType, PatternType, ShaderParams};

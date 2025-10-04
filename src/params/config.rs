@@ -1,6 +1,111 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PatternType {
+    Plasma,
+    Waves,
+    Ripples,
+    Vortex,
+    Noise,
+    Geometric,
+}
+
+impl PatternType {
+    pub fn to_u32(self) -> u32 {
+        match self {
+            Self::Plasma => 0,
+            Self::Waves => 1,
+            Self::Ripples => 2,
+            Self::Vortex => 3,
+            Self::Noise => 4,
+            Self::Geometric => 5,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Plasma => "Plasma",
+            Self::Waves => "Waves",
+            Self::Ripples => "Ripples",
+            Self::Vortex => "Vortex",
+            Self::Noise => "Noise",
+            Self::Geometric => "Geo",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ColorMode {
+    Rainbow,
+    Monochrome,
+    Duotone,
+    Warm,
+    Cool,
+    Neon,
+    Pastel,
+    Cyberpunk,
+    Chromatic,
+}
+
+impl ColorMode {
+    pub fn next(self) -> Self {
+        match self {
+            Self::Rainbow => Self::Monochrome,
+            Self::Monochrome => Self::Duotone,
+            Self::Duotone => Self::Warm,
+            Self::Warm => Self::Cool,
+            Self::Cool => Self::Neon,
+            Self::Neon => Self::Pastel,
+            Self::Pastel => Self::Cyberpunk,
+            Self::Cyberpunk => Self::Chromatic,
+            Self::Chromatic => Self::Rainbow,
+        }
+    }
+
+    pub fn previous(self) -> Self {
+        match self {
+            Self::Rainbow => Self::Chromatic,
+            Self::Chromatic => Self::Cyberpunk,
+            Self::Cyberpunk => Self::Pastel,
+            Self::Pastel => Self::Neon,
+            Self::Neon => Self::Cool,
+            Self::Cool => Self::Warm,
+            Self::Warm => Self::Duotone,
+            Self::Duotone => Self::Monochrome,
+            Self::Monochrome => Self::Rainbow,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Rainbow => "Rainbow",
+            Self::Monochrome => "Mono",
+            Self::Duotone => "Duotone",
+            Self::Warm => "Warm",
+            Self::Cool => "Cool",
+            Self::Neon => "Neon",
+            Self::Pastel => "Pastel",
+            Self::Cyberpunk => "Cyber",
+            Self::Chromatic => "Chrome",
+        }
+    }
+
+    pub fn to_u32(self) -> u32 {
+        match self {
+            Self::Rainbow => 0,
+            Self::Monochrome => 1,
+            Self::Duotone => 2,
+            Self::Warm => 3,
+            Self::Cool => 4,
+            Self::Neon => 5,
+            Self::Pastel => 6,
+            Self::Cyberpunk => 7,
+            Self::Chromatic => 8,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PaletteType {
     Standard,
     Blocks,
@@ -66,35 +171,37 @@ pub struct ShaderParams {
     pub time: f32,
     pub resolution_width: u32,
     pub resolution_height: u32,
-    
+
     pub frequency: f32,
     pub amplitude: f32,
     pub speed: f32,
     pub color_shift: f32,
     pub scale: f32,
     pub octaves: u32,
-    
+
     pub noise_strength: f32,
     pub distort_amplitude: f32,
     pub noise_scale: f32,
     pub z_rate: f32,
-    
+
     pub brightness: f32,
     pub contrast: f32,
     pub hue: f32,
     pub saturation: f32,
     pub gamma: f32,
-    
+
     pub vignette: f32,
     pub vignette_softness: f32,
     pub glyph_sharpness: f32,
-    
+
     pub background_tint_r: f32,
     pub background_tint_g: f32,
     pub background_tint_b: f32,
-    
+
     pub palette: PaletteType,
-    
+    pub color_mode: ColorMode,
+    pub pattern_type: PatternType,
+
     pub audio_enabled: bool,
     pub bass_influence: f32,
     pub mid_influence: f32,
@@ -133,9 +240,11 @@ impl Default for ShaderParams {
             background_tint_r: 0.0,
             background_tint_g: 0.0,
             background_tint_b: 0.0,
-            
+
             palette: PaletteType::Circles,
-            
+            color_mode: ColorMode::Chromatic,
+            pattern_type: PatternType::Plasma,
+
             audio_enabled: false,
             bass_influence: 0.5,
             mid_influence: 0.3,
@@ -221,6 +330,28 @@ impl ShaderParams {
     pub fn randomize(&mut self) {
         use rand::Rng;
         let mut rng = rand::thread_rng();
+
+        self.pattern_type = match rng.gen_range(0..6) {
+            0 => PatternType::Plasma,
+            1 => PatternType::Waves,
+            2 => PatternType::Ripples,
+            3 => PatternType::Vortex,
+            4 => PatternType::Noise,
+            _ => PatternType::Geometric,
+        };
+
+        self.palette = match rng.gen_range(0..10) {
+            0 => PaletteType::Standard,
+            1 => PaletteType::Blocks,
+            2 => PaletteType::Circles,
+            3 => PaletteType::Smooth,
+            4 => PaletteType::Braille,
+            5 => PaletteType::Geometric,
+            6 => PaletteType::Mixed,
+            7 => PaletteType::Dots,
+            8 => PaletteType::Extended,
+            _ => PaletteType::Simple,
+        };
 
         self.frequency = rng.gen_range(3.0..=18.0);
         self.amplitude = rng.gen_range(0.5..=2.0);

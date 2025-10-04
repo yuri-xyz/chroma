@@ -20,3 +20,4 @@ presets/
 recordings/
 exports/debug.log
 *.log
+debug.log
