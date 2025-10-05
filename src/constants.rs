@@ -36,7 +36,9 @@ pub const STARTUP_DELAY_MS: u64 = 1000;
 
 /// Number of effect types available
 #[allow(dead_code)]
-pub const NUM_EFFECT_TYPES: u32 = 6;
+pub const NUM_EFFECT_TYPES: u32 = 7;
 
 /// Effect names for status bar display
-pub const EFFECT_NAMES: [&str; 6] = ["Circle", "Cross", "Diamond", "Star", "Grid", "Wave"];
+pub const EFFECT_NAMES: [&str; 7] = [
+  "Circle", "Cross", "Diamond", "Star", "Grid", "Wave", "Octgrams",
+];

@@ -9,7 +9,7 @@ use term_shaders::audio::AudioCapture;
 
 /// Run audio diagnostics and print results
 #[cfg(feature = "audio")]
-pub fn run_audio_diagnostics() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run_audio_diagnostics() -> anyhow::Result<()> {
   println!("🎵 Audio Reactivity Diagnostics:");
   println!("   Checking audio system...");
 
@@ -39,7 +39,7 @@ pub fn run_audio_diagnostics() -> Result<(), Box<dyn std::error::Error>> {
     }
     Err(e) => {
       print_audio_error(&e);
-      Err(e.into())
+      Err(e)
     }
   }
 }

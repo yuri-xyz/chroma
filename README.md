@@ -1,10 +1,9 @@
 <div align="center">
-<img src="logo.png" width="300" />
+  <img src="logo.png" width="300" />
 
 🌈 A Rust-based, ASCII art shader audio visualizer for your terminal!
 
-<img src="readme/preview.gif" width="550" />
-
+  <img src="readme/preview.gif" width="550" />
 </div>
 
 ## ⭐ Features
@@ -17,13 +16,13 @@
 - 🎵 **Audio visualization** driven by system audio input
 - 📊 **[FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform)-based audio analysis** for reactive visual effects
 
-## Demos & screenshots
+## ✨ Demos & screenshots
 
 🔊 Make sure you turn on sound on the videos!
 
 [chroma.webm](https://github.com/user-attachments/assets/9e821a20-8394-445c-9542-91e294225e63)
 
-## Install
+## 🔗 Install
 
 ### Arch Linux (❤️ Arch!)
 
@@ -55,18 +54,7 @@ cargo build --release --features audio   # with audio reactivity
 sudo install -Dm755 target/release/chroma /usr/local/bin/chroma
 ```
 
-## Dependencies
-
-- Runtime
-  - vulkan-icd-loader
-  - A Vulkan driver: one of `vulkan-intel`, `vulkan-radeon`, or `nvidia-utils`
-  - Terminal with ANSI color support
-- Optional (audio feature)
-  - pipewire (recommended) or alsa-lib
-- Build
-  - rust, cargo, git
-
-## Usage
+## ℹ️ Usage
 
 ```bash
 # Run with default settings
@@ -85,7 +73,7 @@ cargo run --release --features audio -- -c config_a3f8c2d9e1b5.toml
 cargo run --release -- --help
 ```
 
-### Controls
+### 🕹️ Controls
 
 - `Q` or `Esc` - Quit application
 - `R` - **Randomize parameters** ⭐ (Discover new effects!)
@@ -118,7 +106,7 @@ The application supports saving and loading configurations:
 
 See [CONFIG_SAVE_LOAD.md](CONFIG_SAVE_LOAD.md) for detailed documentation.
 
-## Building
+## 🛠️ Building
 
 ```bash
 # Development build
@@ -134,7 +122,18 @@ cargo test
 cargo run --features audio
 ```
 
-### Cargo Dependencies
+## 📦 Dependencies & Cargo packages
+
+- Runtime
+  - vulkan-icd-loader
+  - A Vulkan driver: one of `vulkan-intel`, `vulkan-radeon`, or `nvidia-utils`
+  - Terminal with ANSI color support
+- Optional (audio feature)
+  - pipewire (recommended) or alsa-lib
+- Build
+  - rust, cargo, git
+
+**Cargo packages**
 
 - **wgpu** - Modern GPU API for shader computation
 - **pollster** - Async executor for wgpu initialization
@@ -146,12 +145,6 @@ cargo run --features audio
 - **glam** - Mathematics library for 3D graphics
 - **anyhow** - Error handling
 - **serde** - Serialization for config/presets
-
-## 📝 Requirements
-
-- Rust 2024 edition (1.82+)
-- GPU with wgpu support (Vulkan, Metal, DX12, or WebGPU)
-- Terminal with ANSI color support
 
 ## 🏗️ Contributing
 

@@ -99,7 +99,7 @@ fn handle_key_press(
       )?;
     }
     KeyCode::Char('n') | KeyCode::Char('N') => {
-      params.effect_type = (params.effect_type + 1) % 6;
+      params.effect_type = (params.effect_type + 1) % 7;
       writeln!(
         debug_log,
         "EFFECT: Switched to effect type {}",

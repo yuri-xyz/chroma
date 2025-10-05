@@ -59,7 +59,7 @@ fn run_diagnostics() -> Result<()> {
   #[cfg(feature = "audio")]
   {
     if let Err(e) = app::init::run_audio_diagnostics() {
-      return Err(e.into());
+      return Err(e);
     }
     println!();
   }
