@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="logo.png" width="300" />
+  <img src="readme/logo.png" width="300" />
 
 🌈 A Rust-based, ASCII art shader audio visualizer for your terminal!
 
@@ -26,7 +26,7 @@
 
 ## 🔗 Install
 
-### Arch Linux (❤️ Arch!)
+### Arch Linux
 
 ```bash
 # With an AUR helper: yay
@@ -60,19 +60,16 @@ sudo install -Dm755 target/release/chroma /usr/local/bin/chroma
 
 ```bash
 # Run with default settings
-cargo run --release
-
-# Run with audio reactivity (recommended!)
-cargo run --release --features audio
+chroma
 
 # Load a saved configuration
-cargo run --release --features audio -- --config config_a3f8c2d9e1b5.toml
+chroma --config config_a3f8c2d9e1b5.toml
 
 # Or using the short form
-cargo run --release --features audio -- -c config_a3f8c2d9e1b5.toml
+chroma -c config_a3f8c2d9e1b5.toml
 
-# View help
-cargo run --release -- --help
+# View help for all arguments and settings
+chroma --help
 ```
 
 ### 🕹️ Controls
@@ -106,24 +103,6 @@ The application supports saving and loading configurations:
 
 3. **Sharing**: Config files are plain TOML and can be shared with others!
 
-See [CONFIG_SAVE_LOAD.md](CONFIG_SAVE_LOAD.md) for detailed documentation.
-
-## 🛠️ Building
-
-```bash
-# Development build
-cargo build
-
-# Release build (optimized)
-cargo build --release
-
-# Run tests
-cargo test
-
-# Run with audio support
-cargo run --features audio
-```
-
 ## 📦 Dependencies & Cargo packages
 
 - Runtime
@@ -134,19 +113,6 @@ cargo run --features audio
   - pipewire (recommended) or alsa-lib
 - Build
   - rust, cargo, git
-
-**Cargo packages**
-
-- **wgpu** - Modern GPU API for shader computation
-- **pollster** - Async executor for wgpu initialization
-- **bytemuck** - Safe casting for shader data
-- **crossterm** - Cross-platform terminal manipulation
-- **notify** - File system event watching (for config reload)
-- **cpal** - Cross-platform audio I/O
-- **rustfft** - Fast Fourier Transform implementation
-- **glam** - Mathematics library for 3D graphics
-- **anyhow** - Error handling
-- **serde** - Serialization for config/presets
 
 ## 🏗️ Contributing
 
