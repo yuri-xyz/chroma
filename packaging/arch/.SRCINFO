@@ -1,4 +1,4 @@
-pkgbase = term-shaders-git
+pkgbase = chroma-git
 	pkgdesc = Terminal shader visualizer rendering GPU-computed ASCII art
 	pkgver = 0
 	pkgrel = 1
@@ -15,9 +15,9 @@ pkgbase = term-shaders-git
 	optdepends = vulkan-radeon: AMD Vulkan driver
 	optdepends = vulkan-intel: Intel Vulkan driver
 	optdepends = nvidia-utils: NVIDIA Vulkan driver
-	provides = term-shaders=0
-	conflicts = term-shaders
-	source = term-shaders::git+https://github.com/yuri-xyz/chroma.git
+	provides = chroma=0
+	conflicts = chroma
+	source = chroma::git+https://github.com/yuri-xyz/chroma.git
 	sha256sums = SKIP
 
-pkgname = term-shaders-git
+pkgname = chroma-git

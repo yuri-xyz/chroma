@@ -35,7 +35,7 @@ default = []
 audio = ["cpal", "rustfft"]
 
 [[bin]]
-name = "term-shaders"
+name = "chroma"
 path = "src/main.rs"
 
 [lib]
