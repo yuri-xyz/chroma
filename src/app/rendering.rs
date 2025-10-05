@@ -7,7 +7,7 @@ use chroma::ascii::AsciiConverter;
 use chroma::shader::{ShaderPipeline, ShaderUniforms};
 use crossterm::style::Color;
 use std::fs::File;
-use std::io::{BufWriter, Write, stdout};
+use std::io::{stdout, BufWriter, Write};
 use unicode_width::UnicodeWidthChar;
 
 /// Render a complete frame to the terminal
@@ -20,10 +20,12 @@ pub fn render_frame(
 ) -> Result<()> {
   // Generate pixel data from shader
   let pixel_data = pipeline.render(uniforms)?;
+
   log_pixel_data(&pixel_data, pipeline, debug_log)?;
 
   // Convert to ASCII art
   let ascii_frame = converter.convert_frame(&pixel_data, pipeline.width(), pipeline.height());
+
   log_ascii_frame(&ascii_frame, debug_log)?;
 
   // Build and display frame
@@ -37,6 +39,7 @@ pub fn render_frame(
 
   // Output to terminal
   let mut stdout = stdout();
+
   write!(stdout, "{}", frame_buffer)?;
   stdout.flush()?;
 
@@ -58,6 +61,7 @@ fn build_frame_buffer(
 
   // Render ASCII art rows
   let rows_to_render = ascii_frame.len().min(expected_rows);
+
   for (row_idx, row) in ascii_frame.iter().enumerate().take(rows_to_render) {
     render_row(row, &mut buffer, expected_cols, row_idx, debug_log)?;
     if row_idx < rows_to_render - 1 {
@@ -116,6 +120,7 @@ fn render_row(
 
     // Skip very dark pixels
     let brightness = extract_brightness(color);
+
     if brightness < MIN_BRIGHTNESS_THRESHOLD {
       buffer.push(' ');
       current_col += 1;
@@ -180,6 +185,7 @@ fn log_pixel_data(
   // Calculate brightness range
   let mut min_brightness = 255u8;
   let mut max_brightness = 0u8;
+
   for i in 0..(pixel_data.len() / 4).min(100) {
     let idx = i * 4;
     let avg = calculate_brightness(pixel_data[idx], pixel_data[idx + 1], pixel_data[idx + 2]);
