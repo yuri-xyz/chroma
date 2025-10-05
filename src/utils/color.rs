@@ -80,8 +80,8 @@ mod tests {
   #[test]
   fn test_hue_to_pastel_rgb_wrapping() {
     let (r1, g1, b1) = hue_to_pastel_rgb(0.0);
-    let (r2, g2, b2) = hue_to_pastel_rgb(6.28);
-    let (r3, g3, b3) = hue_to_pastel_rgb(12.56);
+    let (r2, g2, b2) = hue_to_pastel_rgb(std::f32::consts::TAU);
+    let (r3, g3, b3) = hue_to_pastel_rgb(std::f32::consts::TAU * 2.0);
 
     assert_eq!(r1, r2, "Hue should wrap at 2π");
     assert_eq!(g1, g2, "Hue should wrap at 2π");
@@ -95,7 +95,7 @@ mod tests {
   #[test]
   fn test_hue_to_pastel_rgb_produces_pastel_colors() {
     for hue_steps in 0..12 {
-      let hue = (hue_steps as f32) * (6.28 / 12.0);
+      let hue = (hue_steps as f32) * (std::f32::consts::TAU / 12.0);
       let (r, g, b) = hue_to_pastel_rgb(hue);
 
       assert!(r >= 89, "Pastel colors should have minimum brightness");

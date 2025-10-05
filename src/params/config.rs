@@ -609,8 +609,10 @@ mod tests {
 
   #[test]
   fn test_update_time() {
-    let mut params = ShaderParams::default();
-    params.speed = 2.0;
+    let mut params = ShaderParams {
+      speed: 2.0,
+      ..Default::default()
+    };
 
     params.update_time(1.0);
 
@@ -644,11 +646,12 @@ mod tests {
 
   #[test]
   fn test_clamp_all() {
-    let mut params = ShaderParams::default();
-
-    params.frequency = 100.0;
-    params.brightness = 10.0;
-    params.hue = 400.0;
+    let mut params = ShaderParams {
+      frequency: 100.0,
+      brightness: 10.0,
+      hue: 400.0,
+      ..Default::default()
+    };
 
     params.clamp_all();
 
