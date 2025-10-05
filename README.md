@@ -29,8 +29,17 @@
 ### Arch Linux
 
 > [!WARNING]
-> Since this project is so new I haven't had a chance to fix the PKGBUILD file, so running `makepkg` will likely fail. Install the dependency and run it to try it out:
-> sudo pacman -S pipewire-alsa alsa-lib && cargo run --features audio
+> Since this project is so new I haven't had a chance to publish it to the AUR yet,
+> but you can go ahead and install it using makepkg like so:
+
+```bash
+git clone https://github.com/yuri-xyz/chroma
+cd chroma/packaging/arch
+makepkg -si
+```
+
+> [!WARNING]
+> Once it's available on the AUR:
 
 ```bash
 # With an AUR helper: yay
