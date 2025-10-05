@@ -1,0 +1,23 @@
+pkgbase = term-shaders-git
+	pkgdesc = Terminal shader visualizer rendering GPU-computed ASCII art
+	pkgver = 0
+	pkgrel = 1
+	url = https://github.com/yuri-xyz/chroma
+	arch = x86_64
+	license = AGPL-3.0-or-later
+	makedepends = git
+	makedepends = rust
+	makedepends = cargo
+	depends = vulkan-icd-loader
+	optdepends = pipewire: audio capture (optional feature)
+	optdepends = alsa-lib: ALSA backend for audio (optional feature)
+	optdepends = pavucontrol: help selecting monitor source for audio
+	optdepends = vulkan-radeon: AMD Vulkan driver
+	optdepends = vulkan-intel: Intel Vulkan driver
+	optdepends = nvidia-utils: NVIDIA Vulkan driver
+	provides = term-shaders=0
+	conflicts = term-shaders
+	source = term-shaders::git+https://github.com/yuri-xyz/chroma.git
+	sha256sums = SKIP
+
+pkgname = term-shaders-git

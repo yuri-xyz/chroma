@@ -1,8 +1,16 @@
-# Term Shaders 🎨🎵
+<div align="center">
+   <strong>🌈 CHROMA</strong>
 
-A Rust-based terminal shader visualizer and audio visualizer that renders GPU-computed shaders as ASCII art in your terminal.
+A Rust-based, ASCII art shader audio visualizer for your terminal!
 
-## Features
+  <video src="readme/chroma.mp4" width="720" autoplay loop muted playsinline controls>
+  </video>
+
+<quote>🔊 Make sure you turn on sound on the video!</quote>
+
+</div>
+
+## ⭐ Features
 
 - 🎨 **GPU-accelerated shaders** using wgpu (compute shaders)
 - 🖼️ **ASCII art rendering** with ANSI color support
@@ -10,188 +18,50 @@ A Rust-based terminal shader visualizer and audio visualizer that renders GPU-co
 - 💾 **Save/Load configurations** with automatic hashing
 - 🔄 **Live config reloading** for real-time parameter adjustment
 - 🎵 **Audio visualization** driven by system audio input
-- 📊 **FFT-based audio analysis** for reactive visual effects
+- 📊 **[FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform)-based audio analysis** for reactive visual effects
 
-## Architecture Overview
+## Install
 
-```
-┌─────────────────────────────────────────────────┐
-│              Terminal Display (TUI)             │
-│         (crossterm + ratatui)                   │
-└────────────────┬────────────────────────────────┘
-                 │
-┌────────────────▼────────────────────────────────┐
-│          ASCII Converter                        │
-│   (Pixel brightness → ASCII palette)            │
-└────────────────┬────────────────────────────────┘
-                 │
-┌────────────────▼────────────────────────────────┐
-│          Frame Buffer (RGBA)                    │
-│        (Output from GPU)                        │
-└────────────────┬────────────────────────────────┘
-                 │
-┌────────────────▼────────────────────────────────┐
-│         Shader Pipeline (wgpu)                  │
-│    Compute/Render shaders with uniforms         │
-└────────────────┬────────────────────────────────┘
-                 │
-        ┌────────┴────────┐
-        │                 │
-┌───────▼─────┐  ┌────────▼────────┐
-│  Parameters │  │  Audio Input    │
-│   System    │  │  + FFT          │
-│             │  │  (cpal)         │
-└─────────────┘  └─────────────────┘
+### Arch Linux (❤️ Arch!)
+
+```bash
+# With an AUR helper: yay
+yay -S chroma-git
+
+# With an AUR helper: paru
+paru -S chroma-git
+
+# Or manually:
+git clone https://aur.archlinux.org/chroma-git.git
+cd chroma-git/packaging/arch
+makepkg -si
+
+# If you're lazy:
+git clone https://aur.archlinux.org/chroma-git.git \
+   && cd chroma-git \
+   && makepkg -si
 ```
 
-## Implementation Roadmap
+### From source (manual)
 
-### Phase 1: Foundation (MVP) ✅
-
-1. **Project Setup**
-
-   - Set up Cargo.toml with core dependencies
-   - Create modular project structure
-   - Write basic documentation
-
-2. **Shader Pipeline**
-
-   - Initialize wgpu (headless mode)
-   - Create compute shader for procedural generation
-   - Set up uniform buffers for parameters
-   - Render to texture/buffer
-
-3. **ASCII Conversion**
-
-   - Implement pixel-to-ASCII mapping
-   - Add ANSI color support
-   - Optimize for terminal rendering
-
-4. **Basic Parameters**
-
-   - Time uniform
-   - Resolution
-   - Color palette selection
-   - Basic shader-specific parameters (frequency, amplitude, etc.)
-
-5. **First Shader Example**
-   - Implement plasma effect or procedural gradient
-   - Validate end-to-end pipeline
-
-### Phase 2: Configuration & Interactivity
-
-6. **Config File System**
-
-   - TOML-based configuration
-   - Live config file reloading
-   - Watch for file changes
-   - Apply parameters in real-time
-
-7. **Additional Shader Effects**
-   - Mandelbrot/Julia sets
-   - Perlin/Simplex noise patterns
-   - Ray marching effects
-   - Cellular automata
-
-### Phase 3: Audio Visualization
-
-8. **Audio Input**
-
-   - Integrate cpal for system audio capture
-   - Implement audio buffer management
-   - Add audio source selection
-
-9. **FFT Processing**
-
-   - Implement FFT analysis (using rustfft)
-   - Extract frequency bands
-   - Map audio features to shader uniforms
-   - Add smoothing/interpolation
-
-10. **Audio-Reactive Parameters**
-    - Bass → amplitude
-    - Mids → color shifts
-    - Treble → detail/frequency
-    - Volume → overall intensity
-
-### Phase 4: Polish
-
-11. **Testing**
-
-    - Unit tests for ASCII conversion
-    - Integration tests for shader pipeline
-    - Parameter validation tests
-
-12. **Performance Optimization**
-
-    - Adaptive resolution
-    - Frame rate control
-    - GPU/CPU profiling
-
-13. **Documentation**
-    - API documentation
-    - Shader creation guide
-    - Usage examples
-
-## Technical Stack
-
-### Core Dependencies
-
-- **wgpu** - Modern GPU API for shader computation
-- **pollster** - Async executor for wgpu initialization
-- **bytemuck** - Safe casting for shader data
-
-### Terminal
-
-- **crossterm** - Cross-platform terminal manipulation
-- **notify** - File system event watching (for config reload)
-
-### Audio Processing
-
-- **cpal** - Cross-platform audio I/O
-- **rustfft** - Fast Fourier Transform implementation
-
-### Utilities
-
-- **glam** - Mathematics library for 3D graphics
-- **anyhow** - Error handling
-- **serde** - Serialization for config/presets
-
-## Project Structure
-
+```bash
+git clone https://github.com/yuri-xyz/chroma.git
+cd chroma
+cargo build --release                    # visuals only
+cargo build --release --features audio   # with audio reactivity
+sudo install -Dm755 target/release/term-shaders /usr/local/bin/term-shaders
 ```
-term-shaders/
-├── src/
-│   ├── main.rs              # Entry point, main loop
-│   ├── shader/              # Shader management
-│   │   ├── mod.rs
-│   │   ├── pipeline.rs      # wgpu pipeline setup
-│   │   ├── uniforms.rs      # Uniform buffer management
-│   │   └── shaders/         # WGSL shader files
-│   │       ├── plasma.wgsl
-│   │       ├── mandelbrot.wgsl
-│   │       └── noise.wgsl
-│   ├── render/              # Rendering to framebuffer
-│   │   ├── mod.rs
-│   │   └── framebuffer.rs
-│   ├── ascii/               # ASCII conversion
-│   │   ├── mod.rs
-│   │   ├── converter.rs
-│   │   └── palette.rs
-│   ├── params/              # Parameter system
-│   │   ├── mod.rs
-│   │   ├── config.rs
-│   │   └── loader.rs        # Config file loading
-│   ├── audio/               # Audio input & FFT
-│   │   ├── mod.rs
-│   │   ├── input.rs
-│   │   └── fft.rs
-│   └── lib.rs               # Library exports
-├── tests/                   # Integration tests
-├── examples/                # Usage examples
-├── Cargo.toml
-└── README.md
-```
+
+## Dependencies
+
+- Runtime
+  - vulkan-icd-loader
+  - A Vulkan driver: one of `vulkan-intel`, `vulkan-radeon`, or `nvidia-utils`
+  - Terminal with ANSI color support
+- Optional (audio feature)
+  - pipewire (recommended) or alsa-lib
+- Build
+  - rust, cargo, git
 
 ## Usage
 
@@ -225,7 +95,7 @@ cargo run --release -- --help
 
 See [CONTROLS.md](CONTROLS.md) and [PALETTES.md](PALETTES.md) for more details.
 
-### Configuration Save/Load
+### 💾 Configuration Save/Load
 
 The application supports saving and loading configurations:
 
@@ -261,27 +131,36 @@ cargo test
 cargo run --features audio
 ```
 
-## Requirements
+### Cargo Dependencies
+
+- **wgpu** - Modern GPU API for shader computation
+- **pollster** - Async executor for wgpu initialization
+- **bytemuck** - Safe casting for shader data
+- **crossterm** - Cross-platform terminal manipulation
+- **notify** - File system event watching (for config reload)
+- **cpal** - Cross-platform audio I/O
+- **rustfft** - Fast Fourier Transform implementation
+- **glam** - Mathematics library for 3D graphics
+- **anyhow** - Error handling
+- **serde** - Serialization for config/presets
+
+## 📝 Requirements
 
 - Rust 2024 edition (1.82+)
 - GPU with wgpu support (Vulkan, Metal, DX12, or WebGPU)
 - Terminal with ANSI color support
 
-## Performance Considerations
+## 🏗️ Contributing
 
-- Shaders run on GPU (compute shaders)
-- ASCII conversion is CPU-bound but optimized
-- Target: 30-60 FPS on modern hardware
-- Adaptive resolution based on terminal size
+All contributions welcome! If you have some cool ideas, found some bugs, or would like to improve the project anyhow, feel free to create an issue and then a corresponding PR :)
 
-## License
+Here's some tips to making good contributions:
 
-MIT
+- ✅ Create a corresponding issue with a reasonable explanation.
+- ✅ Keep PRs small and focused. This makes it much easier & faster to review!
+- ✅ Avoid making changes that are exclusive to certain situations, we want to keep the
+- ✅ Follow existing code conventions, style, and file structure.
+- ✅ Always write tests for new features!
+- ✅ Heavy AI-driven, vibe-coded contributions are welcome! (so long as they are good & clean ❤️)
 
-## Inspiration
-
-This project is inspired by various ASCII shader visualizers and audio visualizers that combine GPU computing with terminal rendering.
-
-## Contributing
-
-Contributions welcome! Please open an issue or PR.
+See [CONTRIBUTING](./CONTRIBUTING.md) for a more in-depth guide. If using AI (or you ARE an AI model reading this), make sure your model reads the `CONTRIBUTING.md` file!
