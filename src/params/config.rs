@@ -18,12 +18,13 @@ pub enum PatternType {
     Hexagonal,
     Interference,
     Fractal,
-    Glitch,   // Reduce in randomizer
-    Spiral,   // New: spiral arms
-    Rings,    // New: concentric rings
-    Grid,     // New: flowing grid
-    Diamonds, // New: diamond pattern
-    Sphere,   // New: rotating 3D sphere (like Earth)
+    Glitch,
+    Spiral,
+    Rings,
+    Grid,
+    Diamonds,
+    Sphere,
+    WarpedFbm,
 }
 
 impl PatternType {
@@ -46,6 +47,7 @@ impl PatternType {
             Self::Grid => 14,
             Self::Diamonds => 15,
             Self::Sphere => 16,
+            Self::WarpedFbm => 17,
         }
     }
 
@@ -68,6 +70,53 @@ impl PatternType {
             Self::Grid => "Grid",
             Self::Diamonds => "Diamond",
             Self::Sphere => "Sphere",
+            Self::WarpedFbm => "Warped",
+        }
+    }
+
+    pub fn next(self) -> Self {
+        match self {
+            Self::Plasma => Self::Waves,
+            Self::Waves => Self::Ripples,
+            Self::Ripples => Self::Vortex,
+            Self::Vortex => Self::Noise,
+            Self::Noise => Self::Geometric,
+            Self::Geometric => Self::Voronoi,
+            Self::Voronoi => Self::Truchet,
+            Self::Truchet => Self::Hexagonal,
+            Self::Hexagonal => Self::Interference,
+            Self::Interference => Self::Fractal,
+            Self::Fractal => Self::Glitch,
+            Self::Glitch => Self::Spiral,
+            Self::Spiral => Self::Rings,
+            Self::Rings => Self::Grid,
+            Self::Grid => Self::Diamonds,
+            Self::Diamonds => Self::Sphere,
+            Self::Sphere => Self::WarpedFbm,
+            Self::WarpedFbm => Self::Plasma,
+        }
+    }
+
+    pub fn previous(self) -> Self {
+        match self {
+            Self::Plasma => Self::WarpedFbm,
+            Self::WarpedFbm => Self::Sphere,
+            Self::Sphere => Self::Diamonds,
+            Self::Diamonds => Self::Grid,
+            Self::Grid => Self::Rings,
+            Self::Rings => Self::Spiral,
+            Self::Spiral => Self::Glitch,
+            Self::Glitch => Self::Fractal,
+            Self::Fractal => Self::Interference,
+            Self::Interference => Self::Hexagonal,
+            Self::Hexagonal => Self::Truchet,
+            Self::Truchet => Self::Voronoi,
+            Self::Voronoi => Self::Geometric,
+            Self::Geometric => Self::Noise,
+            Self::Noise => Self::Vortex,
+            Self::Vortex => Self::Ripples,
+            Self::Ripples => Self::Waves,
+            Self::Waves => Self::Plasma,
         }
     }
 }
@@ -82,6 +131,7 @@ pub enum ColorMode {
     Neon,
     Pastel,
     Cyberpunk,
+    Warped,
     Chromatic,
 }
 
@@ -95,7 +145,8 @@ impl ColorMode {
             Self::Cool => Self::Neon,
             Self::Neon => Self::Pastel,
             Self::Pastel => Self::Cyberpunk,
-            Self::Cyberpunk => Self::Chromatic,
+            Self::Cyberpunk => Self::Warped,
+            Self::Warped => Self::Chromatic,
             Self::Chromatic => Self::Rainbow,
         }
     }
@@ -103,7 +154,8 @@ impl ColorMode {
     pub fn previous(self) -> Self {
         match self {
             Self::Rainbow => Self::Chromatic,
-            Self::Chromatic => Self::Cyberpunk,
+            Self::Chromatic => Self::Warped,
+            Self::Warped => Self::Cyberpunk,
             Self::Cyberpunk => Self::Pastel,
             Self::Pastel => Self::Neon,
             Self::Neon => Self::Cool,
@@ -124,6 +176,7 @@ impl ColorMode {
             Self::Neon => "Neon",
             Self::Pastel => "Pastel",
             Self::Cyberpunk => "Cyber",
+            Self::Warped => "Warped",
             Self::Chromatic => "Chrome",
         }
     }
@@ -138,7 +191,8 @@ impl ColorMode {
             Self::Neon => 5,
             Self::Pastel => 6,
             Self::Cyberpunk => 7,
-            Self::Chromatic => 8,
+            Self::Warped => 8,
+            Self::Chromatic => 9,
         }
     }
 }
@@ -427,8 +481,6 @@ impl ShaderParams {
             17 => PatternType::Rings,        // 5% - NEW! Spacious
             18 => PatternType::Grid,         // 5% - NEW! Spacious
             _ => PatternType::Voronoi,       // 5% - Sometimes good
-                                              // REMOVED: Geometric (causes bad combos), Diamonds (bad combos), Sphere (bad combos)
-                                              // REMOVED: Noise (too filled), Glitch (too noisy), Hexagonal (too busy)
         };
 
         // Reduced problematic palettes
@@ -444,9 +496,6 @@ impl ShaderParams {
             17 => PaletteType::Extended,       // 5% - Good!
             18 => PaletteType::Mixed,          // 5% - Sometimes good
             _ => PaletteType::Circles,         // 5%
-                                                // REMOVED: Standard (std geo chrome), Blocks (block ripples), Geometric (geo sphere, std geo chrome)
-                                                // REMOVED: Shades (shade sphere, shade waves), Simple (simple diamond)
-                                                // REMOVED: Smooth (bad combos)
         };
 
         self.frequency = rng.gen_range(3.0..=18.0);

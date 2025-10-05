@@ -56,6 +56,23 @@ Save the current configuration to a file in the working directory.
 - Range: 0.1 → 5.0
 - Effect: Change pattern size
 
+### Pattern Type
+
+- `T` - Next pattern
+- `Y` - Previous pattern
+- Effect: Cycle through different visual patterns (Plasma, Waves, Ripples, Vortex, Noise, Geometric, Voronoi, Truchet, Hexagonal, Interference, Fractal, Glitch, Spiral, Rings, Grid, Diamonds, Sphere, WarpedFbm)
+
+### Color Mode
+
+- `C` - Next color mode
+- Effect: Cycle through color schemes (Rainbow, Monochrome, Duotone, Warm, Cool, Neon, Pastel, Cyberpunk, Warped, Chromatic)
+
+### Palette
+
+- `P` - Next palette
+- `O` - Previous palette
+- Effect: Change ASCII character set and color rendering
+
 ## Status Bar
 
 The status bar at the bottom shows:

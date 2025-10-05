@@ -1,0 +1,19 @@
+# Rust formatting configuration for term-shaders
+
+# Use 2 spaces for indentation
+tab_spaces = 2
+hard_tabs = false
+
+# Formatting preferences
+max_width = 100
+use_small_heuristics = "Default"
+edition = "2021"
+
+# Import organization
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+
+# Code style
+newline_style = "Unix"
+use_field_init_shorthand = true
+use_try_shorthand = true
