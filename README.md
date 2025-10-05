@@ -22,6 +22,8 @@
 
 [chroma.webm](https://github.com/user-attachments/assets/9e821a20-8394-445c-9542-91e294225e63)
 
+[chroma-demo-long.webm](https://github.com/user-attachments/assets/3ae02009-b9a5-4003-93b3-8120db869447)
+
 ## 🔗 Install
 
 ### Arch Linux (❤️ Arch!)
