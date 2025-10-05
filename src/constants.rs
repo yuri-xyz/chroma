@@ -1,5 +1,3 @@
-// Application-wide constants
-
 use std::time::Duration;
 
 /// Target frames per second for rendering
@@ -26,10 +24,6 @@ pub const AUDIO_DECAY_RATE: f32 = 0.92;
 /// Speed decay rate when audio is silent (0.0-1.0)
 #[allow(dead_code)]
 pub const AUDIO_SPEED_DECAY_RATE: f32 = 0.88;
-
-/// Audio test duration in milliseconds
-#[allow(dead_code)]
-pub const AUDIO_TEST_DURATION_MS: u64 = 200;
 
 /// Startup delay in milliseconds before rendering begins
 pub const STARTUP_DELAY_MS: u64 = 1000;

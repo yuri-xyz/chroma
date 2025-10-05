@@ -117,7 +117,7 @@ Just 5 characters for low-detail or retro look.
 ### In Code
 
 ```rust
-use term_shaders::ascii::{AsciiConverter, AsciiPalette};
+use chroma::ascii::{AsciiConverter, AsciiPalette};
 
 // Use the recommended circles palette (default in main.rs)
 let converter = AsciiConverter::new(AsciiPalette::circles(), true);

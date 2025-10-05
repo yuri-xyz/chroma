@@ -3,11 +3,11 @@
 use crate::constants::MIN_BRIGHTNESS_THRESHOLD;
 use crate::utils::color::calculate_brightness;
 use anyhow::Result;
+use chroma::ascii::AsciiConverter;
+use chroma::shader::{ShaderPipeline, ShaderUniforms};
 use crossterm::style::Color;
 use std::fs::File;
 use std::io::{BufWriter, Write, stdout};
-use term_shaders::ascii::AsciiConverter;
-use term_shaders::shader::{ShaderPipeline, ShaderUniforms};
 use unicode_width::UnicodeWidthChar;
 
 /// Render a complete frame to the terminal

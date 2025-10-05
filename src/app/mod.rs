@@ -1,24 +1,23 @@
 // Application main module
 
 mod audio;
-pub mod init;
 mod input;
 mod rendering;
-mod status;
+mod status_bar;
 
 #[cfg(feature = "audio")]
 use crate::constants::AUDIO_SAMPLE_THRESHOLD;
 use crate::constants::FRAME_DURATION;
 use anyhow::Result;
+use chroma::ascii::{AsciiConverter, AsciiPalette};
+#[cfg(feature = "audio")]
+use chroma::audio::{AudioAnalyzer, AudioCapture};
+use chroma::params::{PaletteType, ShaderParams};
+use chroma::shader::{ShaderPipeline, ShaderUniforms};
 use crossterm::terminal;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::time::Instant;
-use term_shaders::ascii::{AsciiConverter, AsciiPalette};
-#[cfg(feature = "audio")]
-use term_shaders::audio::{AudioAnalyzer, AudioCapture};
-use term_shaders::params::{PaletteType, ShaderParams};
-use term_shaders::shader::{ShaderPipeline, ShaderUniforms};
 
 /// Main application state
 pub struct App {
@@ -204,9 +203,9 @@ impl App {
   fn build_status_bar(&self, has_sound: bool) -> String {
     let (current_width, _) = terminal::size().unwrap_or((80, 24));
     let available_cols = current_width as usize;
+    let status_text = status_bar::build_status_text(&self.params, self.params.effect_type);
 
-    let status_text = status::build_status_text(&self.params, self.params.effect_type);
-    status::format_status_bar(status_text, available_cols, has_sound, self.params.time)
+    status_bar::format_status_bar(status_text, available_cols, has_sound, self.params.time)
   }
 
   /// Handle window resize

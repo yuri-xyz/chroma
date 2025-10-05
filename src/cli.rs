@@ -1,10 +1,8 @@
-// Command-line argument parsing
-
 use clap::Parser;
 
-/// Command-line arguments for term-shaders
+/// Command-line arguments
 #[derive(Parser, Debug)]
-#[command(name = "term-shaders")]
+#[command(name = "chroma")]
 #[command(
   about = "Terminal-based shader visualizer with optional audio reactivity",
   long_about = None

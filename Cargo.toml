@@ -40,5 +40,5 @@ name = "term-shaders"
 path = "src/main.rs"
 
 [lib]
-name = "term_shaders"
+name = "chroma"
 path = "src/lib.rs"

@@ -1,12 +1,10 @@
-// Keyboard input handling
-
 use anyhow::Result;
+use chroma::ascii::{AsciiConverter, AsciiPalette};
+use chroma::params::{PaletteType, ShaderParams};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::time::Duration;
-use term_shaders::ascii::{AsciiConverter, AsciiPalette};
-use term_shaders::params::{PaletteType, ShaderParams};
 
 /// Handle keyboard input events
 pub fn handle_input(
@@ -42,7 +40,7 @@ fn handle_key_press(
   debug_log: &mut BufWriter<File>,
 ) -> Result<()> {
   match code {
-    // Application control
+    // Quit
     KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => {
       *running = false;
     }
@@ -61,23 +59,15 @@ fn handle_key_press(
     KeyCode::Char('t') | KeyCode::Char('T') => {
       params.pattern_type = params.pattern_type.next();
     }
-    KeyCode::Char('y') | KeyCode::Char('Y') => {
-      params.pattern_type = params.pattern_type.previous();
-    }
 
-    // Color mode
+    // Color mode selection
     KeyCode::Char('c') | KeyCode::Char('C') => {
       params.color_mode = params.color_mode.next();
     }
 
-    // Palette selection
+    // Palette type selection
     KeyCode::Char('p') | KeyCode::Char('P') => {
       params.palette = params.palette.next();
-      let new_palette = palette_from_type(params.palette);
-      converter.set_palette(new_palette);
-    }
-    KeyCode::Char('o') | KeyCode::Char('O') => {
-      params.palette = params.palette.previous();
       let new_palette = palette_from_type(params.palette);
       converter.set_palette(new_palette);
     }
@@ -85,21 +75,22 @@ fn handle_key_press(
     // Randomization
     KeyCode::Char('r') | KeyCode::Char('R') => {
       params.randomize();
+
       let new_palette = palette_from_type(params.palette);
+
       converter.set_palette(new_palette);
     }
 
-    // Effects
-    KeyCode::Char('e') | KeyCode::Char('E') | KeyCode::Char(' ') => {
-      params.effect_time = params.time;
-      writeln!(
-        debug_log,
-        "EFFECT: Triggered effect type {} at time {:.2}",
-        params.effect_type, params.effect_time
-      )?;
-    }
+    // Cycle through effects
     KeyCode::Char('n') | KeyCode::Char('N') => {
-      params.effect_type = (params.effect_type + 1) % 7;
+      let mut next = (params.effect_type + 1) % 7;
+
+      if next == 0 || next == 1 {
+        next = 2;
+      }
+
+      params.effect_type = next;
+
       writeln!(
         debug_log,
         "EFFECT: Switched to effect type {}",
@@ -112,6 +103,7 @@ fn handle_key_press(
       #[cfg(feature = "audio")]
       {
         params.audio_enabled = !params.audio_enabled;
+
         writeln!(
           debug_log,
           "AUDIO: Audio reactivity {}",

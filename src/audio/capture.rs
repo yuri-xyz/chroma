@@ -24,6 +24,7 @@ impl AudioCapture {
     let config = device
       .default_input_config()
       .map_err(|e| anyhow::anyhow!("Failed to get device config: {}", e))?;
+
     let sample_rate = config.sample_rate().0 as f32;
 
     let buffer = Arc::new(Mutex::new(Vec::with_capacity(4096)));
@@ -89,6 +90,7 @@ impl AudioCapture {
 
         // Keep buffer size manageable
         let buf_len = buf.len();
+
         if buf_len > 4096 {
           buf.drain(0..buf_len - 4096);
         }

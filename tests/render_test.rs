@@ -1,4 +1,4 @@
-use term_shaders::{
+use chroma::{
     ascii::{AsciiConverter, AsciiPalette},
     params::ShaderParams,
     shader::{ShaderPipeline, ShaderUniforms},
