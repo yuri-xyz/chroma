@@ -357,7 +357,7 @@ impl Default for ShaderParams {
       saturation: 1.0,
       gamma: 1.0,
 
-      vignette: 0.0,
+      vignette: 0.3,
       vignette_softness: 0.5,
       glyph_sharpness: 1.0,
 
@@ -365,9 +365,9 @@ impl Default for ShaderParams {
       background_tint_g: 0.0,
       background_tint_b: 0.0,
 
-      palette: PaletteType::Circles,
+      palette: PaletteType::Simple,
       color_mode: ColorMode::Chromatic,
-      pattern_type: PatternType::Octgrams,
+      pattern_type: PatternType::Plasma,
 
       audio_enabled: false,
       bass_influence: 0.5,
@@ -375,7 +375,7 @@ impl Default for ShaderParams {
       treble_influence: 0.2,
 
       effect_time: -100.0,
-      effect_type: 2,
+      effect_type: 0,
     }
   }
 }
