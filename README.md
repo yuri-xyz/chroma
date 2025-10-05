@@ -3,8 +3,8 @@
 
 A Rust-based, ASCII art shader audio visualizer for your terminal!
 
-  <video src="readme/demo-short.webm" width="700" autoplay loop playsinline controls>
-  </video>
+[chroma.webm](https://github.com/user-attachments/assets/9e821a20-8394-445c-9542-91e294225e63)
+
 
 <quote>🔊 Make sure you turn on sound on the video!</quote>
 
