@@ -486,13 +486,20 @@ impl App {
         #[cfg(not(feature = "audio"))]
         let has_sound = false;
 
+        // Build initials: Pattern ColorMode Palette (e.g. "PCC" for Plasma Chrome Circle)
+        let pattern_initial = self
+            .params
+            .pattern_type
+            .name()
+            .chars()
+            .next()
+            .unwrap_or('?');
+        let color_initial = self.params.color_mode.name().chars().next().unwrap_or('?');
+        let palette_initial = self.params.palette.name().chars().next().unwrap_or('?');
+
         let status = format!(
-            "{} {} {} {} | F:{:.1} | [Q] [R]nd [S]ave [A]udio [E]fx [N]xt [C]lr [P]al",
-            self.params.palette.name(),
-            self.params.pattern_type.name(),
-            self.params.color_mode.name(),
-            effect_name,
-            self.params.frequency
+            "{} {}{}{}  F:{:.1}  Q:quit R:random S:save A:audio E:effect N:next C:color P:palette",
+            effect_name, pattern_initial, color_initial, palette_initial, self.params.frequency
         );
 
         let status_visual_len: usize = status
