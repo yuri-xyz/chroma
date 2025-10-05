@@ -7,6 +7,7 @@ A Rust-based terminal shader visualizer and audio visualizer that renders GPU-co
 - 🎨 **GPU-accelerated shaders** using wgpu (compute shaders)
 - 🖼️ **ASCII art rendering** with ANSI color support
 - ⚙️ **Highly configurable parameters** via config file
+- 💾 **Save/Load configurations** with automatic hashing
 - 🔄 **Live config reloading** for real-time parameter adjustment
 - 🎵 **Audio visualization** driven by system audio input
 - 📊 **FFT-based audio analysis** for reactive visual effects
@@ -195,24 +196,54 @@ term-shaders/
 ## Usage
 
 ```bash
-# Run with default settings (uses config.toml)
+# Run with default settings
 cargo run --release
 
-# Run with custom config file
-cargo run --release -- --config my-config.toml
+# Run with audio reactivity (recommended!)
+cargo run --release --features audio
+
+# Load a saved configuration
+cargo run --release --features audio -- --config config_a3f8c2d9e1b5.toml
+
+# Or using the short form
+cargo run --release --features audio -- -c config_a3f8c2d9e1b5.toml
+
+# View help
+cargo run --release -- --help
 ```
 
 ### Controls
 
 - `Q` or `Esc` - Quit application
 - `R` - **Randomize parameters** ⭐ (Discover new effects!)
-- `P`/`O` - **Cycle palettes** 🎨 (10 different character sets!)
+- `S` - **Save configuration** 💾 (Creates `config_<hash>.toml` in current directory)
+- `P`/`O` - **Cycle palettes** 🎨 (16 different character sets!)
 - `↑`/`↓` - Adjust frequency
 - `→`/`←` - Adjust speed
 - `+`/`-` - Adjust amplitude
 - `[`/`]` - Adjust scale
 
 See [CONTROLS.md](CONTROLS.md) and [PALETTES.md](PALETTES.md) for more details.
+
+### Configuration Save/Load
+
+The application supports saving and loading configurations:
+
+1. **Saving**: Press `S` while running to save the current configuration
+
+   - Generates a unique filename based on a hash of all parameters: `config_<hash>.toml`
+   - Saves to the current working directory
+   - Won't overwrite existing files with the same hash
+
+2. **Loading**: Use the `--config` flag when launching:
+
+   ```bash
+   cargo run --release --features audio -- --config config_a3f8c2d9e1b5.toml
+   ```
+
+3. **Sharing**: Config files are plain TOML and can be shared with others!
+
+See [CONFIG_SAVE_LOAD.md](CONFIG_SAVE_LOAD.md) for detailed documentation.
 
 ## Building
 

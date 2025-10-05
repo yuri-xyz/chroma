@@ -1,4 +1,9 @@
+use std::fs;
+use std::path::Path;
+
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PatternType {
@@ -6,8 +11,19 @@ pub enum PatternType {
     Waves,
     Ripples,
     Vortex,
-    Noise,
+    Noise, // Reduce in randomizer
     Geometric,
+    Voronoi,
+    Truchet,
+    Hexagonal,
+    Interference,
+    Fractal,
+    Glitch,   // Reduce in randomizer
+    Spiral,   // New: spiral arms
+    Rings,    // New: concentric rings
+    Grid,     // New: flowing grid
+    Diamonds, // New: diamond pattern
+    Sphere,   // New: rotating 3D sphere (like Earth)
 }
 
 impl PatternType {
@@ -19,6 +35,17 @@ impl PatternType {
             Self::Vortex => 3,
             Self::Noise => 4,
             Self::Geometric => 5,
+            Self::Voronoi => 6,
+            Self::Truchet => 7,
+            Self::Hexagonal => 8,
+            Self::Interference => 9,
+            Self::Fractal => 10,
+            Self::Glitch => 11,
+            Self::Spiral => 12,
+            Self::Rings => 13,
+            Self::Grid => 14,
+            Self::Diamonds => 15,
+            Self::Sphere => 16,
         }
     }
 
@@ -30,6 +57,17 @@ impl PatternType {
             Self::Vortex => "Vortex",
             Self::Noise => "Noise",
             Self::Geometric => "Geo",
+            Self::Voronoi => "Voronoi",
+            Self::Truchet => "Truchet",
+            Self::Hexagonal => "Hexagon",
+            Self::Interference => "Interf",
+            Self::Fractal => "Fractal",
+            Self::Glitch => "Glitch",
+            Self::Spiral => "Spiral",
+            Self::Rings => "Rings",
+            Self::Grid => "Grid",
+            Self::Diamonds => "Diamond",
+            Self::Sphere => "Sphere",
         }
     }
 }
@@ -117,6 +155,12 @@ pub enum PaletteType {
     Dots,
     Extended,
     Simple,
+    Shades,
+    Lines,
+    Triangles,
+    Arrows,
+    Powerline,
+    BoxDraw,
 }
 
 impl PaletteType {
@@ -129,7 +173,13 @@ impl PaletteType {
             Self::Braille => Self::Geometric,
             Self::Geometric => Self::Mixed,
             Self::Mixed => Self::Dots,
-            Self::Dots => Self::Extended,
+            Self::Dots => Self::Shades,
+            Self::Shades => Self::Lines,
+            Self::Lines => Self::Triangles,
+            Self::Triangles => Self::Arrows,
+            Self::Arrows => Self::Powerline,
+            Self::Powerline => Self::BoxDraw,
+            Self::BoxDraw => Self::Extended,
             Self::Extended => Self::Simple,
             Self::Simple => Self::Standard,
         }
@@ -139,7 +189,13 @@ impl PaletteType {
         match self {
             Self::Standard => Self::Simple,
             Self::Simple => Self::Extended,
-            Self::Extended => Self::Dots,
+            Self::Extended => Self::BoxDraw,
+            Self::BoxDraw => Self::Powerline,
+            Self::Powerline => Self::Arrows,
+            Self::Arrows => Self::Triangles,
+            Self::Triangles => Self::Lines,
+            Self::Lines => Self::Shades,
+            Self::Shades => Self::Dots,
             Self::Dots => Self::Mixed,
             Self::Mixed => Self::Geometric,
             Self::Geometric => Self::Braille,
@@ -152,15 +208,21 @@ impl PaletteType {
 
     pub fn name(self) -> &'static str {
         match self {
-            Self::Standard => "Standard",
-            Self::Blocks => "Blocks",
-            Self::Circles => "Circles",
+            Self::Standard => "Std",
+            Self::Blocks => "Block",
+            Self::Circles => "Circle",
             Self::Smooth => "Smooth",
             Self::Braille => "Braille",
-            Self::Geometric => "Geometric",
+            Self::Geometric => "Geo",
             Self::Mixed => "Mixed",
             Self::Dots => "Dots",
-            Self::Extended => "Extended",
+            Self::Shades => "Shade",
+            Self::Lines => "Lines",
+            Self::Triangles => "Tri",
+            Self::Arrows => "Arrow",
+            Self::Powerline => "Power",
+            Self::BoxDraw => "Box",
+            Self::Extended => "Extend",
             Self::Simple => "Simple",
         }
     }
@@ -206,6 +268,9 @@ pub struct ShaderParams {
     pub bass_influence: f32,
     pub mid_influence: f32,
     pub treble_influence: f32,
+
+    pub effect_time: f32,
+    pub effect_type: u32,
 }
 
 impl Default for ShaderParams {
@@ -249,11 +314,29 @@ impl Default for ShaderParams {
             bass_influence: 0.5,
             mid_influence: 0.3,
             treble_influence: 0.2,
+
+            effect_time: -100.0,
+            effect_type: 0,
         }
     }
 }
 
 impl ShaderParams {
+    /// Configure for audio-reactive mode with calm initial state
+    /// Starts nearly still and dimmed, waiting for audio to bring it to life
+    pub fn with_audio_reactive_defaults() -> Self {
+        Self {
+            speed: 0.05,         // Nearly still (vs default 1.0)
+            brightness: 0.6,     // Dimmed (vs default 1.2)
+            contrast: 0.8,       // Softer (vs default 1.0)
+            amplitude: 0.4,      // Minimal (vs default 1.0)
+            frequency: 6.0,      // Lower detail (vs default 10.0)
+            audio_enabled: true, // Audio reactive mode ON
+            effect_time: -100.0, // Far in past to prevent startup wave
+            ..Default::default()
+        }
+    }
+
     pub fn update_time(&mut self, delta_time: f32) {
         self.time += delta_time * self.speed;
     }
@@ -331,26 +414,39 @@ impl ShaderParams {
         use rand::Rng;
         let mut rng = rand::thread_rng();
 
-        self.pattern_type = match rng.gen_range(0..6) {
-            0 => PatternType::Plasma,
-            1 => PatternType::Waves,
-            2 => PatternType::Ripples,
-            3 => PatternType::Vortex,
-            4 => PatternType::Noise,
-            _ => PatternType::Geometric,
+        // Weighted randomization - favor good-looking patterns, reduce problematic ones
+        self.pattern_type = match rng.gen_range(0..20) {
+            0..=2 => PatternType::Plasma,    // 15% - BEST!
+            3..=5 => PatternType::Waves,     // 15% - BEST!
+            6..=8 => PatternType::Ripples,   // 15% - BEST!
+            9..=11 => PatternType::Vortex,   // 15% - BEST!
+            12..=13 => PatternType::Truchet, // 10% - Good!
+            14 => PatternType::Interference, // 5% - Good spacing
+            15 => PatternType::Fractal,      // 5% - Good
+            16 => PatternType::Spiral,       // 5% - NEW! Spacious
+            17 => PatternType::Rings,        // 5% - NEW! Spacious
+            18 => PatternType::Grid,         // 5% - NEW! Spacious
+            _ => PatternType::Voronoi,       // 5% - Sometimes good
+                                              // REMOVED: Geometric (causes bad combos), Diamonds (bad combos), Sphere (bad combos)
+                                              // REMOVED: Noise (too filled), Glitch (too noisy), Hexagonal (too busy)
         };
 
-        self.palette = match rng.gen_range(0..10) {
-            0 => PaletteType::Standard,
-            1 => PaletteType::Blocks,
-            2 => PaletteType::Circles,
-            3 => PaletteType::Smooth,
-            4 => PaletteType::Braille,
-            5 => PaletteType::Geometric,
-            6 => PaletteType::Mixed,
-            7 => PaletteType::Dots,
-            8 => PaletteType::Extended,
-            _ => PaletteType::Simple,
+        // Reduced problematic palettes
+        self.palette = match rng.gen_range(0..20) {
+            0..=3 => PaletteType::Circles,     // 20% - BEST!
+            4..=6 => PaletteType::Braille,     // 15% - Good!
+            7..=9 => PaletteType::Dots,        // 15% - Good!
+            10..=11 => PaletteType::Lines,     // 10% - Good!
+            12..=13 => PaletteType::Triangles, // 10% - Good!
+            14 => PaletteType::Arrows,         // 5% - Good!
+            15 => PaletteType::Powerline,      // 5% - Good!
+            16 => PaletteType::BoxDraw,        // 5% - Good!
+            17 => PaletteType::Extended,       // 5% - Good!
+            18 => PaletteType::Mixed,          // 5% - Sometimes good
+            _ => PaletteType::Circles,         // 5%
+                                                // REMOVED: Standard (std geo chrome), Blocks (block ripples), Geometric (geo sphere, std geo chrome)
+                                                // REMOVED: Shades (shade sphere, shade waves), Simple (simple diamond)
+                                                // REMOVED: Smooth (bad combos)
         };
 
         self.frequency = rng.gen_range(3.0..=18.0);
@@ -376,6 +472,45 @@ impl ShaderParams {
             0.0
         };
         self.vignette_softness = rng.gen_range(0.3..=0.8);
+    }
+
+    fn compute_hash(&self) -> String {
+        let toml_string = toml::to_string(self).unwrap_or_default();
+        let mut hasher = Sha256::new();
+        hasher.update(toml_string.as_bytes());
+        let result = hasher.finalize();
+        format!("{:x}", result)[..12].to_string()
+    }
+
+    pub fn save_to_file(&self) -> Result<String> {
+        let hash = self.compute_hash();
+        let filename = format!("config_{}.toml", hash);
+
+        if Path::new(&filename).exists() {
+            return Ok(filename);
+        }
+
+        let toml_content =
+            toml::to_string_pretty(self).context("Failed to serialize configuration to TOML")?;
+
+        fs::write(&filename, toml_content)
+            .context(format!("Failed to write config file: {}", filename))?;
+
+        Ok(filename)
+    }
+
+    pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let content = fs::read_to_string(path.as_ref()).context(format!(
+            "Failed to read config file: {}",
+            path.as_ref().display()
+        ))?;
+
+        let mut params: ShaderParams =
+            toml::from_str(&content).context("Failed to parse config file")?;
+
+        params.clamp_all();
+
+        Ok(params)
     }
 }
 

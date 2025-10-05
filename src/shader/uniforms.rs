@@ -33,7 +33,9 @@ pub struct ShaderUniforms {
 
     pub color_mode: u32,
     pub pattern_type: u32,
-    _padding2: u32,
+    pub effect_time: f32,
+    pub effect_type: u32,
+    _padding2: [u32; 2],
     pub background_tint: [f32; 3],
     _padding3: u32,
 }
@@ -72,7 +74,9 @@ impl ShaderUniforms {
 
             color_mode: params.color_mode.to_u32(),
             pattern_type: params.pattern_type.to_u32(),
-            _padding2: 0,
+            effect_time: params.effect_time,
+            effect_type: params.effect_type,
+            _padding2: [0; 2],
             background_tint: [
                 params.background_tint_r,
                 params.background_tint_g,

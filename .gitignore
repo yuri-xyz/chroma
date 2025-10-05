@@ -21,3 +21,4 @@ recordings/
 exports/debug.log
 *.log
 debug.log
+config_*.toml

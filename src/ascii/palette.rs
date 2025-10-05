@@ -41,7 +41,7 @@ impl AsciiPalette {
 
     pub fn smooth() -> Self {
         Self {
-            characters: vec![' ', '·', '∘', '○', '◌', '◍', '◎', '●', '⬤', '⬛'],
+            characters: vec![' ', '·', '∘', '○', '◌', '◍', '◎', '◉', '●', '█'],
         }
     }
 
@@ -53,25 +53,64 @@ impl AsciiPalette {
 
     pub fn geometric() -> Self {
         Self {
-            characters: vec![' ', '▪', '▫', '◽', '◾', '◼', '◻', '■', '⬛'],
+            characters: vec![' ', '▪', '▫', '▬', '▭', '▮', '▯', '■', '█'],
         }
     }
 
     pub fn circles() -> Self {
         Self {
-            characters: vec![' ', '·', '∘', '○', '◌', '◍', '◎', '◉', '●', '⬤'],
+            characters: vec![' ', '·', '∘', '○', '◌', '◍', '◎', '◉', '●', '█'],
         }
     }
 
     pub fn mixed() -> Self {
         Self {
-            characters: vec![' ', '·', '∘', '░', '▒', '▓', '●', '◉', '█', '⬛'],
+            characters: vec![' ', '·', '∘', '░', '▒', '▓', '●', '◉', '■', '█'],
         }
     }
 
     pub fn dots() -> Self {
         Self {
             characters: vec![' ', '⡀', '⡄', '⡆', '⡇', '⣇', '⣧', '⣷', '⣿'],
+        }
+    }
+
+    pub fn shades() -> Self {
+        Self {
+            characters: vec![' ', '░', '░', '▒', '▒', '▓', '▓', '█', '█'],
+        }
+    }
+
+    pub fn lines() -> Self {
+        Self {
+            characters: vec![' ', '╌', '╍', '┄', '┅', '┈', '┉', '━', '█'],
+        }
+    }
+
+    pub fn triangles() -> Self {
+        Self {
+            characters: vec![' ', '▵', '▴', '▿', '▾', '◂', '◃', '▸', '▹'],
+        }
+    }
+
+    pub fn arrows() -> Self {
+        Self {
+            characters: vec![' ', '›', '»', '⟩', '→', '⇒', '⟹', '⟾', '▶'],
+        }
+    }
+
+    pub fn powerline() -> Self {
+        Self {
+            characters: vec![
+                ' ', '\u{e0b0}', '\u{e0b1}', '\u{e0b2}', '\u{e0b3}', '\u{e0b4}', '\u{e0b5}',
+                '\u{e0b6}', '█',
+            ],
+        }
+    }
+
+    pub fn boxdraw() -> Self {
+        Self {
+            characters: vec![' ', '─', '━', '│', '┃', '┼', '╋', '╬', '█'],
         }
     }
 

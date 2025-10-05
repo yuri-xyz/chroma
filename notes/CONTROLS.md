@@ -17,6 +17,15 @@ Randomize all shader parameters within sensible ranges for interesting visual ef
 - Vignette has 30% chance of being enabled
 - Great for discovering new shader combinations!
 
+### `S` - Save Configuration 💾
+
+Save the current configuration to a file in the working directory.
+
+- Generates a unique filename based on parameter hash: `config_<hash>.toml`
+- Won't overwrite if the same configuration already exists
+- Config files can be loaded with `--config` flag on startup
+- Share configs with others or keep your favorite settings!
+
 ## Parameter Adjustments
 
 ### Frequency (Wave Density)
