@@ -3,7 +3,7 @@
 
 A Rust-based, ASCII art shader audio visualizer for your terminal!
 
-  <video src="readme/chroma.mp4" width="720" autoplay loop muted playsinline controls>
+  <video src="readme/demo-short.webm" width="700" autoplay loop playsinline controls>
   </video>
 
 <quote>🔊 Make sure you turn on sound on the video!</quote>
@@ -19,6 +19,10 @@ A Rust-based, ASCII art shader audio visualizer for your terminal!
 - 🔄 **Live config reloading** for real-time parameter adjustment
 - 🎵 **Audio visualization** driven by system audio input
 - 📊 **[FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform)-based audio analysis** for reactive visual effects
+
+## Demos & screenshots
+
+<video src="readme/demo-long.webm" width="700" autoplay loop playsinline controls></video>
 
 ## Install
 
@@ -49,7 +53,7 @@ git clone https://github.com/yuri-xyz/chroma.git
 cd chroma
 cargo build --release                    # visuals only
 cargo build --release --features audio   # with audio reactivity
-sudo install -Dm755 target/release/term-shaders /usr/local/bin/term-shaders
+sudo install -Dm755 target/release/chroma /usr/local/bin/chroma
 ```
 
 ## Dependencies

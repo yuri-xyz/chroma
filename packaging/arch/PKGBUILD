@@ -1,4 +1,6 @@
 _pkgname=chroma
+_giturl="https://github.com/yuri-xyz/chroma.git"
+_gitbranch="master"
 pkgname=${_pkgname}-git
 pkgver=r6.bae1e04
 pkgrel=1
@@ -11,22 +13,27 @@ makedepends=('git' 'rust' 'cargo')
 optdepends=(
   'pipewire: audio capture (optional feature)'
   'alsa-lib: ALSA backend for audio (optional feature)'
-  'pavucontrol: select monitor source for audio'
   'vulkan-radeon: AMD Vulkan driver'
   'vulkan-intel: Intel Vulkan driver'
   'nvidia-utils: NVIDIA Vulkan driver'
 )
 provides=("${_pkgname}=${pkgver}")
 conflicts=(${_pkgname})
-source=(${_pkgname}::git+https://github.com/yuri-xyz/chroma.git)
-sha256sums=('SKIP')
+# We manually fetch sources in prepare() to avoid Git LFS downloads
+source=()
+sha256sums=()
 
 prepare() {
-  cd "${srcdir}/${_pkgname}" || exit 1
+  cd "${srcdir}" || exit 1
 
-  # Avoid fetching/downloading Git LFS objects during packaging.
-  # Re-checkout with LFS filters disabled so only small pointer files are used.
-  git -c filter.lfs.smudge= -c filter.lfs.process= -c filter.lfs.required=false checkout -f
+  if [[ -d "${_pkgname}/.git" ]]; then
+    git -C "${_pkgname}" fetch --depth 1 origin "${_gitbranch}"
+    git -C "${_pkgname}" reset --hard FETCH_HEAD
+  else
+    GIT_LFS_SKIP_SMUDGE=1 \
+    git -c filter.lfs.smudge= -c filter.lfs.process= -c filter.lfs.required=false \
+      clone --filter=blob:none --depth 1 --branch "${_gitbranch}" "${_giturl}" "${_pkgname}"
+  fi
 }
 
 pkgver() {
@@ -51,7 +58,8 @@ check() {
 package() {
   cd "${srcdir}/${_pkgname}" || exit 1
 
-  install -Dm755 "target/release/${_pkgname}" "${pkgdir}/usr/bin/${_pkgname}"
+  # Build output binary is named 'term-shaders' per Cargo.toml; install as 'chroma'
+  install -Dm755 "target/release/term-shaders" "${pkgdir}/usr/bin/${_pkgname}"
 
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
   install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
