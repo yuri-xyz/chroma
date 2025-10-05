@@ -29,8 +29,8 @@
 ### Arch Linux
 
 > [!WARNING]
-> Since this project is so new I haven't had a chance to fix the PKGBUILD file, so running `makepkg` will likely fail. Try this instead if you want to try it out:
-> cargo build && cargo run --features audio
+> Since this project is so new I haven't had a chance to fix the PKGBUILD file, so running `makepkg` will likely fail. Install the dependency and run it to try it out:
+> sudo pacman -S pipewire-alsa alsa-lib && cargo run --features audio
 
 ```bash
 # With an AUR helper: yay

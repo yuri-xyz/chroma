@@ -8,33 +8,19 @@ pkgdesc='A Rust-based, ASCII art shader audio visualizer for your terminal!'
 arch=('x86_64')
 url='https://github.com/yuri-xyz/chroma'
 license=('AGPL-3.0-or-later')
-depends=('vulkan-icd-loader')
+depends=('vulkan-icd-loader' 'alsa-lib')
 makedepends=('git' 'rust' 'cargo')
 optdepends=(
-  'pipewire: audio capture (optional feature)'
-  'alsa-lib: ALSA backend for audio (optional feature)'
+  'pipewire: modern audio server (recommended)'
+  'pipewire-alsa: ALSA compatibility for PipeWire'
   'vulkan-radeon: AMD Vulkan driver'
   'vulkan-intel: Intel Vulkan driver'
   'nvidia-utils: NVIDIA Vulkan driver'
 )
 provides=("${_pkgname}=${pkgver}")
 conflicts=(${_pkgname})
-# We manually fetch sources in prepare() to avoid Git LFS downloads
-source=()
-sha256sums=()
-
-prepare() {
-  cd "${srcdir}" || exit 1
-
-  if [[ -d "${_pkgname}/.git" ]]; then
-    git -C "${_pkgname}" fetch --depth 1 origin "${_gitbranch}"
-    git -C "${_pkgname}" reset --hard FETCH_HEAD
-  else
-    GIT_LFS_SKIP_SMUDGE=1 \
-    git -c filter.lfs.smudge= -c filter.lfs.process= -c filter.lfs.required=false \
-      clone --filter=blob:none --depth 1 --branch "${_gitbranch}" "${_giturl}" "${_pkgname}"
-  fi
-}
+source=("${_pkgname}::git+${_giturl}#branch=${_gitbranch}")
+sha256sums=('SKIP')
 
 pkgver() {
   cd "${srcdir}/${_pkgname}" || exit 1
@@ -47,12 +33,12 @@ pkgver() {
 
 build() {
   cd "${srcdir}/${_pkgname}" || exit 1
-  cargo build --frozen --release
+  cargo build --frozen --release --features audio
 }
 
 check() {
   cd "${srcdir}/${_pkgname}" || exit 1
-  cargo test --frozen --release
+  cargo test --frozen --release --features audio
 }
 
 package() {
