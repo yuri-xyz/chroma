@@ -1,5 +1,5 @@
 <div align="center">
-   <strong>🌈 CHROMA</strong>
+<img src="logo.png" width="300" />
 
 A Rust-based, ASCII art shader audio visualizer for your terminal!
 
