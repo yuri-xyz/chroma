@@ -28,6 +28,10 @@
 
 ### Arch Linux
 
+> [!WARNING]
+> Since this project is so new I haven't had a chance to fix the PKGBUILD file, so running `makepkg` will likely fail. Try this instead if you want to try it out:
+> cargo build && cargo run --features audio
+
 ```bash
 # With an AUR helper: yay
 yay -S chroma-git
