@@ -162,8 +162,8 @@ impl ShaderPipeline {
       compute_pass.set_pipeline(&self.compute_pipeline);
       compute_pass.set_bind_group(0, &self.bind_group, &[]);
 
-      let workgroup_count_x = (self.width + 7) / 8;
-      let workgroup_count_y = (self.height + 7) / 8;
+      let workgroup_count_x = self.width.div_ceil(8);
+      let workgroup_count_y = self.height.div_ceil(8);
 
       compute_pass.dispatch_workgroups(workgroup_count_x, workgroup_count_y, 1);
     }

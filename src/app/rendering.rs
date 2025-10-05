@@ -58,14 +58,8 @@ fn build_frame_buffer(
 
   // Render ASCII art rows
   let rows_to_render = ascii_frame.len().min(expected_rows);
-  for row_idx in 0..rows_to_render {
-    render_row(
-      &ascii_frame[row_idx],
-      &mut buffer,
-      expected_cols,
-      row_idx,
-      debug_log,
-    )?;
+  for (row_idx, row) in ascii_frame.iter().enumerate().take(rows_to_render) {
+    render_row(row, &mut buffer, expected_cols, row_idx, debug_log)?;
     if row_idx < rows_to_render - 1 {
       buffer.push_str("\x1b[0m\r\n");
     }

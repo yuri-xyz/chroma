@@ -1,7 +1,7 @@
 use super::AudioFeatures;
 
 #[cfg(feature = "audio")]
-use rustfft::{FftPlanner, num_complex::Complex};
+use rustfft::{num_complex::Complex, FftPlanner};
 
 pub struct AudioAnalyzer {
   sample_rate: f32,
@@ -79,7 +79,7 @@ impl AudioAnalyzer {
 
     // Beat detection (based on bass energy sudden increase)
     let bass_diff = bass - self.previous_bass;
-    let beat_strength = (bass_diff * 10.0).max(0.0).min(1.0);
+    let beat_strength = (bass_diff * 10.0).clamp(0.0, 1.0);
 
     // Track bass history for drop detection
     self.bass_history.push(bass);

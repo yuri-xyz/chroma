@@ -17,15 +17,13 @@ pub fn handle_input(
     return Ok(());
   }
 
-  match event::read()? {
-    Event::Key(KeyEvent {
-      code,
-      kind: KeyEventKind::Press,
-      ..
-    }) => {
-      handle_key_press(code, params, converter, running, debug_log)?;
-    }
-    _ => {}
+  if let Event::Key(KeyEvent {
+    code,
+    kind: KeyEventKind::Press,
+    ..
+  }) = event::read()?
+  {
+    handle_key_press(code, params, converter, running, debug_log)?;
   }
 
   Ok(())

@@ -8,7 +8,7 @@
 /// # Returns
 /// RGB tuple (r, g, b) with values 0-255
 pub fn hue_to_pastel_rgb(hue: f32) -> (u8, u8, u8) {
-  let hue_normalized = (hue / 6.28) % 1.0;
+  let hue_normalized = (hue / std::f32::consts::TAU) % 1.0;
   let h = hue_normalized * 6.0;
   let c = 1.0;
   let x = 1.0 - ((h % 2.0) - 1.0).abs();

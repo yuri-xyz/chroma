@@ -1,14 +1,13 @@
 [package]
 name = "chroma"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 # GPU/Graphics
 wgpu = "22.1"
 pollster = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
-glam = "0.29"
 
 # Terminal/UI
 crossterm = "0.28"

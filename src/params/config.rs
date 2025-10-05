@@ -426,7 +426,7 @@ impl ShaderParams {
 
     self.brightness = self.brightness.clamp(0.0, 2.0);
     self.contrast = self.contrast.clamp(0.2, 2.0);
-    self.hue = self.hue % 360.0;
+    self.hue %= 360.0;
 
     if self.hue < 0.0 {
       self.hue += 360.0;
@@ -512,7 +512,7 @@ impl ShaderParams {
     self.amplitude = rng.gen_range(0.5..=2.0);
     self.speed = rng.gen_range(0.1..=1.0);
     self.scale = rng.gen_range(0.5..=3.0);
-    self.color_shift = rng.gen_range(0.0..=6.28);
+    self.color_shift = rng.gen_range(0.0..=std::f32::consts::TAU);
     self.octaves = rng.gen_range(2..=6);
 
     self.noise_strength = rng.gen_range(0.0..=0.3);

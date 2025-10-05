@@ -60,19 +60,17 @@ fn truncate_status(status: String, available_cols: usize) -> String {
 
 /// Apply animated gradient to status bar when audio is active
 fn apply_audio_gradient(status: String, time: f32) -> String {
-  let gradient_offset = (time * 2.0) % 6.28;
+  let gradient_offset = (time * 2.0) % std::f32::consts::TAU;
   let mut formatted_status = String::new();
-  let mut char_pos = 0;
 
-  for ch in status.chars() {
-    let hue = (gradient_offset + (char_pos as f32 * 0.1)) % 6.28;
+  for (char_pos, ch) in status.chars().enumerate() {
+    let hue = (gradient_offset + (char_pos as f32 * 0.1)) % std::f32::consts::TAU;
     let (r, g, b) = hue_to_pastel_rgb(hue);
 
     formatted_status.push_str(&format!(
       "\x1b[48;2;{};{};{}m\x1b[30m{}\x1b[49m\x1b[39m",
       r, g, b, ch
     ));
-    char_pos += 1;
   }
 
   formatted_status

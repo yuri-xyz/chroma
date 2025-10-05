@@ -89,7 +89,7 @@ fn apply_audio_reactivity(
   params.speed = (params.speed * 0.88) + (target_speed * 0.12);
 
   // Color shift reacts to high notes
-  params.color_shift = (params.color_shift + features.treble * 0.25) % 6.28;
+  params.color_shift = (params.color_shift + features.treble * 0.25) % std::f32::consts::TAU;
 
   // Beat triggers effects
   if features.beat_strength > 0.35 {
