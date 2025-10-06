@@ -137,6 +137,8 @@ chroma -c examples/0.toml
 > [!TIP]
 > Use `--random` or `-r` to randomize any parameters that haven't been explicitly set by your config file or CLI args. Great for adding variety to each run!
 
+If you're feeling brave, you can even create your own custom shader patterns and load them like this: `chroma --custom-shader my_shader.wgsl`. Take a look at [`examples/custom_shader.wgsl`](./examples/custom_shader.wgsl) as a beginner template.
+
 ## 📦 Dependencies
 
 - Runtime

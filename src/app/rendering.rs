@@ -1,5 +1,3 @@
-// Frame rendering logic
-
 use super::DebugLog;
 use crate::constants::MIN_BRIGHTNESS_THRESHOLD;
 use crate::utils::color::calculate_brightness;

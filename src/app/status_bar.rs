@@ -30,6 +30,7 @@ pub fn format_status_bar(
     truncate_status(status_text, available_cols)
   } else {
     let padding = " ".repeat(available_cols - status_visual_len);
+
     format!("{}{}", status_text, padding)
   };
 
@@ -48,9 +49,11 @@ fn truncate_status(status: String, available_cols: usize) -> String {
 
   for ch in status.chars() {
     let char_width = ch.width().unwrap_or(1);
+    
     if current_width + char_width > target_len {
       break;
     }
+
     truncated.push(ch);
     current_width += char_width;
   }

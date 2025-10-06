@@ -15,12 +15,13 @@ use chroma::{
 async fn test_shader_produces_non_zero_output() {
   let width = 10;
   let height = 10;
-
   let mut params = ShaderParams::default();
+
   params.set_resolution(width, height);
   params.time = 1.0;
 
-  let pipeline = match ShaderPipeline::new(width, height).await {
+  let mut debug_sink = std::io::sink();
+  let pipeline = match ShaderPipeline::new(width, height, None, &mut debug_sink).await {
     Ok(p) => p,
     Err(e) => {
       eprintln!("Skipping GPU test: {}", e);
@@ -30,12 +31,12 @@ async fn test_shader_produces_non_zero_output() {
   };
 
   let uniforms = ShaderUniforms::from_params(&params);
-
   let pixel_data = pipeline.render(&uniforms).expect("Failed to render");
 
   assert_eq!(pixel_data.len(), (width * height * 4) as usize);
 
   let mut has_non_zero = false;
+
   for &byte in &pixel_data {
     if byte != 0 {
       has_non_zero = true;
@@ -55,7 +56,8 @@ async fn test_shader_produces_varied_colors() {
   params.set_resolution(width, height);
   params.time = 1.0;
 
-  let pipeline = match ShaderPipeline::new(width, height).await {
+  let mut debug_sink = std::io::sink();
+  let pipeline = match ShaderPipeline::new(width, height, None, &mut debug_sink).await {
     Ok(p) => p,
     Err(e) => {
       eprintln!("Skipping GPU test: {}", e);
@@ -104,24 +106,24 @@ async fn test_shader_produces_varied_colors() {
 async fn test_ascii_conversion_produces_varied_characters() {
   let width = 20;
   let height = 20;
-
   let mut params = ShaderParams::default();
+
   params.set_resolution(width, height);
   params.time = 1.0;
 
-  let pipeline = match ShaderPipeline::new(width, height).await {
+  let mut debug_sink = std::io::sink();
+  let pipeline = match ShaderPipeline::new(width, height, None, &mut debug_sink).await {
     Ok(p) => p,
     Err(e) => {
       eprintln!("Skipping GPU test: {}", e);
       eprintln!("This is expected in CI environments without GPU access");
+
       return;
     }
   };
 
   let uniforms = ShaderUniforms::from_params(&params);
-
   let pixel_data = pipeline.render(&uniforms).expect("Failed to render");
-
   let converter = AsciiConverter::new(AsciiPalette::standard(), true);
   let ascii_frame = converter.convert_frame(&pixel_data, width, height);
 
@@ -129,6 +131,7 @@ async fn test_ascii_conversion_produces_varied_characters() {
   assert_eq!(ascii_frame[0].len(), width as usize);
 
   let mut unique_chars = std::collections::HashSet::new();
+
   for row in &ascii_frame {
     for (ch, _) in row {
       unique_chars.insert(*ch);
@@ -146,7 +149,6 @@ async fn test_ascii_conversion_produces_varied_characters() {
 #[test]
 fn test_ascii_palette_has_range() {
   let palette = AsciiPalette::standard();
-
   let dark_char = palette.get_character(0.0);
   let mid_char = palette.get_character(0.5);
   let bright_char = palette.get_character(1.0);

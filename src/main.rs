@@ -44,6 +44,13 @@ fn main() -> Result<()> {
   let show_status_bar = !cli_args.no_status;
   let config_path = cli_args.config.clone();
 
+  // Load custom shader if provided
+  let custom_shader = if let Some(ref shader_path) = cli_args.custom_shader {
+    Some(load_custom_shader(shader_path)?)
+  } else {
+    None
+  };
+
   #[cfg(feature = "audio")]
   {
     run_application(
@@ -51,12 +58,13 @@ fn main() -> Result<()> {
       show_status_bar,
       config_path,
       cli_args.audio_device,
+      custom_shader,
     )
   }
 
   #[cfg(not(feature = "audio"))]
   {
-    run_application(loaded_config, show_status_bar, config_path)
+    run_application(loaded_config, show_status_bar, config_path, custom_shader)
   }
 }
 
@@ -251,6 +259,42 @@ fn parse_palette_type(s: &str) -> chroma::params::PaletteType {
   }
 }
 
+/// Load and validate custom shader file
+fn load_custom_shader(shader_path: &str) -> Result<String> {
+  use std::fs;
+  use std::path::Path;
+
+  let path = Path::new(shader_path);
+
+  if !path.exists() {
+    anyhow::bail!(
+      "Custom shader file not found: '{}'\nPlease provide a valid path to a WGSL shader file.",
+      shader_path
+    );
+  }
+
+  if !path.is_file() {
+    anyhow::bail!(
+      "Custom shader path is not a file: '{}'\nPlease provide a path to a WGSL file.",
+      shader_path
+    );
+  }
+
+  let shader_source = fs::read_to_string(path).context(format!(
+    "Failed to read custom shader file: {}",
+    shader_path
+  ))?;
+
+  if shader_source.trim().is_empty() {
+    anyhow::bail!(
+      "Custom shader file is empty: '{}'\nPlease provide a valid WGSL shader file.",
+      shader_path
+    );
+  }
+
+  Ok(shader_source)
+}
+
 /// Initialize terminal, run app, and cleanup
 #[cfg(feature = "audio")]
 fn run_application(
@@ -258,11 +302,19 @@ fn run_application(
   show_status_bar: bool,
   config_path: Option<String>,
   audio_device: Option<String>,
+  custom_shader: Option<String>,
 ) -> Result<()> {
   setup_terminal()?;
 
   let result = pollster::block_on(async {
-    let mut app = App::new(loaded_config, show_status_bar, config_path, audio_device).await?;
+    let mut app = App::new(
+      loaded_config,
+      show_status_bar,
+      config_path,
+      audio_device,
+      custom_shader,
+    )
+    .await?;
     app.run()
   });
 
@@ -277,11 +329,12 @@ fn run_application(
   loaded_config: Option<ShaderParams>,
   show_status_bar: bool,
   config_path: Option<String>,
+  custom_shader: Option<String>,
 ) -> Result<()> {
   setup_terminal()?;
 
   let result = pollster::block_on(async {
-    let mut app = App::new(loaded_config, show_status_bar, config_path).await?;
+    let mut app = App::new(loaded_config, show_status_bar, config_path, custom_shader).await?;
     app.run()
   });
 

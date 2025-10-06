@@ -137,4 +137,8 @@ pub struct CliArgs {
   /// Terminal background color in hex format (e.g. FF0000, #00FF00, ABC, #123456). Sets the background color for the terminal cells/window
   #[arg(long, value_name = "HEX")]
   pub background_color: Option<String>,
+
+  /// Load a custom WGSL shader file (overrides --pattern and config pattern settings)
+  #[arg(long, value_name = "FILE")]
+  pub custom_shader: Option<String>,
 }

@@ -1,5 +1,3 @@
-// Application main module
-
 mod audio;
 mod config_watcher;
 mod input;
@@ -37,6 +35,7 @@ pub struct App {
   debug_log: DebugLog,
   last_terminal_size: (u16, u16),
   config_watcher: Option<config_watcher::ConfigWatcher>,
+  custom_shader: Option<String>,
   #[cfg(feature = "audio")]
   audio_capture: Option<AudioCapture>,
   #[cfg(feature = "audio")]
@@ -50,6 +49,7 @@ impl App {
     show_status_bar: bool,
     config_path: Option<String>,
     #[cfg(feature = "audio")] audio_device: Option<String>,
+    custom_shader: Option<String>,
   ) -> Result<Self> {
     #[cfg(debug_assertions)]
     let mut debug_log = {
@@ -61,6 +61,7 @@ impl App {
     let mut debug_log = BufWriter::new(std::io::sink());
 
     let (terminal_width, terminal_height) = terminal::size()?;
+
     writeln!(
       debug_log,
       "DEBUG: Terminal size: {}x{}",
@@ -68,11 +69,13 @@ impl App {
     )?;
 
     let shader_width = terminal_width as u32;
+
     let shader_height = if show_status_bar {
       (terminal_height - 1) as u32
     } else {
       terminal_height as u32
     };
+
     writeln!(
       debug_log,
       "DEBUG: Shader size: {}x{}",
@@ -92,7 +95,21 @@ impl App {
 
     params.set_resolution(shader_width, shader_height);
 
-    let pipeline = ShaderPipeline::new(shader_width, shader_height).await?;
+    if custom_shader.is_some() {
+      writeln!(
+        debug_log,
+        "DEBUG: Using custom shader (overrides pattern selection)"
+      )?;
+    }
+
+    let pipeline = ShaderPipeline::new(
+      shader_width,
+      shader_height,
+      custom_shader.clone(),
+      &mut debug_log,
+    )
+    .await?;
+
     let palette = Self::palette_from_type(params.palette);
     let converter = AsciiConverter::new(palette, true);
 
@@ -112,6 +129,7 @@ impl App {
       debug_log,
       last_terminal_size: (terminal_width, terminal_height),
       config_watcher,
+      custom_shader,
       #[cfg(feature = "audio")]
       audio_capture,
       #[cfg(feature = "audio")]
@@ -319,7 +337,15 @@ impl App {
     };
 
     self.params.set_resolution(shader_width, shader_height);
-    self.pipeline = ShaderPipeline::new(shader_width, shader_height).await?;
+
+    self.pipeline = ShaderPipeline::new(
+      shader_width,
+      shader_height,
+      self.custom_shader.clone(),
+      &mut self.debug_log,
+    )
+    .await?;
+
     self.last_terminal_size = (new_width, new_height);
 
     writeln!(
@@ -355,6 +381,7 @@ impl App {
 
       // Frame rate limiting
       let frame_time = frame_start.elapsed();
+      
       if frame_time < FRAME_DURATION {
         std::thread::sleep(FRAME_DURATION - frame_time);
       }
