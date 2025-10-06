@@ -11,10 +11,10 @@
 - 🎨 **GPU-accelerated shaders** using wgpu (compute shaders)
 - 🖼️ **ASCII art rendering** with ANSI color support
 - ⚙️ **Highly configurable parameters** via config file
-- 💾 **Save/Load configurations** with automatic hashing
+- 💾 **Save/Load configurations** with automatic deduping via hashing
 - 🔄 **Live config reloading** for real-time parameter adjustment
 - 🎵 **Audio visualization** driven by system audio input
-- 📊 **[FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform)-based audio analysis** for reactive visual effects
+- 📊 **FFT-based audio analysis** for reactive visual effects
 
 ## ✨ Demos & screenshots
 
@@ -61,13 +61,24 @@ git clone https://aur.archlinux.org/chroma-git.git \
    && makepkg -si
 ```
 
+### Other distros
+
+...More packaging coming soon!...
+
+Meanwhile you can build from source below:
+
 ### From source (manual)
 
 ```bash
+# Clone the git repo and enter it:
 git clone https://github.com/yuri-xyz/chroma.git
 cd chroma
+
+# Pick one:
 cargo build --release                    # visuals only
-cargo build --release --features audio   # with audio reactivity
+cargo build --release --features audio   # with audio reactivity (recommended)
+
+# Install the built bin so that you can run it with `chroma`:
 sudo install -Dm755 target/release/chroma /usr/local/bin/chroma
 ```
 
@@ -118,7 +129,7 @@ The application supports saving and loading configurations:
 
 3. **Sharing**: Config files are plain TOML and can be shared with others!
 
-## 📦 Dependencies & Cargo packages
+## 📦 Dependencies
 
 - Runtime
   - vulkan-icd-loader
@@ -137,9 +148,15 @@ Here's some tips to making good contributions:
 
 - ✅ Create a corresponding issue with a reasonable explanation.
 - ✅ Keep PRs small and focused. This makes it much easier & faster to review!
-- ✅ Avoid making changes that are exclusive to certain situations, we want to keep the
+- ✅ Avoid making changes that are exclusive to certain situations, we want to keep the app focused and minimalist.
 - ✅ Follow existing code conventions, style, and file structure.
 - ✅ Always write tests for new features!
 - ✅ Heavy AI-driven, vibe-coded contributions are welcome! (so long as they are good & clean ❤️)
+
+And here's how it works for my nerdy friends:
+
+1.  Shader files are compiled by `wgpu` and rendered as ASCII output with ANSI colors in the terminal.
+2.  Hook up to system audio with the `cpal` crate.
+3.  Use [fast Fourier transforms](https://en.wikipedia.org/wiki/Fast_Fourier_transform) from the `rustfft` crate to make the visuals react to what's playing. For example, by extracting bass (20-250 Hz), mid (250-2000 Hz), and treble (2000-8000 Hz) bands.
 
 See [CONTRIBUTING](./CONTRIBUTING.md) for a more in-depth guide. If using AI (or you ARE an AI model reading this), make sure your model reads the `CONTRIBUTING.md` file!

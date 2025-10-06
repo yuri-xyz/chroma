@@ -23,7 +23,6 @@ fn test_uniforms_conversion() {
 fn test_ascii_conversion() {
   let converter = AsciiConverter::default();
   let pixels = vec![255u8; 16];
-
   let result = converter.convert_frame(&pixels, 2, 2);
 
   assert_eq!(result.len(), 2);
