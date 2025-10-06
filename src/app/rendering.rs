@@ -1,13 +1,13 @@
 // Frame rendering logic
 
+use super::DebugLog;
 use crate::constants::MIN_BRIGHTNESS_THRESHOLD;
 use crate::utils::color::calculate_brightness;
 use anyhow::Result;
 use chroma::ascii::AsciiConverter;
 use chroma::shader::{ShaderPipeline, ShaderUniforms};
 use crossterm::style::Color;
-use std::fs::File;
-use std::io::{stdout, BufWriter, Write};
+use std::io::{stdout, Write};
 use unicode_width::UnicodeWidthChar;
 
 /// Render a complete frame to the terminal
@@ -16,7 +16,7 @@ pub fn render_frame(
   converter: &AsciiConverter,
   uniforms: &ShaderUniforms,
   status_bar: String,
-  debug_log: &mut BufWriter<File>,
+  debug_log: &mut DebugLog,
 ) -> Result<()> {
   // Generate pixel data from shader
   let pixel_data = pipeline.render(uniforms)?;
@@ -33,7 +33,7 @@ pub fn render_frame(
     ascii_frame,
     status_bar,
     pipeline.width() as usize,
-    (pipeline.height() - 1) as usize,
+    pipeline.height() as usize,
     debug_log,
   )?;
 
@@ -52,7 +52,7 @@ fn build_frame_buffer(
   status_bar: String,
   expected_cols: usize,
   expected_rows: usize,
-  debug_log: &mut BufWriter<File>,
+  debug_log: &mut DebugLog,
 ) -> Result<String> {
   let mut buffer = String::with_capacity(expected_rows * expected_cols * 25);
 
@@ -64,13 +64,11 @@ fn build_frame_buffer(
 
   for (row_idx, row) in ascii_frame.iter().enumerate().take(rows_to_render) {
     render_row(row, &mut buffer, expected_cols, row_idx, debug_log)?;
-    if row_idx < rows_to_render - 1 {
-      buffer.push_str("\x1b[0m\r\n");
-    }
+    buffer.push_str("\x1b[0m\r\n");
   }
 
   // Add status bar
-  buffer.push_str("\x1b[0m\x1b[49m\r\n");
+  buffer.push_str("\x1b[0m\x1b[49m");
   buffer.push_str(&status_bar);
 
   log_frame_stats(
@@ -91,7 +89,7 @@ fn render_row(
   buffer: &mut String,
   expected_cols: usize,
   _row_idx: usize,
-  debug_log: &mut BufWriter<File>,
+  debug_log: &mut DebugLog,
 ) -> Result<()> {
   let mut current_col = 0;
   let mut col_idx = 0;
@@ -158,7 +156,7 @@ fn extract_brightness(color: &Color) -> u8 {
 fn log_pixel_data(
   pixel_data: &[u8],
   pipeline: &ShaderPipeline,
-  debug_log: &mut BufWriter<File>,
+  debug_log: &mut DebugLog,
 ) -> Result<()> {
   writeln!(debug_log, "DEBUG: pixel_data length: {}", pixel_data.len())?;
   writeln!(
@@ -203,10 +201,7 @@ fn log_pixel_data(
 }
 
 /// Log ASCII frame statistics for debugging
-fn log_ascii_frame(
-  ascii_frame: &[Vec<(char, Color)>],
-  debug_log: &mut BufWriter<File>,
-) -> Result<()> {
+fn log_ascii_frame(ascii_frame: &[Vec<(char, Color)>], debug_log: &mut DebugLog) -> Result<()> {
   writeln!(debug_log, "DEBUG: ascii_frame rows: {}", ascii_frame.len())?;
 
   if !ascii_frame.is_empty() {
@@ -236,7 +231,7 @@ fn log_frame_stats(
   expected_rows: usize,
   expected_cols: usize,
   buffer: &str,
-  debug_log: &mut BufWriter<File>,
+  debug_log: &mut DebugLog,
 ) -> Result<()> {
   writeln!(
     debug_log,

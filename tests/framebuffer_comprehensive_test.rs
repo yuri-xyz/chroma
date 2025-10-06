@@ -134,4 +134,3 @@ fn test_framebuffer_rgba_layout() {
 
   assert_eq!(fb.pixels.len(), 4, "Should have RGBA components");
 }
-

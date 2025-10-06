@@ -14,13 +14,10 @@ mod utils;
 use app::App;
 use chroma::params::ShaderParams;
 use cli::CliArgs;
-use constants::STARTUP_DELAY_MS;
 
 fn main() -> Result<()> {
   let cli_args = CliArgs::parse();
   let loaded_config = load_config(cli_args.config)?;
-
-  wait_for_startup();
 
   run_application(loaded_config)
 }
@@ -44,12 +41,6 @@ fn load_config(config_path: Option<String>) -> Result<Option<ShaderParams>> {
   } else {
     Ok(None)
   }
-}
-
-/// Wait before starting rendering
-fn wait_for_startup() {
-  println!("Starting shader rendering in 1 second...");
-  std::thread::sleep(std::time::Duration::from_millis(STARTUP_DELAY_MS));
 }
 
 /// Initialize terminal, run app, and cleanup

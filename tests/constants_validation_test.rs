@@ -3,7 +3,10 @@ use chroma::constants::*;
 #[test]
 fn test_target_fps_reasonable() {
   assert!(TARGET_FPS > 0, "FPS must be positive");
-  assert!(TARGET_FPS <= 120, "FPS should be reasonable for terminal rendering");
+  assert!(
+    TARGET_FPS <= 120,
+    "FPS should be reasonable for terminal rendering"
+  );
 }
 
 #[test]
@@ -19,7 +22,10 @@ fn test_frame_duration_matches_target_fps() {
 
 #[test]
 fn test_min_brightness_threshold_valid_range() {
-  assert!(MIN_BRIGHTNESS_THRESHOLD < 128, "Brightness threshold should be relatively low for dark pixels");
+  assert!(
+    MIN_BRIGHTNESS_THRESHOLD < 128,
+    "Brightness threshold should be relatively low for dark pixels"
+  );
 }
 
 #[test]
@@ -43,18 +49,6 @@ fn test_audio_decay_rates_valid() {
   assert!(
     AUDIO_SPEED_DECAY_RATE > 0.0 && AUDIO_SPEED_DECAY_RATE < 1.0,
     "Speed decay rate should be between 0 and 1 for proper decay"
-  );
-}
-
-#[test]
-fn test_startup_delay_reasonable() {
-  assert!(
-    STARTUP_DELAY_MS > 0,
-    "Startup delay should allow time for initialization"
-  );
-  assert!(
-    STARTUP_DELAY_MS < 10000,
-    "Startup delay should not be excessively long"
   );
 }
 
@@ -128,4 +122,3 @@ fn test_effect_names_contents() {
   assert_eq!(EFFECT_NAMES[5], "Wave");
   assert_eq!(EFFECT_NAMES[6], "Octgrams");
 }
-

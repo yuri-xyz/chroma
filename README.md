@@ -109,7 +109,7 @@ chroma --help
 - `+`/`-` - Adjust amplitude
 - `[`/`]` - Adjust scale
 
-See [CONTROLS.md](CONTROLS.md) and [PALETTES.md](PALETTES.md) for more details.
+See [CONTROLS.md](./notes/CONTROLS.md) and [PALETTES.md](./notes/PALETTES.md) for more details.
 
 ### 💾 Configuration Save/Load
 

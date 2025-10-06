@@ -25,9 +25,6 @@ pub const AUDIO_DECAY_RATE: f32 = 0.92;
 #[allow(dead_code)]
 pub const AUDIO_SPEED_DECAY_RATE: f32 = 0.88;
 
-/// Startup delay in milliseconds before rendering begins
-pub const STARTUP_DELAY_MS: u64 = 1000;
-
 /// Number of effect types available
 #[allow(dead_code)]
 pub const NUM_EFFECT_TYPES: u32 = 7;

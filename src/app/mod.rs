@@ -19,6 +19,12 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::time::Instant;
 
+#[cfg(debug_assertions)]
+pub(crate) type DebugLog = BufWriter<File>;
+
+#[cfg(not(debug_assertions))]
+pub(crate) type DebugLog = BufWriter<std::io::Sink>;
+
 /// Main application state
 pub struct App {
   params: ShaderParams,
@@ -26,7 +32,7 @@ pub struct App {
   converter: AsciiConverter,
   running: bool,
   last_frame_time: Instant,
-  debug_log: BufWriter<File>,
+  debug_log: DebugLog,
   last_terminal_size: (u16, u16),
   #[cfg(feature = "audio")]
   audio_capture: Option<AudioCapture>,
@@ -37,8 +43,14 @@ pub struct App {
 impl App {
   /// Create a new application instance
   pub async fn new(loaded_config: Option<ShaderParams>) -> Result<Self> {
-    let debug_file = File::create("debug.log")?;
-    let mut debug_log = BufWriter::new(debug_file);
+    #[cfg(debug_assertions)]
+    let mut debug_log = {
+      let debug_file = File::create("debug.log")?;
+      BufWriter::new(debug_file)
+    };
+
+    #[cfg(not(debug_assertions))]
+    let mut debug_log = BufWriter::new(std::io::sink());
 
     let (terminal_width, terminal_height) = terminal::size()?;
     writeln!(
@@ -92,9 +104,7 @@ impl App {
 
   /// Initialize audio capture and analyzer
   #[cfg(feature = "audio")]
-  fn init_audio(
-    debug_log: &mut BufWriter<File>,
-  ) -> Result<(Option<AudioCapture>, Option<AudioAnalyzer>)> {
+  fn init_audio(debug_log: &mut DebugLog) -> Result<(Option<AudioCapture>, Option<AudioAnalyzer>)> {
     match AudioCapture::new() {
       Ok(capture) => {
         writeln!(

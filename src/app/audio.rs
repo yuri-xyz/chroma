@@ -1,13 +1,13 @@
 // Audio-reactive update logic
 
 #[cfg(feature = "audio")]
+use super::DebugLog;
+#[cfg(feature = "audio")]
 use crate::constants::{AUDIO_DECAY_RATE, AUDIO_SILENCE_THRESHOLD, AUDIO_SPEED_DECAY_RATE};
 #[cfg(feature = "audio")]
 use chroma::audio::{AudioAnalyzer, AudioCapture};
 #[cfg(feature = "audio")]
-use std::fs::File;
-#[cfg(feature = "audio")]
-use std::io::{BufWriter, Write};
+use std::io::Write;
 
 /// Update shader parameters based on audio input
 #[cfg(feature = "audio")]
@@ -16,7 +16,7 @@ pub fn update_audio_reactive(
   audio_capture: &Option<AudioCapture>,
   audio_analyzer: &mut Option<AudioAnalyzer>,
   delta_time: f32,
-  debug_log: &mut BufWriter<File>,
+  debug_log: &mut DebugLog,
 ) {
   if !params.audio_enabled {
     return;
@@ -45,7 +45,7 @@ pub fn update_audio_reactive(
 fn apply_silence_decay(
   params: &mut chroma::params::ShaderParams,
   features: &chroma::audio::AudioFeatures,
-  debug_log: &mut BufWriter<File>,
+  debug_log: &mut DebugLog,
 ) {
   params.amplitude = params.amplitude * AUDIO_DECAY_RATE + 0.4 * (1.0 - AUDIO_DECAY_RATE);
   params.distort_amplitude *= AUDIO_DECAY_RATE;
@@ -68,7 +68,7 @@ fn apply_silence_decay(
 fn apply_audio_reactivity(
   params: &mut chroma::params::ShaderParams,
   features: &chroma::audio::AudioFeatures,
-  debug_log: &mut BufWriter<File>,
+  debug_log: &mut DebugLog,
 ) {
   // Emphasize treble for melody visibility
   let energy = (features.bass * 0.1 + features.mid * 0.3 + features.treble * 0.6).max(0.05);

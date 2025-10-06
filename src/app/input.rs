@@ -1,9 +1,9 @@
+use super::DebugLog;
 use anyhow::Result;
 use chroma::ascii::{AsciiConverter, AsciiPalette};
 use chroma::params::{PaletteType, ShaderParams};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::time::Duration;
 
 /// Handle keyboard input events
@@ -11,7 +11,7 @@ pub fn handle_input(
   params: &mut ShaderParams,
   converter: &mut AsciiConverter,
   running: &mut bool,
-  debug_log: &mut BufWriter<File>,
+  debug_log: &mut DebugLog,
 ) -> Result<()> {
   if !event::poll(Duration::from_millis(0))? {
     return Ok(());
@@ -35,7 +35,7 @@ fn handle_key_press(
   params: &mut ShaderParams,
   converter: &mut AsciiConverter,
   running: &mut bool,
-  debug_log: &mut BufWriter<File>,
+  debug_log: &mut DebugLog,
 ) -> Result<()> {
   match code {
     // Quit
