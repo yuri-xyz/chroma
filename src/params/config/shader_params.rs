@@ -2,290 +2,11 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PatternType {
-  Plasma,
-  Waves,
-  Ripples,
-  Vortex,
-  Noise, // Reduce in randomizer
-  Geometric,
-  Voronoi,
-  Truchet,
-  Hexagonal,
-  Interference,
-  Fractal,
-  Glitch,
-  Spiral,
-  Rings,
-  Grid,
-  Diamonds,
-  Sphere,
-  Octgrams,
-  WarpedFbm,
-}
-
-impl PatternType {
-  pub fn to_u32(self) -> u32 {
-    match self {
-      Self::Plasma => 0,
-      Self::Waves => 1,
-      Self::Ripples => 2,
-      Self::Vortex => 3,
-      Self::Noise => 4,
-      Self::Geometric => 5,
-      Self::Voronoi => 6,
-      Self::Truchet => 7,
-      Self::Hexagonal => 8,
-      Self::Interference => 9,
-      Self::Fractal => 10,
-      Self::Glitch => 11,
-      Self::Spiral => 12,
-      Self::Rings => 13,
-      Self::Grid => 14,
-      Self::Diamonds => 15,
-      Self::Sphere => 16,
-      Self::Octgrams => 17,
-      Self::WarpedFbm => 18,
-    }
-  }
-
-  pub fn name(self) -> &'static str {
-    match self {
-      Self::Plasma => "Plasma",
-      Self::Waves => "Waves",
-      Self::Ripples => "Ripples",
-      Self::Vortex => "Vortex",
-      Self::Noise => "Noise",
-      Self::Geometric => "Geo",
-      Self::Voronoi => "Voronoi",
-      Self::Truchet => "Truchet",
-      Self::Hexagonal => "Hexagon",
-      Self::Interference => "Interf",
-      Self::Fractal => "Fractal",
-      Self::Glitch => "Glitch",
-      Self::Spiral => "Spiral",
-      Self::Rings => "Rings",
-      Self::Grid => "Grid",
-      Self::Diamonds => "Diamond",
-      Self::Sphere => "Sphere",
-      Self::Octgrams => "Octgram",
-      Self::WarpedFbm => "Warped",
-    }
-  }
-
-  pub fn next(self) -> Self {
-    match self {
-      Self::Plasma => Self::Waves,
-      Self::Waves => Self::Ripples,
-      Self::Ripples => Self::Vortex,
-      Self::Vortex => Self::Noise,
-      Self::Noise => Self::Geometric,
-      Self::Geometric => Self::Voronoi,
-      Self::Voronoi => Self::Truchet,
-      Self::Truchet => Self::Hexagonal,
-      Self::Hexagonal => Self::Interference,
-      Self::Interference => Self::Fractal,
-      Self::Fractal => Self::Glitch,
-      Self::Glitch => Self::Spiral,
-      Self::Spiral => Self::Rings,
-      Self::Rings => Self::Grid,
-      Self::Grid => Self::Diamonds,
-      Self::Diamonds => Self::Sphere,
-      Self::Sphere => Self::Octgrams,
-      Self::Octgrams => Self::WarpedFbm,
-      Self::WarpedFbm => Self::Plasma,
-    }
-  }
-
-  pub fn previous(self) -> Self {
-    match self {
-      Self::Plasma => Self::WarpedFbm,
-      Self::WarpedFbm => Self::Octgrams,
-      Self::Octgrams => Self::Sphere,
-      Self::Sphere => Self::Diamonds,
-      Self::Diamonds => Self::Grid,
-      Self::Grid => Self::Rings,
-      Self::Rings => Self::Spiral,
-      Self::Spiral => Self::Glitch,
-      Self::Glitch => Self::Fractal,
-      Self::Fractal => Self::Interference,
-      Self::Interference => Self::Hexagonal,
-      Self::Hexagonal => Self::Truchet,
-      Self::Truchet => Self::Voronoi,
-      Self::Voronoi => Self::Geometric,
-      Self::Geometric => Self::Noise,
-      Self::Noise => Self::Vortex,
-      Self::Vortex => Self::Ripples,
-      Self::Ripples => Self::Waves,
-      Self::Waves => Self::Plasma,
-    }
-  }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ColorMode {
-  Rainbow,
-  Monochrome,
-  Duotone,
-  Warm,
-  Cool,
-  Neon,
-  Pastel,
-  Cyberpunk,
-  Warped,
-  Chromatic,
-}
-
-impl ColorMode {
-  pub fn next(self) -> Self {
-    match self {
-      Self::Rainbow => Self::Monochrome,
-      Self::Monochrome => Self::Duotone,
-      Self::Duotone => Self::Warm,
-      Self::Warm => Self::Cool,
-      Self::Cool => Self::Neon,
-      Self::Neon => Self::Pastel,
-      Self::Pastel => Self::Cyberpunk,
-      Self::Cyberpunk => Self::Warped,
-      Self::Warped => Self::Chromatic,
-      Self::Chromatic => Self::Rainbow,
-    }
-  }
-
-  pub fn previous(self) -> Self {
-    match self {
-      Self::Rainbow => Self::Chromatic,
-      Self::Chromatic => Self::Warped,
-      Self::Warped => Self::Cyberpunk,
-      Self::Cyberpunk => Self::Pastel,
-      Self::Pastel => Self::Neon,
-      Self::Neon => Self::Cool,
-      Self::Cool => Self::Warm,
-      Self::Warm => Self::Duotone,
-      Self::Duotone => Self::Monochrome,
-      Self::Monochrome => Self::Rainbow,
-    }
-  }
-
-  pub fn name(self) -> &'static str {
-    match self {
-      Self::Rainbow => "Rainbow",
-      Self::Monochrome => "Mono",
-      Self::Duotone => "Duotone",
-      Self::Warm => "Warm",
-      Self::Cool => "Cool",
-      Self::Neon => "Neon",
-      Self::Pastel => "Pastel",
-      Self::Cyberpunk => "Cyber",
-      Self::Warped => "Warped",
-      Self::Chromatic => "Chrome",
-    }
-  }
-
-  pub fn to_u32(self) -> u32 {
-    match self {
-      Self::Rainbow => 0,
-      Self::Monochrome => 1,
-      Self::Duotone => 2,
-      Self::Warm => 3,
-      Self::Cool => 4,
-      Self::Neon => 5,
-      Self::Pastel => 6,
-      Self::Cyberpunk => 7,
-      Self::Warped => 8,
-      Self::Chromatic => 9,
-    }
-  }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PaletteType {
-  Standard,
-  Blocks,
-  Circles,
-  Smooth,
-  Braille,
-  Geometric,
-  Mixed,
-  Dots,
-  Extended,
-  Simple,
-  Shades,
-  Lines,
-  Triangles,
-  Arrows,
-  Powerline,
-  BoxDraw,
-}
-
-impl PaletteType {
-  pub fn next(self) -> Self {
-    match self {
-      Self::Standard => Self::Blocks,
-      Self::Blocks => Self::Circles,
-      Self::Circles => Self::Smooth,
-      Self::Smooth => Self::Braille,
-      Self::Braille => Self::Geometric,
-      Self::Geometric => Self::Mixed,
-      Self::Mixed => Self::Dots,
-      Self::Dots => Self::Shades,
-      Self::Shades => Self::Lines,
-      Self::Lines => Self::Triangles,
-      Self::Triangles => Self::Arrows,
-      Self::Arrows => Self::Powerline,
-      Self::Powerline => Self::BoxDraw,
-      Self::BoxDraw => Self::Extended,
-      Self::Extended => Self::Simple,
-      Self::Simple => Self::Standard,
-    }
-  }
-
-  pub fn previous(self) -> Self {
-    match self {
-      Self::Standard => Self::Simple,
-      Self::Simple => Self::Extended,
-      Self::Extended => Self::BoxDraw,
-      Self::BoxDraw => Self::Powerline,
-      Self::Powerline => Self::Arrows,
-      Self::Arrows => Self::Triangles,
-      Self::Triangles => Self::Lines,
-      Self::Lines => Self::Shades,
-      Self::Shades => Self::Dots,
-      Self::Dots => Self::Mixed,
-      Self::Mixed => Self::Geometric,
-      Self::Geometric => Self::Braille,
-      Self::Braille => Self::Smooth,
-      Self::Smooth => Self::Circles,
-      Self::Circles => Self::Blocks,
-      Self::Blocks => Self::Standard,
-    }
-  }
-
-  pub fn name(self) -> &'static str {
-    match self {
-      Self::Standard => "Std",
-      Self::Blocks => "Block",
-      Self::Circles => "Circle",
-      Self::Smooth => "Smooth",
-      Self::Braille => "Braille",
-      Self::Geometric => "Geo",
-      Self::Mixed => "Mixed",
-      Self::Dots => "Dots",
-      Self::Shades => "Shade",
-      Self::Lines => "Lines",
-      Self::Triangles => "Tri",
-      Self::Arrows => "Arrow",
-      Self::Powerline => "Power",
-      Self::BoxDraw => "Box",
-      Self::Extended => "Extend",
-      Self::Simple => "Simple",
-    }
-  }
-}
+use super::{ColorMode, PaletteType, PatternType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShaderParams {
@@ -484,7 +205,6 @@ impl ShaderParams {
   }
 
   pub fn randomize(&mut self) {
-    use rand::Rng;
     let mut rng = rand::thread_rng();
 
     // Weighted randomization - favor good-looking patterns, reduce problematic ones
@@ -594,8 +314,26 @@ impl ShaderParams {
       path.as_ref().display()
     ))?;
 
-    let mut params: ShaderParams =
-      toml::from_str(&content).context("Failed to parse config file")?;
+    // Start with defaults, then deserialize on top (missing fields keep defaults)
+    let default_params = Self::default();
+    let default_toml = toml::to_string(&default_params)?;
+    let mut default_value: toml::Value = toml::from_str(&default_toml)?;
+
+    // Parse the loaded config
+    let loaded_value: toml::Value =
+      toml::from_str(&content).context("Failed to parse config file as TOML")?;
+
+    // Merge loaded config into defaults (only overwrites present fields)
+    if let (toml::Value::Table(ref mut default_table), toml::Value::Table(loaded_table)) =
+      (&mut default_value, loaded_value)
+    {
+      for (key, value) in loaded_table {
+        default_table.insert(key, value);
+      }
+    }
+
+    // Deserialize merged config
+    let mut params: ShaderParams = toml::from_str(&toml::to_string(&default_value)?)?;
 
     params.clamp_all();
 

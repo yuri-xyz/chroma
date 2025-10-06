@@ -121,10 +121,11 @@ fn apply_audio_reactivity(
     .ok();
   }
 
-  // Brightness reacts to treble with more range for pop effect
-  let treble_brightness = features.treble * 1.0;
-  params.brightness = (0.5 + features.overall * 0.8) + treble_brightness;
-  params.brightness = params.brightness.min(2.0);
+  // Brightness reacts to treble with strong pop effect
+  let treble_brightness = features.treble * 1.5;
+  let beat_boost = features.beat_strength * 0.4; // Extra boost during beats
+  params.brightness = (0.5 + features.overall * 1.0) + treble_brightness + beat_boost;
+  params.brightness = params.brightness.min(2.2);
 
   // Contrast reacts more dynamically
   let treble_contrast = features.treble * 0.8;

@@ -1,3 +1,9 @@
-pub mod config;
+mod color_mode;
+mod palette_type;
+mod pattern_type;
+mod shader_params;
 
-pub use config::{ColorMode, PaletteType, PatternType, ShaderParams};
+pub use color_mode::ColorMode;
+pub use palette_type::PaletteType;
+pub use pattern_type::PatternType;
+pub use shader_params::ShaderParams;
