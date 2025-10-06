@@ -34,6 +34,7 @@ fn main() {
     "src/shader_patterns/warped_fbm.wgsl",
     // Effects and main entry point
     "src/shader_common/effects.wgsl",
+    "src/shader_common/beat_distortion.wgsl",
     "src/shader_common/main.wgsl",
   ];
 

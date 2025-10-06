@@ -73,42 +73,61 @@ fn apply_audio_reactivity(
   // Emphasize treble for melody visibility
   let energy = (features.bass * 0.1 + features.mid * 0.3 + features.treble * 0.6).max(0.05);
 
-  // Bass affects amplitude and distortion (subtle)
-  let bass_multiplier = 1.0 + features.bass * params.bass_influence * 0.6;
-  params.amplitude = (params.amplitude * 0.95) + (bass_multiplier * 0.05);
-  params.distort_amplitude = features.bass * params.bass_influence * 0.4;
+  // Bass affects amplitude and distortion - more responsive for pop effect
+  let bass_multiplier = 1.0 + features.bass * params.bass_influence * 0.8;
+  params.amplitude = (params.amplitude * 0.75) + (bass_multiplier * 0.25);
+  params.distort_amplitude = features.bass * params.bass_influence * 0.6;
 
-  // Mid frequencies
-  let mid_boost = 1.0 + features.mid * params.mid_influence * 1.8;
-  params.frequency = (params.frequency * 0.90) + (8.0 * mid_boost * 0.10);
+  // Mid frequencies - reduced smoothing for better reactivity
+  let mid_boost = 1.0 + features.mid * params.mid_influence * 2.0;
+  params.frequency = (params.frequency * 0.70) + (8.0 * mid_boost * 0.30);
 
-  // Speed scales with treble for high notes
-  let treble_boost = 1.0 + features.treble * params.treble_influence * 2.0;
-  let base_speed = 0.08 + energy * 0.7;
+  // Speed scales with treble - much more responsive
+  let treble_boost = 1.0 + features.treble * params.treble_influence * 2.5;
+  let base_speed = 0.08 + energy * 0.9;
   let target_speed = base_speed * treble_boost;
-  params.speed = (params.speed * 0.88) + (target_speed * 0.12);
+  params.speed = (params.speed * 0.65) + (target_speed * 0.35);
 
   // Color shift reacts to high notes
   params.color_shift = (params.color_shift + features.treble * 0.25) % std::f32::consts::TAU;
 
-  // Beat triggers effects
-  if features.beat_strength > 0.35 {
-    params.noise_strength = features.beat_strength * (0.2 + features.treble * 0.5);
-  }
-
-  // Bass drop triggers major effect
+  // Bass drop triggers major effect AND full-strength distortion + zoom (check first for priority)
   if features.is_drop {
     params.effect_time = params.time;
-    writeln!(debug_log, "BASS DROP detected! Triggering effect").ok();
+
+    // Trigger full-strength beat distortion + zoom for maximum impact
+    params.beat_distortion_time = params.time;
+    params.beat_distortion_strength = 1.2; // Extra strong for bass drops
+    params.beat_zoom_strength = 1.0; // Full zoom on bass drops
+    writeln!(
+      debug_log,
+      "BASS DROP detected! Triggering effect + FULL distortion + ZOOM"
+    )
+    .ok();
+  } else if features.beat_strength > 0.25 {
+    // Lower threshold for more frequent triggers
+    // Regular beat triggers subtle distortion + subtle zoom
+    params.noise_strength = features.beat_strength * (0.3 + features.treble * 0.7);
+
+    // Trigger beat distortion pop effect (visible but not overwhelming for regular beats)
+    params.beat_distortion_time = params.time;
+    params.beat_distortion_strength = 0.6; // More visible strength for regular beats
+    params.beat_zoom_strength = 0.5; // More visible zoom for regular beats
+    writeln!(
+      debug_log,
+      "BEAT detected! strength={:.2} - triggering subtle distortion + zoom",
+      features.beat_strength
+    )
+    .ok();
   }
 
-  // Brightness reacts to treble
-  let treble_brightness = features.treble * 0.8;
-  params.brightness = (0.5 + features.overall * 0.6) + treble_brightness;
-  params.brightness = params.brightness.min(1.8);
+  // Brightness reacts to treble with more range for pop effect
+  let treble_brightness = features.treble * 1.0;
+  params.brightness = (0.5 + features.overall * 0.8) + treble_brightness;
+  params.brightness = params.brightness.min(2.0);
 
-  // Contrast reacts to treble
-  let treble_contrast = features.treble * 0.6;
-  let target_contrast = 0.6 + energy * 0.4 + treble_contrast;
-  params.contrast = (params.contrast * 0.90) + (target_contrast * 0.10);
+  // Contrast reacts more dynamically
+  let treble_contrast = features.treble * 0.8;
+  let target_contrast = 0.6 + energy * 0.6 + treble_contrast;
+  params.contrast = (params.contrast * 0.70) + (target_contrast * 0.30);
 }

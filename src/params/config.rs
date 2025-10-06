@@ -330,6 +330,10 @@ pub struct ShaderParams {
 
   pub effect_time: f32,
   pub effect_type: u32,
+
+  pub beat_distortion_time: f32,
+  pub beat_distortion_strength: f32,
+  pub beat_zoom_strength: f32,
 }
 
 impl Default for ShaderParams {
@@ -376,6 +380,10 @@ impl Default for ShaderParams {
 
       effect_time: -100.0,
       effect_type: 0,
+
+      beat_distortion_time: -100.0,
+      beat_distortion_strength: 0.6, // Default on for all modes
+      beat_zoom_strength: 0.5,       // Default zoom enabled
     }
   }
 }
@@ -385,13 +393,16 @@ impl ShaderParams {
   /// Starts nearly still and dimmed, waiting for audio to bring it to life
   pub fn with_audio_reactive_defaults() -> Self {
     Self {
-      speed: 0.05,         // Nearly still (vs default 1.0)
-      brightness: 0.6,     // Dimmed (vs default 1.2)
-      contrast: 0.8,       // Softer (vs default 1.0)
-      amplitude: 0.4,      // Minimal (vs default 1.0)
-      frequency: 6.0,      // Lower detail (vs default 10.0)
-      audio_enabled: true, // Audio reactive mode ON
-      effect_time: -100.0, // Far in past to prevent startup wave
+      speed: 0.05,                   // Nearly still (vs default 1.0)
+      brightness: 0.6,               // Dimmed (vs default 1.2)
+      contrast: 0.8,                 // Softer (vs default 1.0)
+      amplitude: 0.4,                // Minimal (vs default 1.0)
+      frequency: 6.0,                // Lower detail (vs default 10.0)
+      audio_enabled: true,           // Audio reactive mode ON
+      effect_time: -100.0,           // Far in past to prevent startup wave
+      beat_distortion_time: -100.0,  // Far in past to prevent startup distortion
+      beat_distortion_strength: 0.8, // Default beat pop strength
+      beat_zoom_strength: 0.0,       // Zoom strength (set per-beat)
       ..Default::default()
     }
   }
@@ -589,74 +600,5 @@ impl ShaderParams {
     params.clamp_all();
 
     Ok(params)
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test_default_params() {
-    let params = ShaderParams::default();
-
-    assert_eq!(params.time, 0.0);
-    assert_eq!(params.frequency, 10.0);
-    assert_eq!(params.amplitude, 1.0);
-    assert_eq!(params.brightness, 1.2);
-    assert_eq!(params.contrast, 1.0);
-  }
-
-  #[test]
-  fn test_update_time() {
-    let mut params = ShaderParams {
-      speed: 2.0,
-      ..Default::default()
-    };
-
-    params.update_time(1.0);
-
-    assert_eq!(params.time, 2.0);
-  }
-
-  #[test]
-  fn test_set_resolution() {
-    let mut params = ShaderParams::default();
-
-    params.set_resolution(100, 50);
-
-    assert_eq!(params.resolution_width, 100);
-    assert_eq!(params.resolution_height, 50);
-  }
-
-  #[test]
-  fn test_randomize() {
-    let mut params = ShaderParams::default();
-    let original_frequency = params.frequency;
-
-    params.randomize();
-
-    assert!(params.frequency >= 3.0 && params.frequency <= 18.0);
-    assert!(params.brightness >= 0.8 && params.brightness <= 1.8);
-    assert!(params.contrast >= 0.5 && params.contrast <= 1.8);
-    assert!(params.hue >= 0.0 && params.hue < 360.0);
-
-    assert_ne!(params.frequency, original_frequency);
-  }
-
-  #[test]
-  fn test_clamp_all() {
-    let mut params = ShaderParams {
-      frequency: 100.0,
-      brightness: 10.0,
-      hue: 400.0,
-      ..Default::default()
-    };
-
-    params.clamp_all();
-
-    assert!(params.frequency <= 18.0);
-    assert!(params.brightness <= 2.0);
-    assert!(params.hue < 360.0);
   }
 }

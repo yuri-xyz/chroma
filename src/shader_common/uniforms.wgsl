@@ -25,6 +25,9 @@ struct Uniforms {
     pattern_type: u32,
     effect_time: f32,
     effect_type: u32,
+    beat_distortion_time: f32,
+    beat_distortion_strength: f32,
+    beat_zoom_strength: f32,
     background_tint: vec3<f32>,
 }
 

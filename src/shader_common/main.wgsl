@@ -43,7 +43,13 @@ fn compute_pattern(uv: vec2<f32>, time: f32, pattern_type: u32) -> vec2<f32> {
 }
 
 fn plasma_effect(position: vec2<f32>, time: f32) -> vec3<f32> {
-    let uv = position * uniforms.scale;
+    // Apply beat zoom first
+    var processed_position = apply_beat_zoom(position, time);
+    
+    // Then apply beat-reactive distortion to position for visual pop effect
+    processed_position = apply_beat_distortion(processed_position, time);
+    
+    let uv = processed_position * uniforms.scale;
     
     let pattern_result = compute_pattern(uv, time, uniforms.pattern_type);
     let combined = pattern_result.x;
@@ -54,6 +60,9 @@ fn plasma_effect(position: vec2<f32>, time: f32) -> vec3<f32> {
     color = apply_color_adjustments(color);
     
     color = apply_effect(position, uv, color, time);
+    
+    // Apply beat flash for additional pop emphasis
+    color = apply_beat_flash(color, position, time);
     
     if uniforms.vignette > 0.0 {
         let center_dist = distance(position, vec2<f32>(0.5, 0.5));

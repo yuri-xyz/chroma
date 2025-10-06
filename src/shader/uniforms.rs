@@ -35,7 +35,11 @@ pub struct ShaderUniforms {
   pub pattern_type: u32,
   pub effect_time: f32,
   pub effect_type: u32,
-  _padding2: [u32; 2],
+
+  pub beat_distortion_time: f32,
+  pub beat_distortion_strength: f32,
+  pub beat_zoom_strength: f32,
+  _padding2: [u32; 3], // Need 12 bytes padding to align vec3 to 16-byte boundary
   pub background_tint: [f32; 3],
   _padding3: u32,
 }
@@ -76,7 +80,11 @@ impl ShaderUniforms {
       pattern_type: params.pattern_type.to_u32(),
       effect_time: params.effect_time,
       effect_type: params.effect_type,
-      _padding2: [0; 2],
+
+      beat_distortion_time: params.beat_distortion_time,
+      beat_distortion_strength: params.beat_distortion_strength,
+      beat_zoom_strength: params.beat_zoom_strength,
+      _padding2: [0; 3],
       background_tint: [
         params.background_tint_r,
         params.background_tint_g,
