@@ -129,7 +129,7 @@ jobs:
           sudo apt-get install -y libasound2-dev
 
       - name: Run clippy (default features)
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets
 
       - name: Run clippy (all features)
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --all-features

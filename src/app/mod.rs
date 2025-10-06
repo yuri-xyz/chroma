@@ -265,6 +265,7 @@ impl App {
     )?;
 
     let has_sound = self.check_audio_activity();
+
     let status_bar = if self.show_status_bar {
       Some(self.build_status_bar(has_sound))
     } else {
@@ -381,7 +382,7 @@ impl App {
 
       // Frame rate limiting
       let frame_time = frame_start.elapsed();
-      
+
       if frame_time < FRAME_DURATION {
         std::thread::sleep(FRAME_DURATION - frame_time);
       }

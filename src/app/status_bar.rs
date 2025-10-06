@@ -6,7 +6,6 @@ use unicode_width::UnicodeWidthChar;
 /// Build status bar text with current parameters
 pub fn build_status_text(params: &ShaderParams, effect_type: u32) -> String {
   let effect_name = EFFECT_NAMES[effect_type as usize % 7];
-
   let pattern_initial = params.pattern_type.name().chars().next().unwrap_or('?');
   let color_initial = params.color_mode.name().chars().next().unwrap_or('?');
   let palette_initial = params.palette.name().chars().next().unwrap_or('?');
@@ -49,7 +48,7 @@ fn truncate_status(status: String, available_cols: usize) -> String {
 
   for ch in status.chars() {
     let char_width = ch.width().unwrap_or(1);
-    
+
     if current_width + char_width > target_len {
       break;
     }
