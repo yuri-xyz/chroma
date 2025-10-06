@@ -1,8 +1,12 @@
 #[cfg(feature = "audio")]
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::traits::{DeviceTrait, StreamTrait};
 #[cfg(feature = "audio")]
-use cpal::{Device, Stream, StreamConfig};
+use cpal::{Stream, StreamConfig};
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::sync::{Arc, Mutex};
+
+use super::device_selector;
 
 pub struct AudioCapture {
   #[cfg(feature = "audio")]
@@ -12,21 +16,53 @@ pub struct AudioCapture {
 }
 
 impl AudioCapture {
+  /// List all available audio devices
   #[cfg(feature = "audio")]
-  pub fn new() -> anyhow::Result<Self> {
+  pub fn list_devices() -> anyhow::Result<()> {
     let host = cpal::default_host();
 
-    // Try to get default input device (microphone/system audio)
-    let device = host
-      .default_input_device()
-      .ok_or_else(|| anyhow::anyhow!("No input device available. Check system audio settings."))?;
+    device_selector::list_devices(&host)
+  }
+
+  /// Create audio capture with optional device name
+  #[cfg(feature = "audio")]
+  pub fn new(device_name: Option<&str>) -> anyhow::Result<Self> {
+    let mut log_file = OpenOptions::new()
+      .create(true)
+      .append(true)
+      .open("audio_debug.log")?;
+
+    writeln!(log_file, "\n=== Audio Capture Initialization ===")?;
+
+    let host = cpal::default_host();
+
+    writeln!(log_file, "CPAL host: {:?}", host.id())?;
+
+    // Try to find the audio device
+    let device = if let Some(name) = device_name {
+      writeln!(log_file, "Looking for specific device: {}", name)?;
+      device_selector::find_device_by_name(&host, name)?
+    } else {
+      // Auto-detect system audio device (monitor source)
+      device_selector::find_system_audio_device(&host)?
+    };
+
+    if let Ok(device_name) = device.name() {
+      writeln!(log_file, "Using device: {}", device_name)?;
+    }
 
     let config = device
       .default_input_config()
       .map_err(|e| anyhow::anyhow!("Failed to get device config: {}", e))?;
 
-    let sample_rate = config.sample_rate().0 as f32;
+    writeln!(
+      log_file,
+      "Config: sample_rate={}, channels={}",
+      config.sample_rate().0,
+      config.channels()
+    )?;
 
+    let sample_rate = config.sample_rate().0 as f32;
     let buffer = Arc::new(Mutex::new(Vec::with_capacity(4096)));
     let buffer_clone = Arc::clone(&buffer);
 
@@ -38,6 +74,7 @@ impl AudioCapture {
     };
 
     stream.play()?;
+    writeln!(log_file, "Audio stream started successfully")?;
 
     Ok(Self {
       _stream: Some(stream),
@@ -48,7 +85,7 @@ impl AudioCapture {
 
   #[cfg(feature = "audio")]
   fn build_stream<T>(
-    device: &Device,
+    device: &cpal::Device,
     config: &StreamConfig,
     buffer: Arc<Mutex<Vec<f32>>>,
   ) -> anyhow::Result<Stream>
@@ -65,26 +102,25 @@ impl AudioCapture {
 
         // Convert to mono and normalize
         for frame in data.chunks(channels) {
-          // Use Sample trait to convert each sample
-          // Sample values are in the range of the sample type (e.g., -1.0 to 1.0 for floats)
           let mono_sample: f32 = frame.iter().fold(0.0f32, |acc, &sample| {
             // Convert sample to f32 using cpal's conversion
             let s = if std::mem::size_of::<T>() == std::mem::size_of::<f32>() {
-              // If T is f32, transmute directly
               unsafe { std::mem::transmute_copy(&sample) }
             } else if std::mem::size_of::<T>() == std::mem::size_of::<i16>() {
-              // If T is i16, convert to f32
               let i: i16 = unsafe { std::mem::transmute_copy(&sample) };
+
               i as f32 / i16::MAX as f32
             } else if std::mem::size_of::<T>() == std::mem::size_of::<u16>() {
-              // If T is u16, convert to f32
               let u: u16 = unsafe { std::mem::transmute_copy(&sample) };
+
               (u as f32 / u16::MAX as f32) * 2.0 - 1.0
             } else {
               0.0f32
             };
+
             acc + s
           }) / channels as f32;
+
           buf.push(mono_sample);
         }
 
@@ -95,7 +131,16 @@ impl AudioCapture {
           buf.drain(0..buf_len - 4096);
         }
       },
-      |err| eprintln!("Audio stream error: {}", err),
+      |err| {
+        // Log audio stream errors to file instead of stderr
+        if let Ok(mut log_file) = OpenOptions::new()
+          .create(true)
+          .append(true)
+          .open("audio_debug.log")
+        {
+          writeln!(log_file, "Audio stream error: {}", err).ok();
+        }
+      },
       None,
     )?;
 
@@ -103,7 +148,7 @@ impl AudioCapture {
   }
 
   #[cfg(not(feature = "audio"))]
-  pub fn new() -> anyhow::Result<Self> {
+  pub fn new(_device_name: Option<&str>) -> anyhow::Result<Self> {
     Ok(Self {
       buffer: Arc::new(Mutex::new(Vec::new())),
       sample_rate: 44100.0,

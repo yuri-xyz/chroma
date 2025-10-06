@@ -42,7 +42,10 @@ pub struct App {
 
 impl App {
   /// Create a new application instance
-  pub async fn new(loaded_config: Option<ShaderParams>) -> Result<Self> {
+  pub async fn new(
+    loaded_config: Option<ShaderParams>,
+    #[cfg(feature = "audio")] audio_device: Option<String>,
+  ) -> Result<Self> {
     #[cfg(debug_assertions)]
     let mut debug_log = {
       let debug_file = File::create("debug.log")?;
@@ -85,7 +88,8 @@ impl App {
     let converter = AsciiConverter::new(palette, true);
 
     #[cfg(feature = "audio")]
-    let (audio_capture, audio_analyzer) = Self::init_audio(&mut debug_log)?;
+    let (audio_capture, audio_analyzer) =
+      Self::init_audio(&mut debug_log, audio_device.as_deref())?;
 
     Ok(Self {
       params,
@@ -104,8 +108,11 @@ impl App {
 
   /// Initialize audio capture and analyzer
   #[cfg(feature = "audio")]
-  fn init_audio(debug_log: &mut DebugLog) -> Result<(Option<AudioCapture>, Option<AudioAnalyzer>)> {
-    match AudioCapture::new() {
+  fn init_audio(
+    debug_log: &mut DebugLog,
+    device_name: Option<&str>,
+  ) -> Result<(Option<AudioCapture>, Option<AudioAnalyzer>)> {
+    match AudioCapture::new(device_name) {
       Ok(capture) => {
         writeln!(
           debug_log,

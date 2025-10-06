@@ -17,9 +17,25 @@ use cli::CliArgs;
 
 fn main() -> Result<()> {
   let cli_args = CliArgs::parse();
+
+  // Handle --list-audio-devices flag
+  #[cfg(feature = "audio")]
+  if cli_args.list_audio_devices {
+    use chroma::audio::AudioCapture;
+    return AudioCapture::list_devices();
+  }
+
   let loaded_config = load_config(cli_args.config)?;
 
-  run_application(loaded_config)
+  #[cfg(feature = "audio")]
+  {
+    run_application(loaded_config, cli_args.audio_device)
+  }
+
+  #[cfg(not(feature = "audio"))]
+  {
+    run_application(loaded_config)
+  }
 }
 
 /// Load configuration from file if specified
@@ -44,10 +60,17 @@ fn load_config(config_path: Option<String>) -> Result<Option<ShaderParams>> {
 }
 
 /// Initialize terminal, run app, and cleanup
-fn run_application(loaded_config: Option<ShaderParams>) -> Result<()> {
+fn run_application(
+  loaded_config: Option<ShaderParams>,
+  #[cfg(feature = "audio")] audio_device: Option<String>,
+) -> Result<()> {
   setup_terminal()?;
 
   let result = pollster::block_on(async {
+    #[cfg(feature = "audio")]
+    let mut app = App::new(loaded_config, audio_device).await?;
+
+    #[cfg(not(feature = "audio"))]
     let mut app = App::new(loaded_config).await?;
 
     app.run()
