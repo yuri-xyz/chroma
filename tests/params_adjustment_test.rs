@@ -242,5 +242,7 @@ fn test_with_audio_reactive_defaults_differs_from_default() {
   assert_ne!(default_params.contrast, audio_params.contrast);
   assert_ne!(default_params.amplitude, audio_params.amplitude);
   assert_ne!(default_params.frequency, audio_params.frequency);
+
+  #[cfg(not(feature = "audio"))]
   assert_ne!(default_params.audio_enabled, audio_params.audio_enabled);
 }
