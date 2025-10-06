@@ -101,7 +101,7 @@ chroma -c config_a3f8c2d9e1b5.toml
 chroma --help
 ```
 
-### 🕹️ Controls
+## 🕹️ Controls
 
 - `Q` or `Esc` - Quit application
 - `R` - **Randomize parameters** ⭐ (Discover new effects!)
@@ -114,23 +114,25 @@ chroma --help
 
 See [CONTROLS.md](./notes/CONTROLS.md) and [PALETTES.md](./notes/PALETTES.md) for more details.
 
-### 💾 Configuration Save/Load
+## 🎨 Configuration & Ricing
 
-The application supports saving and loading configurations:
+Chroma is designed to be highly configurable and CLI-friendly, so it feels natural alongside your other terminal tools. There are multiple ways to configure the effects and visuals:
 
-1. **Saving**: Press `S` while running to save the current configuration
+**Config files**: Load preset configurations from TOML files. You can find [example preset configs in the `examples` directory](./examples):
 
-   - Generates a unique filename based on a hash of all parameters: `config_<hash>.toml`
-   - Saves to the current working directory
-   - Won't overwrite existing files with the same hash
+```
+chroma -c examples/0.toml
+```
 
-2. **Loading**: Use the `--config` flag when launching:
+**Live reloading**: Edit your config file while chroma is running and see changes applied instantly! This makes it easy to tweak parameters and visualize your adjustments in real time.
 
-   ```bash
-   cargo run --release --features audio -- --config config_a3f8c2d9e1b5.toml
-   ```
+**CLI parameters**: Most parameters can be set via command-line arguments. Run `chroma --help` to see all available options.
 
-3. **Sharing**: Config files are plain TOML and can be shared with others!
+> [!TIP]
+> You can combine config files with CLI parameters—CLI args take precedence. This is perfect when you have a favorite base config but want to tweak specific values on the fly or in a script.
+
+> [!TIP]
+> Use `--random` or `-r` to randomize any parameters that haven't been explicitly set by your config file or CLI args. Great for adding variety to each run!
 
 ## 📦 Dependencies
 

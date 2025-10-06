@@ -42,15 +42,21 @@ fn main() -> Result<()> {
 
   let loaded_config = load_config_with_overrides(&cli_args)?;
   let show_status_bar = !cli_args.no_status;
+  let config_path = cli_args.config.clone();
 
   #[cfg(feature = "audio")]
   {
-    run_application(loaded_config, show_status_bar, cli_args.audio_device)
+    run_application(
+      loaded_config,
+      show_status_bar,
+      config_path,
+      cli_args.audio_device,
+    )
   }
 
   #[cfg(not(feature = "audio"))]
   {
-    run_application(loaded_config, show_status_bar)
+    run_application(loaded_config, show_status_bar, config_path)
   }
 }
 
@@ -234,20 +240,36 @@ fn parse_palette_type(s: &str) -> chroma::params::PaletteType {
 }
 
 /// Initialize terminal, run app, and cleanup
+#[cfg(feature = "audio")]
 fn run_application(
   loaded_config: Option<ShaderParams>,
   show_status_bar: bool,
-  #[cfg(feature = "audio")] audio_device: Option<String>,
+  config_path: Option<String>,
+  audio_device: Option<String>,
 ) -> Result<()> {
   setup_terminal()?;
 
   let result = pollster::block_on(async {
-    #[cfg(feature = "audio")]
-    let mut app = App::new(loaded_config, show_status_bar, audio_device).await?;
+    let mut app = App::new(loaded_config, show_status_bar, config_path, audio_device).await?;
+    app.run()
+  });
 
-    #[cfg(not(feature = "audio"))]
-    let mut app = App::new(loaded_config, show_status_bar).await?;
+  cleanup_terminal()?;
 
+  result
+}
+
+/// Initialize terminal, run app, and cleanup
+#[cfg(not(feature = "audio"))]
+fn run_application(
+  loaded_config: Option<ShaderParams>,
+  show_status_bar: bool,
+  config_path: Option<String>,
+) -> Result<()> {
+  setup_terminal()?;
+
+  let result = pollster::block_on(async {
+    let mut app = App::new(loaded_config, show_status_bar, config_path).await?;
     app.run()
   });
 

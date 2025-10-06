@@ -1,6 +1,7 @@
 // Application main module
 
 mod audio;
+mod config_watcher;
 mod input;
 mod rendering;
 mod status_bar;
@@ -35,6 +36,7 @@ pub struct App {
   last_frame_time: Instant,
   debug_log: DebugLog,
   last_terminal_size: (u16, u16),
+  config_watcher: Option<config_watcher::ConfigWatcher>,
   #[cfg(feature = "audio")]
   audio_capture: Option<AudioCapture>,
   #[cfg(feature = "audio")]
@@ -46,6 +48,7 @@ impl App {
   pub async fn new(
     loaded_config: Option<ShaderParams>,
     show_status_bar: bool,
+    config_path: Option<String>,
     #[cfg(feature = "audio")] audio_device: Option<String>,
   ) -> Result<Self> {
     #[cfg(debug_assertions)]
@@ -97,6 +100,8 @@ impl App {
     let (audio_capture, audio_analyzer) =
       Self::init_audio(&mut debug_log, audio_device.as_deref())?;
 
+    let config_watcher = Self::init_config_watcher(&config_path, &mut debug_log)?;
+
     Ok(Self {
       params,
       pipeline,
@@ -106,6 +111,7 @@ impl App {
       last_frame_time: Instant::now(),
       debug_log,
       last_terminal_size: (terminal_width, terminal_height),
+      config_watcher,
       #[cfg(feature = "audio")]
       audio_capture,
       #[cfg(feature = "audio")]
@@ -133,6 +139,27 @@ impl App {
         writeln!(debug_log, "Failed to initialize audio: {}", e)?;
         Ok((None, None))
       }
+    }
+  }
+
+  /// Initialize config file watcher if config path is provided
+  fn init_config_watcher(
+    config_path: &Option<String>,
+    debug_log: &mut DebugLog,
+  ) -> Result<Option<config_watcher::ConfigWatcher>> {
+    if let Some(path) = config_path {
+      match config_watcher::ConfigWatcher::new(path) {
+        Ok(watcher) => {
+          writeln!(debug_log, "Config file watcher initialized for: {}", path)?;
+          Ok(Some(watcher))
+        }
+        Err(e) => {
+          writeln!(debug_log, "Failed to initialize config watcher: {}", e)?;
+          Ok(None)
+        }
+      }
+    } else {
+      Ok(None)
     }
   }
 
@@ -176,7 +203,32 @@ impl App {
       &mut self.debug_log,
     );
 
+    self.check_and_apply_config_reload();
+
     self.last_frame_time = current_time;
+  }
+
+  /// Check for config file changes and apply them if valid
+  fn check_and_apply_config_reload(&mut self) {
+    if let Some(ref watcher) = self.config_watcher {
+      if let Some(mut new_params) = watcher.try_receive_config() {
+        let current_time = self.params.time;
+        let current_width = self.params.resolution_width;
+        let current_height = self.params.resolution_height;
+
+        new_params.time = current_time;
+        new_params.set_resolution(current_width, current_height);
+
+        if new_params.palette != self.params.palette {
+          let new_palette = Self::palette_from_type(new_params.palette);
+          self.converter = AsciiConverter::new(new_palette, true);
+        }
+
+        self.params = new_params;
+
+        let _ = writeln!(self.debug_log, "Config reloaded successfully");
+      }
+    }
   }
 
   /// Render current frame
