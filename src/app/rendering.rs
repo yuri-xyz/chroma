@@ -16,6 +16,7 @@ pub fn render_frame(
   converter: &AsciiConverter,
   uniforms: &ShaderUniforms,
   status_bar: Option<String>,
+  terminal_bg_color: Option<(u8, u8, u8)>,
   debug_log: &mut DebugLog,
 ) -> Result<()> {
   // Generate pixel data from shader
@@ -32,6 +33,7 @@ pub fn render_frame(
   let frame_buffer = build_frame_buffer(
     ascii_frame,
     status_bar,
+    terminal_bg_color,
     pipeline.width() as usize,
     pipeline.height() as usize,
     debug_log,
@@ -50,6 +52,7 @@ pub fn render_frame(
 fn build_frame_buffer(
   ascii_frame: Vec<Vec<(char, Color)>>,
   status_bar: Option<String>,
+  terminal_bg_color: Option<(u8, u8, u8)>,
   expected_cols: usize,
   expected_rows: usize,
   debug_log: &mut DebugLog,
@@ -57,17 +60,36 @@ fn build_frame_buffer(
   let mut buffer = String::with_capacity(expected_rows * expected_cols * 25);
 
   // Initialize buffer (hide cursor, move to home, reset colors)
-  buffer.push_str("\x1b[?25l\x1b[H\x1b[0m\x1b[49m");
+  buffer.push_str("\x1b[?25l\x1b[H\x1b[0m");
+
+  // Set terminal background color if specified
+  if let Some((r, g, b)) = terminal_bg_color {
+    buffer.push_str(&format!("\x1b[48;2;{};{};{}m", r, g, b));
+  } else {
+    buffer.push_str("\x1b[49m");
+  }
 
   // Render ASCII art rows
   let rows_to_render = ascii_frame.len().min(expected_rows);
 
   for (row_idx, row) in ascii_frame.iter().enumerate().take(rows_to_render) {
-    render_row(row, &mut buffer, expected_cols, row_idx, debug_log)?;
+    render_row(
+      row,
+      &mut buffer,
+      terminal_bg_color,
+      expected_cols,
+      row_idx,
+      debug_log,
+    )?;
 
     // Only add newline if not the last row, or if there's a status bar
+    // Keep background color across lines
     if row_idx < rows_to_render - 1 || status_bar.is_some() {
-      buffer.push_str("\x1b[0m\r\n");
+      if terminal_bg_color.is_some() {
+        buffer.push_str("\r\n");
+      } else {
+        buffer.push_str("\x1b[0m\r\n");
+      }
     }
   }
 
@@ -93,6 +115,7 @@ fn build_frame_buffer(
 fn render_row(
   row: &[(char, Color)],
   buffer: &mut String,
+  terminal_bg_color: Option<(u8, u8, u8)>,
   expected_cols: usize,
   _row_idx: usize,
   debug_log: &mut DebugLog,
@@ -114,7 +137,7 @@ fn render_row(
       break;
     }
 
-    // Skip spaces (optimization)
+    // Skip spaces (optimization) - but preserve background color
     if *character == ' ' {
       buffer.push(' ');
       current_col += 1;
@@ -122,7 +145,7 @@ fn render_row(
       continue;
     }
 
-    // Skip very dark pixels
+    // Skip very dark pixels - but preserve background color
     let brightness = extract_brightness(color);
 
     if brightness < MIN_BRIGHTNESS_THRESHOLD {
@@ -132,12 +155,13 @@ fn render_row(
       continue;
     }
 
-    // Render colored character
+    // Render colored character with background
     if let Color::Rgb { r, g, b } = color {
-      buffer.push_str(&format!(
-        "\x1b[38;2;{};{};{}m{}\x1b[39m\x1b[49m",
-        r, g, b, character
-      ));
+      // Set foreground color
+      buffer.push_str(&format!("\x1b[38;2;{};{};{}m", r, g, b));
+      buffer.push(*character);
+      // Reset foreground but keep background
+      buffer.push_str("\x1b[39m");
     } else {
       buffer.push(*character);
     }

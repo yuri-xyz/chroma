@@ -82,13 +82,13 @@ fn load_config_with_overrides(cli_args: &CliArgs) -> Result<Option<ShaderParams>
   }
 
   // Step 4: Apply CLI overrides (highest priority)
-  apply_cli_overrides(&mut params, cli_args);
+  apply_cli_overrides(&mut params, cli_args)?;
 
   Ok(Some(params))
 }
 
 /// Apply CLI argument overrides to params (CLI args take precedence over config)
-fn apply_cli_overrides(params: &mut ShaderParams, cli: &CliArgs) {
+fn apply_cli_overrides(params: &mut ShaderParams, cli: &CliArgs) -> Result<()> {
   // Visual parameters
   if let Some(v) = cli.frequency {
     params.frequency = v;
@@ -166,8 +166,20 @@ fn apply_cli_overrides(params: &mut ShaderParams, cli: &CliArgs) {
     params.vignette = v;
   }
 
+  // Background color (parse hex) - for terminal cell background
+  if let Some(ref hex_color) = cli.background_color {
+    let (r, g, b) = chroma::utils::color::parse_hex_color(hex_color)
+      .map_err(|e| anyhow::anyhow!("Invalid background color '{}': {}", hex_color, e))?;
+
+    params.terminal_bg_r = r;
+    params.terminal_bg_g = g;
+    params.terminal_bg_b = b;
+  }
+
   // Apply clamping after overrides
   params.clamp_all();
+
+  Ok(())
 }
 
 fn parse_pattern_type(s: &str) -> chroma::params::PatternType {

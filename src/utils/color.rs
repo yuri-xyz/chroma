@@ -48,6 +48,48 @@ pub fn calculate_brightness(r: u8, g: u8, b: u8) -> u8 {
   ((r as u32 + g as u32 + b as u32) / 3) as u8
 }
 
+/// Parse a hex color string to normalized RGB values (0.0-1.0)
+///
+/// # Arguments
+/// * `hex` - Hex color string (e.g. "#FF0000", "FF0000", "#F00", "F00")
+///
+/// # Returns
+/// Result with tuple (r, g, b) with values 0.0-1.0, or error if parsing fails
+pub fn parse_hex_color(hex: &str) -> Result<(f32, f32, f32), String> {
+  let hex = hex.trim_start_matches('#');
+
+  let (r_str, g_str, b_str) = match hex.len() {
+    3 => {
+      let chars: Vec<char> = hex.chars().collect();
+      (
+        format!("{}{}", chars[0], chars[0]),
+        format!("{}{}", chars[1], chars[1]),
+        format!("{}{}", chars[2], chars[2]),
+      )
+    }
+    6 => (
+      hex[0..2].to_string(),
+      hex[2..4].to_string(),
+      hex[4..6].to_string(),
+    ),
+    _ => {
+      return Err(format!(
+        "Invalid hex color format: '{}' (expected 3 or 6 hex digits)",
+        hex
+      ))
+    }
+  };
+
+  let r = u8::from_str_radix(&r_str, 16)
+    .map_err(|_| format!("Invalid red component in hex color: '{}'", r_str))?;
+  let g = u8::from_str_radix(&g_str, 16)
+    .map_err(|_| format!("Invalid green component in hex color: '{}'", g_str))?;
+  let b = u8::from_str_radix(&b_str, 16)
+    .map_err(|_| format!("Invalid blue component in hex color: '{}'", b_str))?;
+
+  Ok((r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0))
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -168,5 +210,76 @@ mod tests {
       color1, color3,
       "Different hues should produce different colors"
     );
+  }
+
+  #[test]
+  fn test_parse_hex_color_6_digit() {
+    let (r, g, b) = parse_hex_color("FF0000").unwrap();
+    assert!((r - 1.0).abs() < 0.01, "Red should be 1.0");
+    assert!(g.abs() < 0.01, "Green should be 0.0");
+    assert!(b.abs() < 0.01, "Blue should be 0.0");
+  }
+
+  #[test]
+  fn test_parse_hex_color_with_hash() {
+    let (r, g, b) = parse_hex_color("#00FF00").unwrap();
+    assert!(r.abs() < 0.01, "Red should be 0.0");
+    assert!((g - 1.0).abs() < 0.01, "Green should be 1.0");
+    assert!(b.abs() < 0.01, "Blue should be 0.0");
+  }
+
+  #[test]
+  fn test_parse_hex_color_3_digit() {
+    let (r, g, b) = parse_hex_color("F00").unwrap();
+    assert!((r - 1.0).abs() < 0.01, "Red should be 1.0");
+    assert!(g.abs() < 0.01, "Green should be 0.0");
+    assert!(b.abs() < 0.01, "Blue should be 0.0");
+  }
+
+  #[test]
+  fn test_parse_hex_color_3_digit_with_hash() {
+    let (r, g, b) = parse_hex_color("#ABC").unwrap();
+    let expected_r = 0xAA as f32 / 255.0;
+    let expected_g = 0xBB as f32 / 255.0;
+    let expected_b = 0xCC as f32 / 255.0;
+    assert!((r - expected_r).abs() < 0.01, "Red component mismatch");
+    assert!((g - expected_g).abs() < 0.01, "Green component mismatch");
+    assert!((b - expected_b).abs() < 0.01, "Blue component mismatch");
+  }
+
+  #[test]
+  fn test_parse_hex_color_black() {
+    let (r, g, b) = parse_hex_color("000000").unwrap();
+    assert!(r.abs() < 0.01, "Red should be 0.0");
+    assert!(g.abs() < 0.01, "Green should be 0.0");
+    assert!(b.abs() < 0.01, "Blue should be 0.0");
+  }
+
+  #[test]
+  fn test_parse_hex_color_white() {
+    let (r, g, b) = parse_hex_color("FFFFFF").unwrap();
+    assert!((r - 1.0).abs() < 0.01, "Red should be 1.0");
+    assert!((g - 1.0).abs() < 0.01, "Green should be 1.0");
+    assert!((b - 1.0).abs() < 0.01, "Blue should be 1.0");
+  }
+
+  #[test]
+  fn test_parse_hex_color_invalid_length() {
+    let result = parse_hex_color("FF00");
+    assert!(result.is_err(), "Should fail for 4 digit hex");
+  }
+
+  #[test]
+  fn test_parse_hex_color_invalid_chars() {
+    let result = parse_hex_color("GGGGGG");
+    assert!(result.is_err(), "Should fail for invalid hex characters");
+  }
+
+  #[test]
+  fn test_parse_hex_color_lowercase() {
+    let (r, g, b) = parse_hex_color("ff8800").unwrap();
+    assert!((r - 1.0).abs() < 0.01, "Red should be 1.0");
+    assert!((g - (0x88 as f32 / 255.0)).abs() < 0.01, "Green mismatch");
+    assert!(b.abs() < 0.01, "Blue should be 0.0");
   }
 }

@@ -253,11 +253,26 @@ impl App {
       None
     };
 
+    // Convert terminal background color from normalized floats to u8
+    let terminal_bg = if self.params.terminal_bg_r > 0.0
+      || self.params.terminal_bg_g > 0.0
+      || self.params.terminal_bg_b > 0.0
+    {
+      Some((
+        (self.params.terminal_bg_r * 255.0) as u8,
+        (self.params.terminal_bg_g * 255.0) as u8,
+        (self.params.terminal_bg_b * 255.0) as u8,
+      ))
+    } else {
+      None
+    };
+
     rendering::render_frame(
       &self.pipeline,
       &self.converter,
       &uniforms,
       status_bar,
+      terminal_bg,
       &mut self.debug_log,
     )?;
 

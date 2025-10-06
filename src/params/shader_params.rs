@@ -40,6 +40,10 @@ pub struct ShaderParams {
   pub background_tint_g: f32,
   pub background_tint_b: f32,
 
+  pub terminal_bg_r: f32,
+  pub terminal_bg_g: f32,
+  pub terminal_bg_b: f32,
+
   pub palette: PaletteType,
   pub color_mode: ColorMode,
   pub pattern_type: PatternType,
@@ -89,6 +93,10 @@ impl Default for ShaderParams {
       background_tint_r: 0.0,
       background_tint_g: 0.0,
       background_tint_b: 0.0,
+
+      terminal_bg_r: 0.0,
+      terminal_bg_g: 0.0,
+      terminal_bg_b: 0.0,
 
       palette: PaletteType::Simple,
       color_mode: ColorMode::Chromatic,
@@ -177,6 +185,10 @@ impl ShaderParams {
     self.background_tint_r = self.background_tint_r.clamp(0.0, 1.0);
     self.background_tint_g = self.background_tint_g.clamp(0.0, 1.0);
     self.background_tint_b = self.background_tint_b.clamp(0.0, 1.0);
+
+    self.terminal_bg_r = self.terminal_bg_r.clamp(0.0, 1.0);
+    self.terminal_bg_g = self.terminal_bg_g.clamp(0.0, 1.0);
+    self.terminal_bg_b = self.terminal_bg_b.clamp(0.0, 1.0);
 
     self.bass_influence = self.bass_influence.clamp(0.0, 1.0);
     self.mid_influence = self.mid_influence.clamp(0.0, 1.0);
