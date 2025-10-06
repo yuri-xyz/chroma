@@ -1,23 +1,25 @@
-pkgbase = chroma-git
-	pkgdesc = Terminal shader visualizer rendering GPU-computed ASCII art
-	pkgver = 0
+pkgbase = chroma-visualizer-git
+	pkgdesc = A Rust-based, ASCII art shader audio visualizer for your terminal!
+	pkgver = r42.b4b4325
 	pkgrel = 1
 	url = https://github.com/yuri-xyz/chroma
 	arch = x86_64
-	license = AGPL-3.0-or-later
+	license = GPL-3.0-or-later
 	makedepends = git
 	makedepends = rust
 	makedepends = cargo
 	depends = vulkan-icd-loader
-	optdepends = pipewire: audio capture (optional feature)
-	optdepends = alsa-lib: ALSA backend for audio (optional feature)
-	optdepends = pavucontrol: help selecting monitor source for audio
+	depends = alsa-lib
+	optdepends = pipewire: modern audio server (recommended)
+	optdepends = pipewire-alsa: ALSA compatibility for PipeWire
 	optdepends = vulkan-radeon: AMD Vulkan driver
 	optdepends = vulkan-intel: Intel Vulkan driver
 	optdepends = nvidia-utils: NVIDIA Vulkan driver
-	provides = chroma=0
+	provides = chroma-visualizer=r42.b4b4325
+	conflicts = chroma-visualizer
 	conflicts = chroma
-	source = chroma::git+https://github.com/yuri-xyz/chroma.git
+	conflicts = chroma-git
+	source = chroma::git+https://github.com/yuri-xyz/chroma.git#branch=master
 	sha256sums = SKIP
 
-pkgname = chroma-git
+pkgname = chroma-visualizer-git

@@ -33,35 +33,22 @@
 
 ### Arch Linux
 
-> [!WARNING]
-> Since this project is so new I haven't had a chance to publish it to the AUR yet,
-> but you can go ahead and install it using makepkg like so:
-
-```bash
-git clone https://github.com/yuri-xyz/chroma
-cd chroma/packaging/arch
-makepkg -si
-```
-
-> [!WARNING]
-> Once it's available on the AUR:
-
 ```bash
 # With an AUR helper: yay
-yay -S chroma-git
+yay -S chroma-visualizer-git
 
 # With an AUR helper: paru
-paru -S chroma-git
+paru -S chroma-visualizer-git
 
 # Or manually:
-git clone https://aur.archlinux.org/chroma-git.git
-cd chroma-git/packaging/arch
+git clone https://aur.archlinux.org/chroma-visualizer-git.git
+cd chroma-visualizer-git
 makepkg -si
 
 # If you're lazy:
-git clone https://aur.archlinux.org/chroma-git.git \
-   && cd chroma-git \
-   && makepkg -si
+git clone https://aur.archlinux.org/chroma-visualizer-git.git \
+  && cd chroma-visualizer-git \
+  && makepkg -si
 ```
 
 ### Other distros
