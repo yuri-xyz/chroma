@@ -22,6 +22,8 @@
 
 <img width="2474" height="1248" alt="chroma" src="https://github.com/user-attachments/assets/b6caaef4-f861-4a96-b06d-d087a3ad15fa" />
 
+<img width="1958" height="1103" alt="chroma-config" src="https://github.com/user-attachments/assets/96dae99e-2e93-470a-b44f-40c0a09f098a" />
+
 [chroma.webm](https://github.com/user-attachments/assets/9e821a20-8394-445c-9542-91e294225e63)
 
 [chroma-demo-long.webm](https://github.com/user-attachments/assets/3ae02009-b9a5-4003-93b3-8120db869447)
