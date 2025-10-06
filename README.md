@@ -74,6 +74,9 @@ Meanwhile you can build from source below:
 git clone https://github.com/yuri-xyz/chroma.git
 cd chroma
 
+# Make sure you have the `alsa-lib` & `pipewire` packages installed,
+# the exact package names may vary depending on your distro.
+
 # Pick one:
 cargo build --release                    # visuals only
 cargo build --release --features audio   # with audio reactivity (recommended)
