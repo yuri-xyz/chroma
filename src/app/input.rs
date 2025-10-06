@@ -43,13 +43,37 @@ fn handle_key_press(
       *running = false;
     }
 
-    // Parameter adjustments
-    KeyCode::Up => params.frequency += 0.1,
-    KeyCode::Down => params.frequency = (params.frequency - 0.1).max(0.1),
-    KeyCode::Right => params.speed += 0.1,
-    KeyCode::Left => params.speed = (params.speed - 0.1).max(0.1),
-    KeyCode::Char('+') | KeyCode::Char('=') => params.amplitude += 0.1,
-    KeyCode::Char('-') | KeyCode::Char('_') => params.amplitude = (params.amplitude - 0.1).max(0.1),
+    // Parameter adjustments (disabled when audio mode is active)
+    KeyCode::Up => {
+      if !params.audio_enabled {
+        params.frequency += 0.1;
+      }
+    }
+    KeyCode::Down => {
+      if !params.audio_enabled {
+        params.frequency = (params.frequency - 0.1).max(0.1);
+      }
+    }
+    KeyCode::Right => {
+      if !params.audio_enabled {
+        params.speed += 0.1;
+      }
+    }
+    KeyCode::Left => {
+      if !params.audio_enabled {
+        params.speed = (params.speed - 0.1).max(0.1);
+      }
+    }
+    KeyCode::Char('+') | KeyCode::Char('=') => {
+      if !params.audio_enabled {
+        params.amplitude += 0.1;
+      }
+    }
+    KeyCode::Char('-') | KeyCode::Char('_') => {
+      if !params.audio_enabled {
+        params.amplitude = (params.amplitude - 0.1).max(0.1);
+      }
+    }
     KeyCode::Char('[') => params.scale = (params.scale - 0.1).max(0.1),
     KeyCode::Char(']') => params.scale += 0.1,
 

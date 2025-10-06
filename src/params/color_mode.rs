@@ -15,6 +15,36 @@ pub enum ColorMode {
 }
 
 impl ColorMode {
+  pub const fn all() -> &'static [Self] {
+    &[
+      Self::Rainbow,
+      Self::Monochrome,
+      Self::Duotone,
+      Self::Warm,
+      Self::Cool,
+      Self::Neon,
+      Self::Pastel,
+      Self::Cyberpunk,
+      Self::Warped,
+      Self::Chromatic,
+    ]
+  }
+
+  pub fn full_name(self) -> &'static str {
+    match self {
+      Self::Rainbow => "rainbow",
+      Self::Monochrome => "monochrome",
+      Self::Duotone => "duotone",
+      Self::Warm => "warm",
+      Self::Cool => "cool",
+      Self::Neon => "neon",
+      Self::Pastel => "pastel",
+      Self::Cyberpunk => "cyberpunk",
+      Self::Warped => "warped",
+      Self::Chromatic => "chromatic",
+    }
+  }
+
   pub fn to_u32(self) -> u32 {
     match self {
       Self::Rainbow => 0,

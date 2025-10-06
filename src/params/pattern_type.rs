@@ -24,6 +24,54 @@ pub enum PatternType {
 }
 
 impl PatternType {
+  pub const fn all() -> &'static [Self] {
+    &[
+      Self::Plasma,
+      Self::Waves,
+      Self::Ripples,
+      Self::Vortex,
+      Self::Noise,
+      Self::Geometric,
+      Self::Voronoi,
+      Self::Truchet,
+      Self::Hexagonal,
+      Self::Interference,
+      Self::Fractal,
+      Self::Glitch,
+      Self::Spiral,
+      Self::Rings,
+      Self::Grid,
+      Self::Diamonds,
+      Self::Sphere,
+      Self::Octgrams,
+      Self::WarpedFbm,
+    ]
+  }
+
+  pub fn full_name(self) -> &'static str {
+    match self {
+      Self::Plasma => "plasma",
+      Self::Waves => "waves",
+      Self::Ripples => "ripples",
+      Self::Vortex => "vortex",
+      Self::Noise => "noise",
+      Self::Geometric => "geometric",
+      Self::Voronoi => "voronoi",
+      Self::Truchet => "truchet",
+      Self::Hexagonal => "hexagonal",
+      Self::Interference => "interference",
+      Self::Fractal => "fractal",
+      Self::Glitch => "glitch",
+      Self::Spiral => "spiral",
+      Self::Rings => "rings",
+      Self::Grid => "grid",
+      Self::Diamonds => "diamonds",
+      Self::Sphere => "sphere",
+      Self::Octgrams => "octgrams",
+      Self::WarpedFbm => "warped",
+    }
+  }
+
   pub fn to_u32(self) -> u32 {
     match self {
       Self::Plasma => 0,

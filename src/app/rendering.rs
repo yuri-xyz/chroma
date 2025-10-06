@@ -15,7 +15,7 @@ pub fn render_frame(
   pipeline: &ShaderPipeline,
   converter: &AsciiConverter,
   uniforms: &ShaderUniforms,
-  status_bar: String,
+  status_bar: Option<String>,
   debug_log: &mut DebugLog,
 ) -> Result<()> {
   // Generate pixel data from shader
@@ -46,10 +46,10 @@ pub fn render_frame(
   Ok(())
 }
 
-/// Build the complete frame buffer including content and status bar
+/// Build the complete frame buffer including content and optional status bar
 fn build_frame_buffer(
   ascii_frame: Vec<Vec<(char, Color)>>,
-  status_bar: String,
+  status_bar: Option<String>,
   expected_cols: usize,
   expected_rows: usize,
   debug_log: &mut DebugLog,
@@ -64,12 +64,18 @@ fn build_frame_buffer(
 
   for (row_idx, row) in ascii_frame.iter().enumerate().take(rows_to_render) {
     render_row(row, &mut buffer, expected_cols, row_idx, debug_log)?;
-    buffer.push_str("\x1b[0m\r\n");
+
+    // Only add newline if not the last row, or if there's a status bar
+    if row_idx < rows_to_render - 1 || status_bar.is_some() {
+      buffer.push_str("\x1b[0m\r\n");
+    }
   }
 
-  // Add status bar
-  buffer.push_str("\x1b[0m\x1b[49m");
-  buffer.push_str(&status_bar);
+  // Add status bar if enabled
+  if let Some(status) = status_bar {
+    buffer.push_str("\x1b[0m\x1b[49m");
+    buffer.push_str(&status);
+  }
 
   log_frame_stats(
     rows_to_render,

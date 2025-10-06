@@ -94,6 +94,9 @@ impl Default for ShaderParams {
       color_mode: ColorMode::Chromatic,
       pattern_type: PatternType::Plasma,
 
+      #[cfg(feature = "audio")]
+      audio_enabled: true,
+      #[cfg(not(feature = "audio"))]
       audio_enabled: false,
       bass_influence: 0.5,
       mid_influence: 0.3,
@@ -340,4 +343,3 @@ impl ShaderParams {
     Ok(params)
   }
 }
-

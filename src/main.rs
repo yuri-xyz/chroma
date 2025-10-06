@@ -1,7 +1,7 @@
 // A GPU-accelerated shader visualization tool that renders beautiful
 // patterns and effects directly in your terminal using ASCII art.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 use crossterm::{cursor, execute, terminal};
 use std::io::stdout;
@@ -25,51 +25,58 @@ fn main() -> Result<()> {
     return AudioCapture::list_devices();
   }
 
+  // Handle --list-patterns flag
+  if cli_args.list_patterns {
+    return list_patterns();
+  }
+
+  // Handle --list-color-modes flag
+  if cli_args.list_color_modes {
+    return list_color_modes();
+  }
+
+  // Handle --list-palettes flag
+  if cli_args.list_palettes {
+    return list_palettes();
+  }
+
   let loaded_config = load_config_with_overrides(&cli_args)?;
+  let show_status_bar = !cli_args.no_status;
 
   #[cfg(feature = "audio")]
   {
-    run_application(loaded_config, cli_args.audio_device)
+    run_application(loaded_config, show_status_bar, cli_args.audio_device)
   }
 
   #[cfg(not(feature = "audio"))]
   {
-    run_application(loaded_config)
+    run_application(loaded_config, show_status_bar)
   }
 }
 
 /// Load configuration from file if specified, then apply CLI overrides
+/// Priority order (lowest to highest): randomized -> config file -> CLI args
 fn load_config_with_overrides(cli_args: &CliArgs) -> Result<Option<ShaderParams>> {
-  let mut params = if let Some(ref path) = cli_args.config {
-    match ShaderParams::load_from_file(path) {
-      Ok(config) => {
-        println!("✓ Loaded configuration from: {}", path);
-        config
-      }
-      Err(error) => {
-        eprintln!("✗ Failed to load config from {}: {}", path, error);
-        eprintln!("  Falling back to default configuration.\n");
-        ShaderParams::default()
-      }
-    }
-  } else {
-    ShaderParams::default()
-  };
+  // Step 1: Start with defaults (or audio defaults)
+  #[cfg(feature = "audio")]
+  let mut params = ShaderParams::with_audio_reactive_defaults();
 
-  // Apply CLI overrides (these take precedence over config file)
-  apply_cli_overrides(&mut params, cli_args);
+  #[cfg(not(feature = "audio"))]
+  let mut params = ShaderParams::default();
 
-  // Print CLI overrides if any were applied
-  let has_overrides = cli_args.frequency.is_some()
-    || cli_args.amplitude.is_some()
-    || cli_args.speed.is_some()
-    || cli_args.brightness.is_some()
-    || cli_args.pattern.is_some()
-    || cli_args.color_mode.is_some();
-
-  if has_overrides {
-    println!("✓ Applied command-line overrides\n");
+  // Step 2: Apply randomization if requested (lowest priority)
+  if cli_args.random {
+    params.randomize();
   }
+
+  // Step 3: Apply config file overrides (medium priority)
+  if let Some(ref path) = cli_args.config {
+    params = ShaderParams::load_from_file(path)
+      .context(format!("Failed to load config file: {}", path))?;
+  }
+
+  // Step 4: Apply CLI overrides (highest priority)
+  apply_cli_overrides(&mut params, cli_args);
 
   Ok(Some(params))
 }
@@ -229,16 +236,17 @@ fn parse_palette_type(s: &str) -> chroma::params::PaletteType {
 /// Initialize terminal, run app, and cleanup
 fn run_application(
   loaded_config: Option<ShaderParams>,
+  show_status_bar: bool,
   #[cfg(feature = "audio")] audio_device: Option<String>,
 ) -> Result<()> {
   setup_terminal()?;
 
   let result = pollster::block_on(async {
     #[cfg(feature = "audio")]
-    let mut app = App::new(loaded_config, audio_device).await?;
+    let mut app = App::new(loaded_config, show_status_bar, audio_device).await?;
 
     #[cfg(not(feature = "audio"))]
-    let mut app = App::new(loaded_config).await?;
+    let mut app = App::new(loaded_config, show_status_bar).await?;
 
     app.run()
   });
@@ -266,6 +274,68 @@ fn setup_terminal() -> Result<()> {
 fn cleanup_terminal() -> Result<()> {
   execute!(stdout(), cursor::Show, terminal::LeaveAlternateScreen)?;
   terminal::disable_raw_mode()?;
+
+  Ok(())
+}
+
+/// List all available pattern types
+fn list_patterns() -> Result<()> {
+  use chroma::params::PatternType;
+
+  println!("Available Pattern Types:");
+  println!();
+
+  for pattern in PatternType::all() {
+    println!(
+      "  {:<15} (display: {})",
+      pattern.full_name(),
+      pattern.name()
+    );
+  }
+
+  println!();
+  println!("Use with: --pattern <PATTERN>");
+  println!("In-app: Press 'T' to cycle through patterns");
+
+  Ok(())
+}
+
+/// List all available color modes
+fn list_color_modes() -> Result<()> {
+  use chroma::params::ColorMode;
+
+  println!("Available Color Modes:");
+  println!();
+
+  for mode in ColorMode::all() {
+    println!("  {:<15} (display: {})", mode.full_name(), mode.name());
+  }
+
+  println!();
+  println!("Use with: --color-mode <MODE>");
+  println!("In-app: Press 'C' to cycle through color modes");
+
+  Ok(())
+}
+
+/// List all available palette types
+fn list_palettes() -> Result<()> {
+  use chroma::params::PaletteType;
+
+  println!("Available ASCII Palettes:");
+  println!();
+
+  for palette in PaletteType::all() {
+    println!(
+      "  {:<15} (display: {})",
+      palette.full_name(),
+      palette.name()
+    );
+  }
+
+  println!();
+  println!("Use with: --palette <PALETTE>");
+  println!("In-app: Press 'P' to cycle through palettes");
 
   Ok(())
 }

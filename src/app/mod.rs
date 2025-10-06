@@ -31,6 +31,7 @@ pub struct App {
   pipeline: ShaderPipeline,
   converter: AsciiConverter,
   running: bool,
+  show_status_bar: bool,
   last_frame_time: Instant,
   debug_log: DebugLog,
   last_terminal_size: (u16, u16),
@@ -44,6 +45,7 @@ impl App {
   /// Create a new application instance
   pub async fn new(
     loaded_config: Option<ShaderParams>,
+    show_status_bar: bool,
     #[cfg(feature = "audio")] audio_device: Option<String>,
   ) -> Result<Self> {
     #[cfg(debug_assertions)]
@@ -63,7 +65,11 @@ impl App {
     )?;
 
     let shader_width = terminal_width as u32;
-    let shader_height = (terminal_height - 1) as u32;
+    let shader_height = if show_status_bar {
+      (terminal_height - 1) as u32
+    } else {
+      terminal_height as u32
+    };
     writeln!(
       debug_log,
       "DEBUG: Shader size: {}x{}",
@@ -96,6 +102,7 @@ impl App {
       pipeline,
       converter,
       running: true,
+      show_status_bar,
       last_frame_time: Instant::now(),
       debug_log,
       last_terminal_size: (terminal_width, terminal_height),
@@ -188,7 +195,11 @@ impl App {
     )?;
 
     let has_sound = self.check_audio_activity();
-    let status_bar = self.build_status_bar(has_sound);
+    let status_bar = if self.show_status_bar {
+      Some(self.build_status_bar(has_sound))
+    } else {
+      None
+    };
 
     rendering::render_frame(
       &self.pipeline,
@@ -234,7 +245,11 @@ impl App {
     )?;
 
     let shader_width = new_width as u32;
-    let shader_height = (new_height - 1) as u32;
+    let shader_height = if self.show_status_bar {
+      (new_height - 1) as u32
+    } else {
+      new_height as u32
+    };
 
     self.params.set_resolution(shader_width, shader_height);
     self.pipeline = ShaderPipeline::new(shader_width, shader_height).await?;

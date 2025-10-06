@@ -4,111 +4,133 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(name = "chroma")]
 #[command(
-  about = "Terminal-based shader visualizer with optional audio reactivity",
-  long_about = None
+  about = "GPU-accelerated terminal shader visualizer with audio reactivity",
+  long_about = "A beautiful real-time shader visualizer that renders directly in your terminal \
+using ASCII art. Features audio reactivity, multiple pattern types, customizable color modes, \
+and extensive configuration options. Press 'Q' to quit, 'R' to randomize, 'S' to save config."
 )]
 pub struct CliArgs {
-  /// Load configuration from a saved config file
+  /// Load configuration from a saved TOML file (created with 'S' key during runtime)
   #[arg(short, long, value_name = "FILE")]
   pub config: Option<String>,
 
-  /// Specify audio device name for capture (use --list-audio-devices to see available devices)
+  /// Audio device name for capture. Use --list-audio-devices to see available devices
   #[cfg(feature = "audio")]
-  #[arg(short, long, value_name = "DEVICE")]
+  #[arg(short = 'a', long, value_name = "DEVICE")]
   pub audio_device: Option<String>,
 
-  /// List available audio devices and exit
+  /// List all available audio input devices and exit
   #[cfg(feature = "audio")]
   #[arg(long)]
   pub list_audio_devices: bool,
 
-  // Visual parameters
-  /// Set pattern frequency (3.0-18.0)
+  /// List all available pattern types and exit
   #[arg(long)]
+  pub list_patterns: bool,
+
+  /// List all available color modes and exit
+  #[arg(long)]
+  pub list_color_modes: bool,
+
+  /// List all available ASCII palettes and exit
+  #[arg(long)]
+  pub list_palettes: bool,
+
+  /// Disable status bar (shader fills entire terminal)
+  #[arg(long)]
+  pub no_status: bool,
+
+  /// Start with randomized parameters (lowest priority, overridden by config and args)
+  #[arg(short = 'r', long)]
+  pub random: bool,
+
+  // Visual parameters
+  /// Pattern wave density/detail level. Higher = more detail. Range: 3.0-18.0
+  #[arg(short = 'f', long, value_name = "FLOAT")]
   pub frequency: Option<f32>,
 
-  /// Set amplitude (0.0-2.0)
-  #[arg(long)]
+  /// Wave height/intensity. Higher = more extreme variations. Range: 0.0-2.0
+  #[arg(short = 'A', long, value_name = "FLOAT")]
   pub amplitude: Option<f32>,
 
-  /// Set animation speed (0.0-1.0)
-  #[arg(long)]
+  /// Animation speed. 0 = frozen, 1 = fast. Range: 0.0-1.0
+  #[arg(short = 's', long, value_name = "FLOAT")]
   pub speed: Option<f32>,
 
-  /// Set scale factor (0.1-5.0)
-  #[arg(long)]
+  /// Zoom level. Lower = zoomed in, higher = zoomed out. Range: 0.1-5.0
+  #[arg(short = 'S', long, value_name = "FLOAT")]
   pub scale: Option<f32>,
 
-  /// Set brightness (0.0-2.0)
-  #[arg(long)]
+  /// Overall brightness multiplier. Range: 0.0-2.0
+  #[arg(short = 'b', long, value_name = "FLOAT")]
   pub brightness: Option<f32>,
 
-  /// Set contrast (0.2-2.0)
-  #[arg(long)]
+  /// Contrast adjustment. Lower = softer, higher = sharper. Range: 0.2-2.0
+  #[arg(short = 'C', long, value_name = "FLOAT")]
   pub contrast: Option<f32>,
 
-  /// Set saturation (0.0-2.0)
-  #[arg(long)]
+  /// Color saturation. 0 = grayscale, 2 = very vibrant. Range: 0.0-2.0
+  #[arg(short = 't', long, value_name = "FLOAT")]
   pub saturation: Option<f32>,
 
-  /// Set hue rotation (0.0-360.0)
-  #[arg(long)]
+  /// Hue rotation in degrees. Shifts all colors around the color wheel. Range: 0.0-360.0
+  #[arg(short = 'H', long, value_name = "DEGREES")]
   pub hue: Option<f32>,
 
-  /// Set pattern type (plasma, waves, ripples, vortex, etc.)
-  #[arg(long, value_name = "PATTERN")]
+  /// Pattern type: plasma, waves, ripples, vortex, noise, geometric, voronoi, truchet, hexagonal, interference, fractal, glitch, spiral, rings, grid, diamonds, sphere, octgrams, warped
+  #[arg(short = 'p', long, value_name = "PATTERN")]
   pub pattern: Option<String>,
 
-  /// Set color mode (rainbow, monochrome, duotone, warm, cool, neon, etc.)
-  #[arg(long, value_name = "MODE")]
+  /// Color scheme: rainbow, monochrome, duotone, warm, cool, neon, pastel, cyberpunk, warped, chromatic
+  #[arg(short = 'm', long, value_name = "MODE")]
   pub color_mode: Option<String>,
 
-  /// Set ASCII palette (standard, blocks, circles, smooth, braille, etc.)
-  #[arg(long, value_name = "PALETTE")]
+  /// ASCII character set: standard, blocks, circles, smooth, braille, geometric, mixed, dots, shades, lines, triangles, arrows, powerline, boxdraw, extended, simple
+  #[arg(short = 'P', long, value_name = "PALETTE")]
   pub palette: Option<String>,
 
   // Audio parameters
   #[cfg(feature = "audio")]
-  /// Enable audio reactivity
-  #[arg(long)]
+  /// Enable or disable audio reactivity. Defaults to true when built with audio feature
+  #[arg(short = 'e', long, value_name = "BOOL")]
   pub audio_enabled: Option<bool>,
 
   #[cfg(feature = "audio")]
-  /// Set bass influence (0.0-1.0)
-  #[arg(long)]
+  /// How much bass frequencies affect amplitude. Range: 0.0-1.0
+  #[arg(short = 'B', long, value_name = "FLOAT")]
   pub bass_influence: Option<f32>,
 
   #[cfg(feature = "audio")]
-  /// Set mid frequency influence (0.0-1.0)
-  #[arg(long)]
+  /// How much mid frequencies affect pattern frequency. Range: 0.0-1.0
+  #[arg(short = 'M', long, value_name = "FLOAT")]
   pub mid_influence: Option<f32>,
 
   #[cfg(feature = "audio")]
-  /// Set treble influence (0.0-1.0)
-  #[arg(long)]
+  /// How much treble frequencies affect animation speed. Range: 0.0-1.0
+  #[arg(short = 'T', long, value_name = "FLOAT")]
   pub treble_influence: Option<f32>,
 
   #[cfg(feature = "audio")]
-  /// Set beat distortion strength (0.0-2.0)
-  #[arg(long)]
+  /// Beat-triggered distortion effect strength. Range: 0.0-2.0
+  #[arg(short = 'D', long, value_name = "FLOAT")]
   pub beat_distortion: Option<f32>,
 
   #[cfg(feature = "audio")]
-  /// Set beat zoom strength (0.0-2.0)
-  #[arg(long)]
+  /// Beat-triggered zoom pulse effect strength. Range: 0.0-2.0
+  #[arg(short = 'z', long, value_name = "FLOAT")]
   pub beat_zoom: Option<f32>,
 
   // Distortion parameters
-  /// Set noise strength (0.0-0.5)
-  #[arg(long)]
+  /// Subtle noise overlay strength. Adds texture/grain. Range: 0.0-0.5
+  #[arg(short = 'n', long, value_name = "FLOAT")]
   pub noise_strength: Option<f32>,
 
-  /// Set distortion amplitude (0.0-2.0)
-  #[arg(long)]
+  /// Spatial distortion/warping amount. Range: 0.0-2.0
+  #[arg(short = 'x', long, value_name = "FLOAT")]
   pub distort_amplitude: Option<f32>,
 
   // Effects
-  /// Set vignette strength (0.0-1.0)
-  #[arg(long)]
+  /// Edge darkening effect strength. 0 = off. Range: 0.0-1.0
+  #[arg(short = 'v', long, value_name = "FLOAT")]
   pub vignette: Option<f32>,
 }

@@ -21,6 +21,48 @@ pub enum PaletteType {
 }
 
 impl PaletteType {
+  pub const fn all() -> &'static [Self] {
+    &[
+      Self::Standard,
+      Self::Blocks,
+      Self::Circles,
+      Self::Smooth,
+      Self::Braille,
+      Self::Geometric,
+      Self::Mixed,
+      Self::Dots,
+      Self::Extended,
+      Self::Simple,
+      Self::Shades,
+      Self::Lines,
+      Self::Triangles,
+      Self::Arrows,
+      Self::Powerline,
+      Self::BoxDraw,
+    ]
+  }
+
+  pub fn full_name(self) -> &'static str {
+    match self {
+      Self::Standard => "standard",
+      Self::Blocks => "blocks",
+      Self::Circles => "circles",
+      Self::Smooth => "smooth",
+      Self::Braille => "braille",
+      Self::Geometric => "geometric",
+      Self::Mixed => "mixed",
+      Self::Dots => "dots",
+      Self::Extended => "extended",
+      Self::Simple => "simple",
+      Self::Shades => "shades",
+      Self::Lines => "lines",
+      Self::Triangles => "triangles",
+      Self::Arrows => "arrows",
+      Self::Powerline => "powerline",
+      Self::BoxDraw => "boxdraw",
+    }
+  }
+
   pub fn name(self) -> &'static str {
     match self {
       Self::Standard => "Std",
@@ -84,4 +126,3 @@ impl PaletteType {
     }
   }
 }
-
