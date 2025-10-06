@@ -1,9 +1,10 @@
 <div align="center">
-  <img src="readme/logo.png" width="300" />
+  <img width="300" alt="Chroma's logo in ASCII rainbow" src="https://github.com/user-attachments/assets/871f6c7b-8b7c-486d-8cae-41ec13ed2d02" />
 
 🌈 A Rust-based, ASCII art shader audio visualizer for your terminal!
 
-  <img src="readme/preview.gif" width="550" />
+  <img src="https://github.com/user-attachments/assets/b71074f2-3e77-4fb9-a8ef-30288a3690c4" width="550" />
+
 </div>
 
 ## ⭐ Features
