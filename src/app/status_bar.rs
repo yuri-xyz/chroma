@@ -11,7 +11,7 @@ pub fn build_status_text(params: &ShaderParams, effect_type: u32) -> String {
   let palette_initial = params.palette.name().chars().next().unwrap_or('?');
 
   format!(
-    "{} {}{}{}  F:{:.1}  Q:quit R:random S:save A:audio N:next C:color P:palette",
+    "{} {}{}{}  F:{:.1}  Q:quit R:random S:save A:audio N:effect C:color P:palette",
     effect_name, pattern_initial, color_initial, palette_initial, params.frequency
   )
 }

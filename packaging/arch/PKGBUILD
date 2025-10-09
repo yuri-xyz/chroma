@@ -5,7 +5,7 @@ _srcname=chroma
 _giturl="https://github.com/yuri-xyz/chroma.git"
 _gitbranch="master"
 pkgname=${_pkgname}-git
-pkgver=r42.b4b4325
+pkgver=r44.104a775
 pkgrel=1
 pkgdesc='A Rust-based, ASCII art shader audio visualizer for your terminal!'
 arch=('x86_64')
@@ -36,12 +36,12 @@ pkgver() {
 
 build() {
   cd "${srcdir}/${_srcname}" || exit 1
-  cargo build --locked --release --features audio
+  cargo build --locked --release --all-targets --features audio
 }
 
 check() {
   cd "${srcdir}/${_srcname}" || exit 1
-  cargo test --locked --release --features audio
+  cargo test --locked --release --no-fail-fast --features audio
 }
 
 package() {
