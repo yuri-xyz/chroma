@@ -112,6 +112,7 @@ fn handle_key_press(
       }
 
       params.effect_type = next;
+      params.effect_time = params.time;
 
       writeln!(
         debug_log,
