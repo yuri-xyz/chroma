@@ -21,7 +21,7 @@
 
 🔊 Make sure you turn on sound on the videos!
 
-<img width="2474" height="1248" alt="chroma" src="https://github.com/user-attachments/assets/b6caaef4-f861-4a96-b06d-d087a3ad15fa" />
+<img width="2474" height="1248" alt="chroma-themes" src="https://github.com/user-attachments/assets/0f43781d-4276-4d5f-8247-a932df43372e" />
 
 <img width="1958" height="1103" alt="chroma-config" src="https://github.com/user-attachments/assets/96dae99e-2e93-470a-b44f-40c0a09f098a" />
 
