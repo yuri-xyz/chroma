@@ -1,4 +1,4 @@
-name: Debian Release Chroma (Launchpad PPA)
+name: Debian And Redhat Release Build
 
 on:
   push:
