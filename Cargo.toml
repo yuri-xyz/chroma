@@ -2,6 +2,10 @@
 name = "chroma"
 version = "0.1.0"
 edition = "2021"
+authors = ["user <email>"]
+description = "🌈 Shader-based audio visualizer for the terminal."
+license = "MIT"
+repository = "https://github.com/yuri-xyz/chroma"
 
 [dependencies]
 # GPU/Graphics
@@ -42,3 +46,12 @@ path = "src/main.rs"
 [lib]
 name = "chroma"
 path = "src/lib.rs"
+
+[package.metadata.rpm]
+package = "chroma"
+
+[package.metadata.rpm.cargo]
+buildflags = ["--release"]
+
+[package.metadata.rpm.targets]
+chroma = { path = "/usr/bin/chroma" }
