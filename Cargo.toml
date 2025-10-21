@@ -47,8 +47,12 @@ path = "src/main.rs"
 name = "chroma"
 path = "src/lib.rs"
 
+[package.metadata.deb]
+depends = "libvulkan1, libasound2"
+
 [package.metadata.rpm]
 package = "chroma"
+requires = ["vulkan-loader", "alsa-lib"]
 
 [package.metadata.rpm.cargo]
 buildflags = ["--release"]
