@@ -1,0 +1,38 @@
+name: Publish to AUR
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  aur-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate .SRCINFO
+        run: |
+          docker run --rm -v "$PWD/packaging/arch:/pkg" archlinux:latest bash -c "
+            pacman -Sy --noconfirm binutils fakeroot
+            cd /pkg
+            chmod -R 777 .
+            su -s /bin/bash nobody -c 'makepkg --printsrcinfo > .SRCINFO'
+          "
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
+        with:
+          pkgname: chroma-visualizer-git
+          pkgbuild: packaging/arch/PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update from upstream: ${{ github.sha }}"
+          ssh_keyscan_types: ed25519
+          assets: |
+            packaging/arch/.SRCINFO
+            packaging/arch/REUSE.toml
