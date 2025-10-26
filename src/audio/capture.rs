@@ -2,11 +2,14 @@
 use cpal::traits::{DeviceTrait, StreamTrait};
 #[cfg(feature = "audio")]
 use cpal::{Stream, StreamConfig};
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::sync::{Arc, Mutex};
 
 use super::device_selector;
+
+#[cfg(debug_assertions)]
+use std::fs::OpenOptions;
+#[cfg(debug_assertions)]
+use std::io::Write;
 
 pub struct AudioCapture {
   #[cfg(feature = "audio")]
@@ -27,40 +30,71 @@ impl AudioCapture {
   /// Create audio capture with optional device name
   #[cfg(feature = "audio")]
   pub fn new(device_name: Option<&str>) -> anyhow::Result<Self> {
-    let mut log_file = OpenOptions::new()
-      .create(true)
-      .append(true)
-      .open("audio_debug.log")?;
+    #[cfg(debug_assertions)]
+    {
+      let mut log_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("audio_debug.log")?;
 
-    writeln!(log_file, "\n=== Audio Capture Initialization ===")?;
+      writeln!(log_file, "\n=== Audio Capture Initialization ===")?;
+    }
 
     let host = cpal::default_host();
 
-    writeln!(log_file, "CPAL host: {:?}", host.id())?;
+    #[cfg(debug_assertions)]
+    {
+      let mut log_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("audio_debug.log")?;
+      writeln!(log_file, "CPAL host: {:?}", host.id())?;
+    }
 
     // Try to find the audio device
     let device = if let Some(name) = device_name {
-      writeln!(log_file, "Looking for specific device: {}", name)?;
+      #[cfg(debug_assertions)]
+      {
+        let mut log_file = OpenOptions::new()
+          .create(true)
+          .append(true)
+          .open("audio_debug.log")?;
+        writeln!(log_file, "Looking for specific device: {}", name)?;
+      }
       device_selector::find_device_by_name(&host, name)?
     } else {
       // Auto-detect system audio device (monitor source)
       device_selector::find_system_audio_device(&host)?
     };
 
-    if let Ok(device_name) = device.name() {
-      writeln!(log_file, "Using device: {}", device_name)?;
+    #[cfg(debug_assertions)]
+    {
+      if let Ok(device_name) = device.name() {
+        let mut log_file = OpenOptions::new()
+          .create(true)
+          .append(true)
+          .open("audio_debug.log")?;
+        writeln!(log_file, "Using device: {}", device_name)?;
+      }
     }
 
     let config = device
       .default_input_config()
       .map_err(|e| anyhow::anyhow!("Failed to get device config: {}", e))?;
 
-    writeln!(
-      log_file,
-      "Config: sample_rate={}, channels={}",
-      config.sample_rate().0,
-      config.channels()
-    )?;
+    #[cfg(debug_assertions)]
+    {
+      let mut log_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("audio_debug.log")?;
+      writeln!(
+        log_file,
+        "Config: sample_rate={}, channels={}",
+        config.sample_rate().0,
+        config.channels()
+      )?;
+    }
 
     let sample_rate = config.sample_rate().0 as f32;
     let buffer = Arc::new(Mutex::new(Vec::with_capacity(4096)));
@@ -74,7 +108,15 @@ impl AudioCapture {
     };
 
     stream.play()?;
-    writeln!(log_file, "Audio stream started successfully")?;
+
+    #[cfg(debug_assertions)]
+    {
+      let mut log_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("audio_debug.log")?;
+      writeln!(log_file, "Audio stream started successfully")?;
+    }
 
     Ok(Self {
       _stream: Some(stream),
@@ -132,13 +174,21 @@ impl AudioCapture {
         }
       },
       |err| {
-        // Log audio stream errors to file instead of stderr
-        if let Ok(mut log_file) = OpenOptions::new()
-          .create(true)
-          .append(true)
-          .open("audio_debug.log")
+        // Log audio stream errors to file (debug only)
+        #[cfg(debug_assertions)]
         {
-          writeln!(log_file, "Audio stream error: {}", err).ok();
+          if let Ok(mut log_file) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("audio_debug.log")
+          {
+            writeln!(log_file, "Audio stream error: {}", err).ok();
+          }
+        }
+        // Suppress warning about err being unused in release mode
+        #[cfg(not(debug_assertions))]
+        {
+          let _ = err;
         }
       },
       None,

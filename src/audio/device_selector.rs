@@ -1,27 +1,45 @@
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::Device;
+
+#[cfg(debug_assertions)]
 use std::fs::OpenOptions;
+#[cfg(debug_assertions)]
 use std::io::Write;
 
-/// Logger for audio device detection
+/// Logger for audio device detection (debug-only)
 struct AudioLogger {
+  #[cfg(debug_assertions)]
   file: Option<std::fs::File>,
 }
 
 impl AudioLogger {
   fn new() -> Self {
-    let file = OpenOptions::new()
-      .create(true)
-      .append(true)
-      .open("audio_debug.log")
-      .ok();
+    #[cfg(debug_assertions)]
+    {
+      let file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("audio_debug.log")
+        .ok();
+      return Self { file };
+    }
 
-    Self { file }
+    #[cfg(not(debug_assertions))]
+    {
+      Self {}
+    }
   }
 
   fn log(&mut self, message: &str) {
-    if let Some(ref mut f) = self.file {
-      writeln!(f, "{}", message).ok();
+    #[cfg(debug_assertions)]
+    {
+      if let Some(ref mut f) = &mut self.file {
+        writeln!(f, "{}", message).ok();
+      }
+    }
+    #[cfg(not(debug_assertions))]
+    {
+      let _ = message;
     }
   }
 }

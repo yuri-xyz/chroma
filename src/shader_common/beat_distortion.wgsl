@@ -61,8 +61,14 @@ fn apply_beat_distortion(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let wave_falloff = smoothstep(0.4, 0.0, wave_dist);
     
     // Calculate distortion direction (radial from center)
-    let direction = normalize(uv - center);
-    
+    // Guard against zero vector at center to avoid NaN from normalize()
+    let offset_from_center = uv - center;
+    let direction = select(
+        normalize(offset_from_center),
+        vec2<f32>(1.0, 0.0),  // Default direction if at center
+        length(offset_from_center) < 1e-6
+    );
+
     // Apply radial distortion
     let distortion_amount = wave_combined * envelope * strength * wave_falloff * 0.08;
     var distorted_uv = uv + direction * distortion_amount;
