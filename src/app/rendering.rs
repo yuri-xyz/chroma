@@ -334,6 +334,7 @@ fn build_stream_frame_buffer(
 }
 
 /// Render a single row for stream mode using crossterm's style API
+/// Ensures row is padded to exactly expected_cols width
 fn render_stream_row(
   row: &[(char, Color)],
   buffer: &mut String,
@@ -367,6 +368,12 @@ fn render_stream_row(
 
     current_col += char_width;
     col_idx += 1;
+  }
+
+  // Pad the remaining columns with spaces to ensure exact width
+  while current_col < expected_cols {
+    buffer.push(' ');
+    current_col += 1;
   }
 
   Ok(())
