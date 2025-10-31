@@ -11,6 +11,10 @@ pub enum ColorMode {
   Pastel,
   Cyberpunk,
   Warped,
+  Fire,
+  Ocean,
+  Aurora,
+  Galaxy,
   Chromatic,
 }
 
@@ -26,6 +30,10 @@ impl ColorMode {
       Self::Pastel,
       Self::Cyberpunk,
       Self::Warped,
+      Self::Fire,
+      Self::Ocean,
+      Self::Aurora,
+      Self::Galaxy,
       Self::Chromatic,
     ]
   }
@@ -41,6 +49,10 @@ impl ColorMode {
       Self::Pastel => "pastel",
       Self::Cyberpunk => "cyberpunk",
       Self::Warped => "warped",
+      Self::Fire => "fire",
+      Self::Ocean => "ocean",
+      Self::Aurora => "aurora",
+      Self::Galaxy => "galaxy",
       Self::Chromatic => "chromatic",
     }
   }
@@ -56,7 +68,11 @@ impl ColorMode {
       Self::Pastel => 6,
       Self::Cyberpunk => 7,
       Self::Warped => 8,
-      Self::Chromatic => 9,
+      Self::Fire => 9,
+      Self::Ocean => 10,
+      Self::Aurora => 11,
+      Self::Galaxy => 12,
+      Self::Chromatic => 13,
     }
   }
 
@@ -71,6 +87,10 @@ impl ColorMode {
       Self::Pastel => "Pastel",
       Self::Cyberpunk => "Cyber",
       Self::Warped => "Warped",
+      Self::Fire => "Fire",
+      Self::Ocean => "Ocean",
+      Self::Aurora => "Aurora",
+      Self::Galaxy => "Galaxy",
       Self::Chromatic => "Chrome",
     }
   }
@@ -85,7 +105,11 @@ impl ColorMode {
       Self::Neon => Self::Pastel,
       Self::Pastel => Self::Cyberpunk,
       Self::Cyberpunk => Self::Warped,
-      Self::Warped => Self::Chromatic,
+      Self::Warped => Self::Fire,
+      Self::Fire => Self::Ocean,
+      Self::Ocean => Self::Aurora,
+      Self::Aurora => Self::Galaxy,
+      Self::Galaxy => Self::Chromatic,
       Self::Chromatic => Self::Rainbow,
     }
   }
@@ -93,7 +117,11 @@ impl ColorMode {
   pub fn previous(self) -> Self {
     match self {
       Self::Rainbow => Self::Chromatic,
-      Self::Chromatic => Self::Warped,
+      Self::Chromatic => Self::Galaxy,
+      Self::Galaxy => Self::Aurora,
+      Self::Aurora => Self::Ocean,
+      Self::Ocean => Self::Fire,
+      Self::Fire => Self::Warped,
       Self::Warped => Self::Cyberpunk,
       Self::Cyberpunk => Self::Pastel,
       Self::Pastel => Self::Neon,

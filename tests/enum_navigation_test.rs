@@ -99,7 +99,11 @@ fn test_color_mode_to_u32_all_variants() {
   assert_eq!(ColorMode::Pastel.to_u32(), 6);
   assert_eq!(ColorMode::Cyberpunk.to_u32(), 7);
   assert_eq!(ColorMode::Warped.to_u32(), 8);
-  assert_eq!(ColorMode::Chromatic.to_u32(), 9);
+  assert_eq!(ColorMode::Fire.to_u32(), 9);
+  assert_eq!(ColorMode::Ocean.to_u32(), 10);
+  assert_eq!(ColorMode::Aurora.to_u32(), 11);
+  assert_eq!(ColorMode::Galaxy.to_u32(), 12);
+  assert_eq!(ColorMode::Chromatic.to_u32(), 13);
 }
 
 #[test]
@@ -113,6 +117,10 @@ fn test_color_mode_name_all_variants() {
   assert_eq!(ColorMode::Pastel.name(), "Pastel");
   assert_eq!(ColorMode::Cyberpunk.name(), "Cyber");
   assert_eq!(ColorMode::Warped.name(), "Warped");
+  assert_eq!(ColorMode::Fire.name(), "Fire");
+  assert_eq!(ColorMode::Ocean.name(), "Ocean");
+  assert_eq!(ColorMode::Aurora.name(), "Aurora");
+  assert_eq!(ColorMode::Galaxy.name(), "Galaxy");
   assert_eq!(ColorMode::Chromatic.name(), "Chrome");
 }
 
@@ -121,13 +129,13 @@ fn test_color_mode_next_cycles_through_all() {
   let mut current = ColorMode::Rainbow;
   let start = current;
 
-  for _ in 0..9 {
+  for _ in 0..13 {
     current = current.next();
     assert_ne!(current, start, "Should not cycle back too early");
   }
 
   current = current.next();
-  assert_eq!(current, start, "Should cycle back to start after 10 steps");
+  assert_eq!(current, start, "Should cycle back to start after 14 steps");
 }
 
 #[test]
@@ -135,13 +143,13 @@ fn test_color_mode_previous_cycles_through_all() {
   let mut current = ColorMode::Rainbow;
   let start = current;
 
-  for _ in 0..9 {
+  for _ in 0..13 {
     current = current.previous();
     assert_ne!(current, start, "Should not cycle back too early");
   }
 
   current = current.previous();
-  assert_eq!(current, start, "Should cycle back to start after 10 steps");
+  assert_eq!(current, start, "Should cycle back to start after 14 steps");
 }
 
 #[test]
