@@ -42,6 +42,7 @@ fn main() -> Result<()> {
 
   let loaded_config = load_config_with_overrides(&cli_args)?;
   let show_status_bar = !cli_args.no_status;
+  let stream_dimensions = cli_args.stream;
   let config_path = cli_args.config.clone();
 
   // Load custom shader if provided
@@ -56,6 +57,7 @@ fn main() -> Result<()> {
     run_application(
       loaded_config,
       show_status_bar,
+      stream_dimensions,
       config_path,
       cli_args.audio_device,
       custom_shader,
@@ -64,7 +66,13 @@ fn main() -> Result<()> {
 
   #[cfg(not(feature = "audio"))]
   {
-    run_application(loaded_config, show_status_bar, config_path, custom_shader)
+    run_application(
+      loaded_config,
+      show_status_bar,
+      stream_dimensions,
+      config_path,
+      custom_shader,
+    )
   }
 }
 
@@ -300,16 +308,21 @@ fn load_custom_shader(shader_path: &str) -> Result<String> {
 fn run_application(
   loaded_config: Option<ShaderParams>,
   show_status_bar: bool,
+  stream_dimensions: Option<cli::StreamDimensions>,
   config_path: Option<String>,
   audio_device: Option<String>,
   custom_shader: Option<String>,
 ) -> Result<()> {
-  setup_terminal()?;
+  // Skip terminal setup in stream mode
+  if stream_dimensions.is_none() {
+    setup_terminal()?;
+  }
 
   let result = pollster::block_on(async {
     let mut app = App::new(
       loaded_config,
       show_status_bar,
+      stream_dimensions,
       config_path,
       audio_device,
       custom_shader,
@@ -318,7 +331,10 @@ fn run_application(
     app.run()
   });
 
-  cleanup_terminal()?;
+  // Skip terminal cleanup in stream mode
+  if stream_dimensions.is_none() {
+    cleanup_terminal()?;
+  }
 
   result
 }
@@ -328,17 +344,31 @@ fn run_application(
 fn run_application(
   loaded_config: Option<ShaderParams>,
   show_status_bar: bool,
+  stream_dimensions: Option<cli::StreamDimensions>,
   config_path: Option<String>,
   custom_shader: Option<String>,
 ) -> Result<()> {
-  setup_terminal()?;
+  // Skip terminal setup in stream mode
+  if stream_dimensions.is_none() {
+    setup_terminal()?;
+  }
 
   let result = pollster::block_on(async {
-    let mut app = App::new(loaded_config, show_status_bar, config_path, custom_shader).await?;
+    let mut app = App::new(
+      loaded_config,
+      show_status_bar,
+      stream_dimensions,
+      config_path,
+      custom_shader,
+    )
+    .await?;
     app.run()
   });
 
-  cleanup_terminal()?;
+  // Skip terminal cleanup in stream mode
+  if stream_dimensions.is_none() {
+    cleanup_terminal()?;
+  }
 
   result
 }

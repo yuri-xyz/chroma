@@ -1,4 +1,48 @@
 use clap::Parser;
+use std::str::FromStr;
+
+/// Dimensions for stream mode (width x height in terminal cells)
+#[derive(Debug, Clone, Copy)]
+pub struct StreamDimensions {
+  pub width: u16,
+  pub height: u16,
+}
+
+impl FromStr for StreamDimensions {
+  type Err = String;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let parts: Vec<&str> = s.split('x').collect();
+    
+    if parts.len() != 2 {
+      return Err(format!(
+        "Invalid format '{}'. Expected format: WIDTHxHEIGHT (e.g., 20x12)",
+        s
+      ));
+    }
+
+    let width = parts[0]
+      .parse::<u16>()
+      .map_err(|_| format!("Invalid width '{}'. Must be a positive integer.", parts[0]))?;
+    
+    let height = parts[1]
+      .parse::<u16>()
+      .map_err(|_| format!("Invalid height '{}'. Must be a positive integer.", parts[1]))?;
+
+    if width == 0 || height == 0 {
+      return Err("Width and height must be greater than 0.".to_string());
+    }
+
+    if width > 1000 || height > 1000 {
+      return Err(format!(
+        "Dimensions {}x{} are too large. Maximum is 1000x1000.",
+        width, height
+      ));
+    }
+
+    Ok(StreamDimensions { width, height })
+  }
+}
 
 /// Command-line arguments
 #[derive(Parser, Debug)]
@@ -39,6 +83,11 @@ pub struct CliArgs {
   /// Disable status bar (shader fills entire terminal)
   #[arg(long)]
   pub no_status: bool,
+
+  /// Stream mode: output frames at fixed dimensions (e.g., 20x12) for embedding in other TUI apps.
+  /// Disables terminal setup, status bar, and interactive features. Outputs full frames to stdout.
+  #[arg(long, value_name = "WIDTHxHEIGHT")]
+  pub stream: Option<StreamDimensions>,
 
   /// Start with randomized parameters (lowest priority, overridden by config and args)
   #[arg(short = 'r', long)]

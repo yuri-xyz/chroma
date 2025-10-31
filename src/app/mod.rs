@@ -31,6 +31,7 @@ pub struct App {
   converter: AsciiConverter,
   running: bool,
   show_status_bar: bool,
+  stream_mode: bool,
   last_frame_time: Instant,
   debug_log: DebugLog,
   last_terminal_size: (u16, u16),
@@ -47,6 +48,7 @@ impl App {
   pub async fn new(
     loaded_config: Option<ShaderParams>,
     show_status_bar: bool,
+    stream_dimensions: Option<crate::cli::StreamDimensions>,
     config_path: Option<String>,
     #[cfg(feature = "audio")] audio_device: Option<String>,
     custom_shader: Option<String>,
@@ -60,17 +62,25 @@ impl App {
     #[cfg(not(debug_assertions))]
     let mut debug_log = BufWriter::new(std::io::sink());
 
-    let (terminal_width, terminal_height) = terminal::size()?;
+    let stream_mode = stream_dimensions.is_some();
+    
+    let (terminal_width, terminal_height) = if let Some(dims) = stream_dimensions {
+      // Stream mode: use fixed dimensions
+      (dims.width, dims.height)
+    } else {
+      // Normal mode: get terminal size
+      terminal::size()?
+    };
 
     writeln!(
       debug_log,
-      "DEBUG: Terminal size: {}x{}",
-      terminal_width, terminal_height
+      "DEBUG: Terminal size: {}x{} (stream_mode: {})",
+      terminal_width, terminal_height, stream_mode
     )?;
 
     let shader_width = terminal_width as u32;
 
-    let shader_height = if show_status_bar {
+    let shader_height = if show_status_bar && !stream_mode {
       (terminal_height - 1) as u32
     } else {
       terminal_height as u32
@@ -125,6 +135,7 @@ impl App {
       converter,
       running: true,
       show_status_bar,
+      stream_mode,
       last_frame_time: Instant::now(),
       debug_log,
       last_terminal_size: (terminal_width, terminal_height),
@@ -264,6 +275,20 @@ impl App {
       self.params.resolution_width, self.params.resolution_height
     )?;
 
+    // Stream mode: use simplified rendering
+    if self.stream_mode {
+      rendering::render_stream_frame(
+        &self.pipeline,
+        &self.converter,
+        &uniforms,
+        &mut self.debug_log,
+      )?;
+      
+      self.debug_log.flush()?;
+      return Ok(());
+    }
+
+    // Normal mode: full rendering with status bar
     let has_sound = self.check_audio_activity();
 
     let status_bar = if self.show_status_bar {
@@ -363,19 +388,22 @@ impl App {
     while self.running {
       let frame_start = Instant::now();
 
-      // Check for window resize
-      let (current_width, current_height) = terminal::size()?;
-      if (current_width, current_height) != self.last_terminal_size {
-        pollster::block_on(async { self.handle_resize(current_width, current_height).await })?;
-      }
+      // Skip input and resize handling in stream mode
+      if !self.stream_mode {
+        // Check for window resize
+        let (current_width, current_height) = terminal::size()?;
+        if (current_width, current_height) != self.last_terminal_size {
+          pollster::block_on(async { self.handle_resize(current_width, current_height).await })?;
+        }
 
-      // Handle input, update state, and render
-      input::handle_input(
-        &mut self.params,
-        &mut self.converter,
-        &mut self.running,
-        &mut self.debug_log,
-      )?;
+        // Handle input
+        input::handle_input(
+          &mut self.params,
+          &mut self.converter,
+          &mut self.running,
+          &mut self.debug_log,
+        )?;
+      }
 
       self.update();
       self.render()?;

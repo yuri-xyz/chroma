@@ -4,7 +4,7 @@ use crate::utils::color::calculate_brightness;
 use anyhow::Result;
 use chroma::ascii::AsciiConverter;
 use chroma::shader::{ShaderPipeline, ShaderUniforms};
-use crossterm::style::Color;
+use crossterm::style::{Color, Stylize};
 use std::io::{stdout, Write};
 use unicode_width::UnicodeWidthChar;
 
@@ -274,6 +274,100 @@ fn log_frame_stats(
     expected_cols,
     buffer.len()
   )?;
+
+  Ok(())
+}
+
+/// Render a frame optimized for stream mode (no terminal control codes, just raw output)
+pub fn render_stream_frame(
+  pipeline: &ShaderPipeline,
+  converter: &AsciiConverter,
+  uniforms: &ShaderUniforms,
+  debug_log: &mut DebugLog,
+) -> Result<()> {
+  // Generate pixel data from shader
+  let pixel_data = pipeline.render(uniforms)?;
+
+  log_pixel_data(&pixel_data, pipeline, debug_log)?;
+
+  // Convert to ASCII art
+  let ascii_frame = converter.convert_frame(&pixel_data, pipeline.width(), pipeline.height());
+
+  log_ascii_frame(&ascii_frame, debug_log)?;
+
+  // Build stream frame buffer (optimized for embedding)
+  let frame_buffer = build_stream_frame_buffer(
+    ascii_frame,
+    pipeline.width() as usize,
+    pipeline.height() as usize,
+  )?;
+
+  // Output directly to stdout (consumer handles buffering)
+  print!("{}", frame_buffer);
+
+  Ok(())
+}
+
+/// Build a stream-optimized frame buffer (simple output for embedding in other TUIs)
+fn build_stream_frame_buffer(
+  ascii_frame: Vec<Vec<(char, Color)>>,
+  expected_cols: usize,
+  expected_rows: usize,
+) -> Result<String> {
+  let mut buffer = String::with_capacity(expected_rows * expected_cols * 25);
+
+  let rows_to_render = ascii_frame.len().min(expected_rows);
+
+  for (row_idx, row) in ascii_frame.iter().enumerate().take(rows_to_render) {
+    render_stream_row(row, &mut buffer, expected_cols)?;
+
+    // Add newline after each row except the last
+    if row_idx < rows_to_render - 1 {
+      buffer.push('\n');
+    }
+  }
+
+  // Add final newline to mark end of frame
+  buffer.push('\n');
+
+  Ok(buffer)
+}
+
+/// Render a single row for stream mode using crossterm's style API
+fn render_stream_row(
+  row: &[(char, Color)],
+  buffer: &mut String,
+  expected_cols: usize,
+) -> Result<()> {
+  let mut current_col = 0;
+  let mut col_idx = 0;
+
+  while col_idx < row.len() && current_col < expected_cols {
+    let (character, color) = &row[col_idx];
+    let char_width = character.width().unwrap_or(1);
+
+    // Check if character would overflow
+    if current_col + char_width > expected_cols {
+      break;
+    }
+
+    // Skip very dark pixels
+    let brightness = extract_brightness(color);
+
+    if brightness < MIN_BRIGHTNESS_THRESHOLD {
+      buffer.push(' ');
+      current_col += 1;
+      col_idx += 1;
+      continue;
+    }
+
+    // Render colored character using crossterm's Stylize trait
+    let styled = character.to_string().with(*color);
+    buffer.push_str(&styled.to_string());
+
+    current_col += char_width;
+    col_idx += 1;
+  }
 
   Ok(())
 }
