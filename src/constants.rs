@@ -1,10 +1,5 @@
-use std::time::Duration;
-
-/// Target frames per second for rendering
-pub const TARGET_FPS: u32 = 30;
-
-/// Duration of each frame at target FPS
-pub const FRAME_DURATION: Duration = Duration::from_millis(1000 / TARGET_FPS as u64);
+/// Default target frames per second for rendering (can be overridden via --fps CLI flag)
+pub const DEFAULT_FPS: u32 = 60;
 
 /// Minimum brightness threshold for rendering pixels (0-255)
 pub const MIN_BRIGHTNESS_THRESHOLD: u8 = 30;

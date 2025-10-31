@@ -14,6 +14,7 @@ mod utils;
 use app::App;
 use chroma::params::ShaderParams;
 use cli::CliArgs;
+use constants::DEFAULT_FPS;
 
 fn main() -> Result<()> {
   let cli_args = CliArgs::parse();
@@ -52,6 +53,14 @@ fn main() -> Result<()> {
     None
   };
 
+  // Validate FPS is positive
+  let target_fps = if cli_args.fps == 0 {
+    eprintln!("Warning: FPS cannot be 0. Using default of {} FPS.", DEFAULT_FPS);
+    DEFAULT_FPS
+  } else {
+    cli_args.fps
+  };
+
   #[cfg(feature = "audio")]
   {
     run_application(
@@ -61,6 +70,7 @@ fn main() -> Result<()> {
       config_path,
       cli_args.audio_device,
       custom_shader,
+      target_fps,
     )
   }
 
@@ -72,6 +82,7 @@ fn main() -> Result<()> {
       stream_dimensions,
       config_path,
       custom_shader,
+      target_fps,
     )
   }
 }
@@ -312,6 +323,7 @@ fn run_application(
   config_path: Option<String>,
   audio_device: Option<String>,
   custom_shader: Option<String>,
+  target_fps: u32,
 ) -> Result<()> {
   // Skip terminal setup in stream mode
   if stream_dimensions.is_none() {
@@ -326,6 +338,7 @@ fn run_application(
       config_path,
       audio_device,
       custom_shader,
+      target_fps,
     )
     .await?;
     app.run()
@@ -347,6 +360,7 @@ fn run_application(
   stream_dimensions: Option<cli::StreamDimensions>,
   config_path: Option<String>,
   custom_shader: Option<String>,
+  target_fps: u32,
 ) -> Result<()> {
   // Skip terminal setup in stream mode
   if stream_dimensions.is_none() {
@@ -360,6 +374,7 @@ fn run_application(
       stream_dimensions,
       config_path,
       custom_shader,
+      target_fps,
     )
     .await?;
     app.run()

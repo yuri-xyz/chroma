@@ -190,4 +190,8 @@ pub struct CliArgs {
   /// Load a custom WGSL shader file (overrides --pattern and config pattern settings)
   #[arg(long, value_name = "FILE")]
   pub custom_shader: Option<String>,
+
+  /// Target frames per second for rendering. Must be > 0. Default: 60
+  #[arg(long, value_name = "FPS", default_value = "60")]
+  pub fps: u32,
 }

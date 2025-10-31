@@ -1,22 +1,11 @@
 use chroma::constants::*;
 
 #[test]
-fn test_target_fps_reasonable() {
-  assert!(TARGET_FPS > 0, "FPS must be positive");
+fn test_default_fps_reasonable() {
+  assert!(DEFAULT_FPS > 0, "Default FPS must be positive");
   assert!(
-    TARGET_FPS <= 120,
-    "FPS should be reasonable for terminal rendering"
-  );
-}
-
-#[test]
-fn test_frame_duration_matches_target_fps() {
-  let expected_duration_ms = 1000 / TARGET_FPS as u64;
-  let actual_duration_ms = FRAME_DURATION.as_millis() as u64;
-
-  assert_eq!(
-    actual_duration_ms, expected_duration_ms,
-    "Frame duration should match target FPS"
+    DEFAULT_FPS <= 120,
+    "Default FPS should be reasonable for terminal rendering"
   );
 }
 
@@ -104,13 +93,7 @@ fn test_audio_decay_rate_slower_than_speed_decay() {
   );
 }
 
-#[test]
-fn test_frame_duration_non_zero() {
-  assert!(
-    FRAME_DURATION.as_millis() > 0,
-    "Frame duration must be non-zero"
-  );
-}
+
 
 #[test]
 fn test_effect_names_contents() {

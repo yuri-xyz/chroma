@@ -6,7 +6,6 @@ mod status_bar;
 
 #[cfg(feature = "audio")]
 use crate::constants::AUDIO_SAMPLE_THRESHOLD;
-use crate::constants::FRAME_DURATION;
 use anyhow::Result;
 use chroma::ascii::{AsciiConverter, AsciiPalette};
 #[cfg(feature = "audio")]
@@ -37,6 +36,7 @@ pub struct App {
   last_terminal_size: (u16, u16),
   config_watcher: Option<config_watcher::ConfigWatcher>,
   custom_shader: Option<String>,
+  target_fps: u32,
   #[cfg(feature = "audio")]
   audio_capture: Option<AudioCapture>,
   #[cfg(feature = "audio")]
@@ -52,6 +52,7 @@ impl App {
     config_path: Option<String>,
     #[cfg(feature = "audio")] audio_device: Option<String>,
     custom_shader: Option<String>,
+    target_fps: u32,
   ) -> Result<Self> {
     #[cfg(debug_assertions)]
     let mut debug_log = {
@@ -141,6 +142,7 @@ impl App {
       last_terminal_size: (terminal_width, terminal_height),
       config_watcher,
       custom_shader,
+      target_fps,
       #[cfg(feature = "audio")]
       audio_capture,
       #[cfg(feature = "audio")]
@@ -410,9 +412,10 @@ impl App {
 
       // Frame rate limiting
       let frame_time = frame_start.elapsed();
+      let frame_duration = std::time::Duration::from_micros((1_000_000 / self.target_fps) as u64);
 
-      if frame_time < FRAME_DURATION {
-        std::thread::sleep(FRAME_DURATION - frame_time);
+      if frame_time < frame_duration {
+        std::thread::sleep(frame_duration - frame_time);
       }
     }
 
