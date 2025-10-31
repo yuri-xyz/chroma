@@ -75,18 +75,18 @@ fn apply_audio_reactivity(
 
   // Bass affects amplitude and distortion - more responsive for pop effect
   let bass_multiplier = 1.0 + features.bass * params.bass_influence * 0.8;
-  params.amplitude = (params.amplitude * 0.75) + (bass_multiplier * 0.25);
+  params.amplitude = (params.amplitude * 0.50) + (bass_multiplier * 0.50);
   params.distort_amplitude = features.bass * params.bass_influence * 0.6;
 
-  // Mid frequencies - reduced smoothing for better reactivity
+  // Mid frequencies
   let mid_boost = 1.0 + features.mid * params.mid_influence * 2.0;
-  params.frequency = (params.frequency * 0.70) + (8.0 * mid_boost * 0.30);
+  params.frequency = (params.frequency * 0.50) + (8.0 * mid_boost * 0.50);
 
   // Speed scales with treble - much more responsive
   let treble_boost = 1.0 + features.treble * params.treble_influence * 2.5;
   let base_speed = 0.08 + energy * 0.9;
   let target_speed = base_speed * treble_boost;
-  params.speed = (params.speed * 0.65) + (target_speed * 0.35);
+  params.speed = (params.speed * 0.45) + (target_speed * 0.55);
 
   // Color shift reacts to high notes
   params.color_shift = (params.color_shift + features.treble * 0.25) % std::f32::consts::TAU;
@@ -104,21 +104,26 @@ fn apply_audio_reactivity(
       "BASS DROP detected! Triggering effect + FULL distortion + ZOOM"
     )
     .ok();
-  } else if features.beat_strength > 0.25 {
-    // Lower threshold for more frequent triggers
-    // Regular beat triggers subtle distortion + subtle zoom
-    params.noise_strength = features.beat_strength * (0.3 + features.treble * 0.7);
+  } else {
+    // Use configurable beat sensitivity (higher sensitivity = lower threshold)
+    let adjusted_threshold = 0.18 / params.beat_sensitivity;
 
-    // Trigger beat distortion pop effect (visible but not overwhelming for regular beats)
-    params.beat_distortion_time = params.time;
-    params.beat_distortion_strength = 0.6; // More visible strength for regular beats
-    params.beat_zoom_strength = 0.5; // More visible zoom for regular beats
-    writeln!(
-      debug_log,
-      "BEAT detected! strength={:.2} - triggering subtle distortion + zoom",
-      features.beat_strength
-    )
-    .ok();
+    if features.beat_strength > adjusted_threshold {
+      // Regular beat triggers subtle distortion + subtle zoom
+      params.noise_strength = features.beat_strength * (0.3 + features.treble * 0.7);
+
+      // Trigger beat distortion pop effect (visible but not overwhelming for regular beats)
+      params.beat_distortion_time = params.time;
+      params.beat_distortion_strength = 0.85;
+      params.beat_zoom_strength = 0.7;
+
+      writeln!(
+        debug_log,
+        "BEAT detected! strength={:.2} - triggering subtle distortion + zoom",
+        features.beat_strength
+      )
+      .ok();
+    }
   }
 
   // Brightness reacts to treble with strong pop effect
@@ -130,5 +135,13 @@ fn apply_audio_reactivity(
   // Contrast reacts more dynamically
   let treble_contrast = features.treble * 0.8;
   let target_contrast = 0.6 + energy * 0.6 + treble_contrast;
-  params.contrast = (params.contrast * 0.70) + (target_contrast * 0.30);
+  params.contrast = (params.contrast * 0.50) + (target_contrast * 0.50);
+
+  // Saturation reacts to bass and beats - colors "pop" on bass hits
+  let bass_saturation = features.bass * 0.3; // Bass makes colors more vibrant
+  let beat_saturation = features.beat_strength * 0.2; // Extra pop on beats
+  params.saturation = params
+    .saturation
+    .max(0.7 + bass_saturation + beat_saturation)
+    .min(1.2);
 }

@@ -64,7 +64,7 @@ impl App {
     let mut debug_log = BufWriter::new(std::io::sink());
 
     let stream_mode = stream_dimensions.is_some();
-    
+
     let (terminal_width, terminal_height) = if let Some(dims) = stream_dimensions {
       // Stream mode: use fixed dimensions
       (dims.width, dims.height)
@@ -285,7 +285,7 @@ impl App {
         &uniforms,
         &mut self.debug_log,
       )?;
-      
+
       self.debug_log.flush()?;
       return Ok(());
     }

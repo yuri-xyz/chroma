@@ -19,11 +19,22 @@ fn apply_beat_zoom(uv: vec2<f32>, time: f32) -> vec2<f32> {
     // Using sin wave for smooth in-out motion
     let zoom_curve = 1.0 - (sin(elapsed * 8.0) * envelope * strength * 0.15);
     
-    // Zoom from center
+    // Zoom from center with aspect ratio correction
     let center = vec2<f32>(0.5, 0.5);
-    let offset = uv - center;
+    let aspect_ratio = uniforms.resolution.x / uniforms.resolution.y;
     
-    return center + offset * zoom_curve;
+    // Adjust UV coordinates to square space for proper circular zoom
+    var adjusted_uv = uv;
+    adjusted_uv.x = (uv.x - 0.5) * aspect_ratio + 0.5;
+    
+    let offset = adjusted_uv - center;
+    let zoomed = center + offset * zoom_curve;
+    
+    // Convert back to original aspect ratio
+    var result = zoomed;
+    result.x = (zoomed.x - 0.5) / aspect_ratio + 0.5;
+    
+    return result;
 }
 
 /// Apply beat-reactive distortion to UV coordinates

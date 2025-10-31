@@ -84,8 +84,8 @@ fn test_beat_distortion_parameters_default() {
   let params = ShaderParams::default();
 
   assert_eq!(params.beat_distortion_time, -100.0);
-  assert_eq!(params.beat_distortion_strength, 0.6);
-  assert_eq!(params.beat_zoom_strength, 0.5);
+  assert_eq!(params.beat_distortion_strength, 0.85);
+  assert_eq!(params.beat_zoom_strength, 0.7);
 }
 
 #[test]

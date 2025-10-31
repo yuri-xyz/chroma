@@ -93,8 +93,6 @@ fn test_audio_decay_rate_slower_than_speed_decay() {
   );
 }
 
-
-
 #[test]
 fn test_effect_names_contents() {
   assert_eq!(EFFECT_NAMES[0], "Circle");

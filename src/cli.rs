@@ -13,7 +13,7 @@ impl FromStr for StreamDimensions {
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     let parts: Vec<&str> = s.split('x').collect();
-    
+
     if parts.len() != 2 {
       return Err(format!(
         "Invalid format '{}'. Expected format: WIDTHxHEIGHT (e.g., 20x12)",
@@ -24,7 +24,7 @@ impl FromStr for StreamDimensions {
     let width = parts[0]
       .parse::<u16>()
       .map_err(|_| format!("Invalid width '{}'. Must be a positive integer.", parts[0]))?;
-    
+
     let height = parts[1]
       .parse::<u16>()
       .map_err(|_| format!("Invalid height '{}'. Must be a positive integer.", parts[1]))?;
@@ -158,6 +158,11 @@ pub struct CliArgs {
   /// How much treble frequencies affect animation speed. Range: 0.0-1.0
   #[arg(short = 'T', long, value_name = "FLOAT")]
   pub treble_influence: Option<f32>,
+
+  #[cfg(feature = "audio")]
+  /// Beat detection sensitivity. Higher = more sensitive to subtle beats. Range: 0.1-3.0, Default: 1.0
+  #[arg(long, value_name = "FLOAT")]
+  pub beat_sensitivity: Option<f32>,
 
   #[cfg(feature = "audio")]
   /// Beat-triggered distortion effect strength. Range: 0.0-2.0

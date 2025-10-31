@@ -121,8 +121,8 @@ impl AudioAnalyzer {
     let bass_diff = bass_raw - self.previous_bass;
     let mut beat_strength = (bass_diff * 10.0).clamp(0.0, 1.0);
 
-    // Trigger beat pulse on strong beats
-    if beat_strength > 0.3 {
+    // Trigger beat pulse on strong beats (matches adjusted threshold)
+    if beat_strength > 0.18 {
       self.beat_pulse = 1.0;
     }
 

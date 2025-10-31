@@ -55,7 +55,10 @@ fn main() -> Result<()> {
 
   // Validate FPS is positive
   let target_fps = if cli_args.fps == 0 {
-    eprintln!("Warning: FPS cannot be 0. Using default of {} FPS.", DEFAULT_FPS);
+    eprintln!(
+      "Warning: FPS cannot be 0. Using default of {} FPS.",
+      DEFAULT_FPS
+    );
     DEFAULT_FPS
   } else {
     cli_args.fps
@@ -171,6 +174,9 @@ fn apply_cli_overrides(params: &mut ShaderParams, cli: &CliArgs) -> Result<()> {
     }
     if let Some(v) = cli.treble_influence {
       params.treble_influence = v;
+    }
+    if let Some(v) = cli.beat_sensitivity {
+      params.beat_sensitivity = v;
     }
     if let Some(v) = cli.beat_distortion {
       params.beat_distortion_strength = v;

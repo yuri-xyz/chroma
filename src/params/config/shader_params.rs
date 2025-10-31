@@ -222,7 +222,6 @@ impl ShaderParams {
       _ => PatternType::Voronoi,
     };
 
-    // Reduced problematic palettes
     self.palette = match rng.gen_range(0..20) {
       0..=3 => PaletteType::Circles,
       4..=6 => PaletteType::Braille,

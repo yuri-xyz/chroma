@@ -52,6 +52,7 @@ pub struct ShaderParams {
   pub bass_influence: f32,
   pub mid_influence: f32,
   pub treble_influence: f32,
+  pub beat_sensitivity: f32,
 
   pub effect_time: f32,
   pub effect_type: u32,
@@ -109,13 +110,14 @@ impl Default for ShaderParams {
       bass_influence: 0.5,
       mid_influence: 0.3,
       treble_influence: 0.2,
+      beat_sensitivity: 1.0, // Default balanced sensitivity
 
       effect_time: -100.0,
       effect_type: 0,
 
       beat_distortion_time: -100.0,
-      beat_distortion_strength: 0.6, // Default on for all modes
-      beat_zoom_strength: 0.5,       // Default zoom enabled
+      beat_distortion_strength: 0.85,
+      beat_zoom_strength: 0.7,
     }
   }
 }
@@ -193,6 +195,7 @@ impl ShaderParams {
     self.bass_influence = self.bass_influence.clamp(0.0, 1.0);
     self.mid_influence = self.mid_influence.clamp(0.0, 1.0);
     self.treble_influence = self.treble_influence.clamp(0.0, 1.0);
+    self.beat_sensitivity = self.beat_sensitivity.clamp(0.1, 3.0);
   }
 
   pub fn adjust_frequency(&mut self, delta: f32) {
@@ -237,7 +240,6 @@ impl ShaderParams {
       _ => PatternType::Voronoi,
     };
 
-    // Reduced problematic palettes
     self.palette = match rng.gen_range(0..20) {
       0..=3 => PaletteType::Circles,
       4..=6 => PaletteType::Braille,
@@ -293,6 +295,7 @@ impl ShaderParams {
     self.bass_influence = rng.gen_range(0.3..=0.8);
     self.mid_influence = rng.gen_range(0.2..=0.6);
     self.treble_influence = rng.gen_range(0.1..=0.5);
+    self.beat_sensitivity = rng.gen_range(0.5..=2.0);
   }
 
   fn compute_hash(&self) -> String {
