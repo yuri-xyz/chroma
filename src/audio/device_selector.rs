@@ -21,7 +21,7 @@ impl AudioLogger {
         .append(true)
         .open("audio_debug.log")
         .ok();
-      return Self { file };
+      Self { file }
     }
 
     #[cfg(not(debug_assertions))]

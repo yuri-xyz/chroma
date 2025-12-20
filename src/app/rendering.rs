@@ -71,14 +71,7 @@ fn build_frame_buffer(
   let rows_to_render = ascii_frame.len().min(expected_rows);
 
   for (row_idx, row) in ascii_frame.iter().enumerate().take(rows_to_render) {
-    render_row(
-      row,
-      &mut buffer,
-      terminal_bg_color,
-      expected_cols,
-      row_idx,
-      debug_log,
-    )?;
+    render_row(row, &mut buffer, expected_cols, debug_log)?;
 
     // Only add newline if not the last row, or if there's a status bar
     // Keep background color across lines
@@ -113,9 +106,7 @@ fn build_frame_buffer(
 fn render_row(
   row: &[(char, Color)],
   buffer: &mut String,
-  terminal_bg_color: Option<(u8, u8, u8)>,
   expected_cols: usize,
-  _row_idx: usize,
   debug_log: &mut DebugLog,
 ) -> Result<()> {
   let mut current_col = 0;
@@ -318,16 +309,12 @@ fn build_stream_frame_buffer(
 
   let rows_to_render = ascii_frame.len().min(expected_rows);
 
-  for (row_idx, row) in ascii_frame.iter().enumerate().take(rows_to_render) {
+  for row in ascii_frame.iter().take(rows_to_render) {
     render_stream_row(row, &mut buffer, expected_cols)?;
-
-    // Add newline after each row except the last
-    if row_idx < rows_to_render - 1 {
-      buffer.push('\n');
-    }
+    buffer.push('\n');
   }
 
-  // Add final newline to mark end of frame
+  // Add extra newline to create double-newline frame delimiter (for easier parsing)
   buffer.push('\n');
 
   Ok(buffer)

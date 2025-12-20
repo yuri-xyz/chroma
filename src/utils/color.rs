@@ -55,6 +55,7 @@ pub fn calculate_brightness(r: u8, g: u8, b: u8) -> u8 {
 ///
 /// # Returns
 /// Result with tuple (r, g, b) with values 0.0-1.0, or error if parsing fails
+#[allow(dead_code)] // Used by bin crate via chroma::utils::color::parse_hex_color
 pub fn parse_hex_color(hex: &str) -> Result<(f32, f32, f32), String> {
   let hex = hex.trim_start_matches('#');
 

@@ -15,7 +15,7 @@
 Thumbs.db
 
 # Project specific
-presets/
+/presets/
 recordings/
 exports/debug.log
 *.log

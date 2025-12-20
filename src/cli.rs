@@ -93,6 +93,11 @@ pub struct CliArgs {
   #[arg(short = 'r', long)]
   pub random: bool,
 
+  /// Use a built-in preset by number (0-24) or "random". Wraps around if exceeds max.
+  /// Presets are embedded in the binary, no external files needed.
+  #[arg(long, value_name = "NUM|random")]
+  pub preset: Option<String>,
+
   // Visual parameters
   /// Pattern wave density/detail level. Higher = more detail. Range: 3.0-18.0
   #[arg(short = 'f', long, value_name = "FLOAT")]

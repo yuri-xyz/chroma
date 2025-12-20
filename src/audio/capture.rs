@@ -1,7 +1,7 @@
 #[cfg(feature = "audio")]
 use cpal::traits::{DeviceTrait, StreamTrait};
 #[cfg(feature = "audio")]
-use cpal::{Stream, StreamConfig};
+use cpal::{FromSample, Sample, Stream, StreamConfig};
 use std::sync::{Arc, Mutex};
 
 use super::device_selector;
@@ -132,7 +132,8 @@ impl AudioCapture {
     buffer: Arc<Mutex<Vec<f32>>>,
   ) -> anyhow::Result<Stream>
   where
-    T: cpal::Sample + cpal::SizedSample,
+    T: Sample + cpal::SizedSample,
+    f32: FromSample<T>,
   {
     let channels = config.channels as usize;
 
@@ -142,35 +143,22 @@ impl AudioCapture {
         let mut buf = buffer.lock().unwrap();
         buf.clear();
 
-        // Convert to mono and normalize
+        // Convert to mono and normalize using cpal's safe conversion
         for frame in data.chunks(channels) {
-          let mono_sample: f32 = frame.iter().fold(0.0f32, |acc, &sample| {
-            // Convert sample to f32 using cpal's conversion
-            let s = if std::mem::size_of::<T>() == std::mem::size_of::<f32>() {
-              unsafe { std::mem::transmute_copy(&sample) }
-            } else if std::mem::size_of::<T>() == std::mem::size_of::<i16>() {
-              let i: i16 = unsafe { std::mem::transmute_copy(&sample) };
-
-              i as f32 / i16::MAX as f32
-            } else if std::mem::size_of::<T>() == std::mem::size_of::<u16>() {
-              let u: u16 = unsafe { std::mem::transmute_copy(&sample) };
-
-              (u as f32 / u16::MAX as f32) * 2.0 - 1.0
-            } else {
-              0.0f32
-            };
-
-            acc + s
-          }) / channels as f32;
+          let mono_sample: f32 = frame
+            .iter()
+            .map(|&sample| sample.to_sample::<f32>())
+            .sum::<f32>()
+            / channels as f32;
 
           buf.push(mono_sample);
         }
 
         // Keep buffer size manageable
+        const MAX_BUFFER_SIZE: usize = 4096;
         let buf_len = buf.len();
-
-        if buf_len > 4096 {
-          buf.drain(0..buf_len - 4096);
+        if buf_len > MAX_BUFFER_SIZE {
+          buf.drain(0..buf_len - MAX_BUFFER_SIZE);
         }
       },
       |err| {

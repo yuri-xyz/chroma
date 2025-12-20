@@ -91,7 +91,7 @@ fn main() -> Result<()> {
 }
 
 /// Load configuration from file if specified, then apply CLI overrides
-/// Priority order (lowest to highest): randomized -> config file -> CLI args
+/// Priority order (lowest to highest): randomized -> preset -> config file -> CLI args
 fn load_config_with_overrides(cli_args: &CliArgs) -> Result<Option<ShaderParams>> {
   // Step 1: Start with defaults (or audio defaults)
   #[cfg(feature = "audio")]
@@ -105,13 +105,29 @@ fn load_config_with_overrides(cli_args: &CliArgs) -> Result<Option<ShaderParams>
     params.randomize();
   }
 
-  // Step 3: Apply config file overrides (medium priority)
+  // Step 3: Apply built-in preset if specified (low priority, overrides random)
+  if let Some(ref preset_value) = cli_args.preset {
+    params = if preset_value.eq_ignore_ascii_case("random") {
+      chroma::presets::get_random_preset()
+    } else {
+      let index = preset_value.parse::<u32>().map_err(|_| {
+        anyhow::anyhow!(
+          "Invalid preset: '{}'. Use a number (0-{}) or 'random'",
+          preset_value,
+          chroma::presets::preset_count() - 1
+        )
+      })?;
+      chroma::presets::get_preset(index)
+    };
+  }
+
+  // Step 4: Apply config file overrides (medium priority)
   if let Some(ref path) = cli_args.config {
     params = ShaderParams::load_from_file(path)
       .context(format!("Failed to load config file: {}", path))?;
   }
 
-  // Step 4: Apply CLI overrides (highest priority)
+  // Step 5: Apply CLI overrides (highest priority)
   apply_cli_overrides(&mut params, cli_args)?;
 
   Ok(Some(params))

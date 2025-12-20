@@ -332,6 +332,11 @@ impl ShaderParams {
       path.as_ref().display()
     ))?;
 
+    Self::load_from_str(&content)
+  }
+
+  /// Load shader params from a TOML string, merging with defaults for missing fields.
+  pub fn load_from_str(content: &str) -> Result<Self> {
     // Start with defaults, then deserialize on top (missing fields keep defaults)
     let default_params = Self::default();
     let default_toml = toml::to_string(&default_params)?;
@@ -339,7 +344,7 @@ impl ShaderParams {
 
     // Parse the loaded config
     let loaded_value: toml::Value =
-      toml::from_str(&content).context("Failed to parse config file as TOML")?;
+      toml::from_str(content).context("Failed to parse config as TOML")?;
 
     // Merge loaded config into defaults (only overwrites present fields)
     if let (toml::Value::Table(ref mut default_table), toml::Value::Table(loaded_table)) =
