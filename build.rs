@@ -32,6 +32,10 @@ fn main() {
     "src/shader_patterns/sphere.wgsl",
     "src/shader_patterns/octgrams.wgsl",
     "src/shader_patterns/warped_fbm.wgsl",
+    "src/shader_patterns/kaleidoscope.wgsl",
+    "src/shader_patterns/tunnel.wgsl",
+    "src/shader_patterns/metaballs.wgsl",
+    "src/shader_patterns/world.wgsl",
     // Effects and main entry point
     "src/shader_common/effects.wgsl",
     "src/shader_common/beat_distortion.wgsl",

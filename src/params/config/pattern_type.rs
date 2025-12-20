@@ -21,6 +21,10 @@ pub enum PatternType {
   Sphere,
   Octgrams,
   WarpedFbm,
+  Kaleidoscope,
+  Tunnel,
+  Metaballs,
+  World,
 }
 
 impl PatternType {
@@ -45,6 +49,10 @@ impl PatternType {
       Self::Sphere => 16,
       Self::Octgrams => 17,
       Self::WarpedFbm => 18,
+      Self::Kaleidoscope => 19,
+      Self::Tunnel => 20,
+      Self::Metaballs => 21,
+      Self::World => 22,
     }
   }
 
@@ -69,6 +77,10 @@ impl PatternType {
       Self::Sphere => "Sphere",
       Self::Octgrams => "Octgram",
       Self::WarpedFbm => "Warped",
+      Self::Kaleidoscope => "Kaleido",
+      Self::Tunnel => "Tunnel",
+      Self::Metaballs => "Metaball",
+      Self::World => "World",
     }
   }
 
@@ -92,13 +104,21 @@ impl PatternType {
       Self::Diamonds => Self::Sphere,
       Self::Sphere => Self::Octgrams,
       Self::Octgrams => Self::WarpedFbm,
-      Self::WarpedFbm => Self::Plasma,
+      Self::WarpedFbm => Self::Kaleidoscope,
+      Self::Kaleidoscope => Self::Tunnel,
+      Self::Tunnel => Self::Metaballs,
+      Self::Metaballs => Self::World,
+      Self::World => Self::Plasma,
     }
   }
 
   pub fn previous(self) -> Self {
     match self {
-      Self::Plasma => Self::WarpedFbm,
+      Self::Plasma => Self::World,
+      Self::World => Self::Metaballs,
+      Self::Metaballs => Self::Tunnel,
+      Self::Tunnel => Self::Kaleidoscope,
+      Self::Kaleidoscope => Self::WarpedFbm,
       Self::WarpedFbm => Self::Octgrams,
       Self::Octgrams => Self::Sphere,
       Self::Sphere => Self::Diamonds,

@@ -254,6 +254,10 @@ fn parse_pattern_type(s: &str) -> chroma::params::PatternType {
     "sphere" => PatternType::Sphere,
     "octgrams" | "octgram" => PatternType::Octgrams,
     "warped" | "warpedfbm" => PatternType::WarpedFbm,
+    "kaleidoscope" | "kaleido" | "kal" => PatternType::Kaleidoscope,
+    "tunnel" | "tun" => PatternType::Tunnel,
+    "metaballs" | "metaball" | "meta" | "blobs" => PatternType::Metaballs,
+    "world" | "globe" | "earth" => PatternType::World,
     _ => PatternType::Plasma,
   }
 }

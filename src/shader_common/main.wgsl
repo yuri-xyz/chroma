@@ -37,8 +37,16 @@ fn compute_pattern(uv: vec2<f32>, time: f32, pattern_type: u32) -> vec2<f32> {
         return sphere_pattern(uv, time);
     } else if pattern_type == 17u {
         return octgrams_pattern(uv, time);
-    } else {
+    } else if pattern_type == 18u {
         return warped_fbm_pattern(uv, time);
+    } else if pattern_type == 19u {
+        return kaleidoscope_pattern(uv, time);
+    } else if pattern_type == 20u {
+        return tunnel_pattern(uv, time);
+    } else if pattern_type == 21u {
+        return metaballs_pattern(uv, time);
+    } else {
+        return world_pattern(uv, time);
     }
 }
 

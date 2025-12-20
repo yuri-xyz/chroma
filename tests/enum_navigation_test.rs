@@ -51,13 +51,13 @@ fn test_pattern_type_next_cycles_through_all() {
   let mut current = PatternType::Plasma;
   let start = current;
 
-  for _ in 0..18 {
+  for _ in 0..22 {
     current = current.next();
     assert_ne!(current, start, "Should not cycle back too early");
   }
 
   current = current.next();
-  assert_eq!(current, start, "Should cycle back to start after 19 steps");
+  assert_eq!(current, start, "Should cycle back to start after 23 steps");
 }
 
 #[test]
@@ -65,13 +65,13 @@ fn test_pattern_type_previous_cycles_through_all() {
   let mut current = PatternType::Plasma;
   let start = current;
 
-  for _ in 0..18 {
+  for _ in 0..22 {
     current = current.previous();
     assert_ne!(current, start, "Should not cycle back too early");
   }
 
   current = current.previous();
-  assert_eq!(current, start, "Should cycle back to start after 19 steps");
+  assert_eq!(current, start, "Should cycle back to start after 23 steps");
 }
 
 #[test]
