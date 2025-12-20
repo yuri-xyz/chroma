@@ -25,6 +25,7 @@ pub enum PatternType {
   Tunnel,
   Metaballs,
   World,
+  Fluid,
 }
 
 impl PatternType {
@@ -53,6 +54,7 @@ impl PatternType {
       Self::Tunnel,
       Self::Metaballs,
       Self::World,
+      Self::Fluid,
     ]
   }
 
@@ -81,6 +83,7 @@ impl PatternType {
       Self::Tunnel => "tunnel",
       Self::Metaballs => "metaballs",
       Self::World => "world",
+      Self::Fluid => "fluid",
     }
   }
 
@@ -109,6 +112,7 @@ impl PatternType {
       Self::Tunnel => 20,
       Self::Metaballs => 21,
       Self::World => 22,
+      Self::Fluid => 23,
     }
   }
 
@@ -137,6 +141,7 @@ impl PatternType {
       Self::Tunnel => "Tunnel",
       Self::Metaballs => "Metaball",
       Self::World => "World",
+      Self::Fluid => "Fluid",
     }
   }
 
@@ -164,13 +169,15 @@ impl PatternType {
       Self::Kaleidoscope => Self::Tunnel,
       Self::Tunnel => Self::Metaballs,
       Self::Metaballs => Self::World,
-      Self::World => Self::Plasma,
+      Self::World => Self::Fluid,
+      Self::Fluid => Self::Plasma,
     }
   }
 
   pub fn previous(self) -> Self {
     match self {
-      Self::Plasma => Self::World,
+      Self::Plasma => Self::Fluid,
+      Self::Fluid => Self::World,
       Self::World => Self::Metaballs,
       Self::Metaballs => Self::Tunnel,
       Self::Tunnel => Self::Kaleidoscope,

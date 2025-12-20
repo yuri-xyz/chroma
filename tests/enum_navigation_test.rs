@@ -21,6 +21,11 @@ fn test_pattern_type_to_u32_all_variants() {
   assert_eq!(PatternType::Sphere.to_u32(), 16);
   assert_eq!(PatternType::Octgrams.to_u32(), 17);
   assert_eq!(PatternType::WarpedFbm.to_u32(), 18);
+  assert_eq!(PatternType::Kaleidoscope.to_u32(), 19);
+  assert_eq!(PatternType::Tunnel.to_u32(), 20);
+  assert_eq!(PatternType::Metaballs.to_u32(), 21);
+  assert_eq!(PatternType::World.to_u32(), 22);
+  assert_eq!(PatternType::Fluid.to_u32(), 23);
 }
 
 #[test]
@@ -44,6 +49,11 @@ fn test_pattern_type_name_all_variants() {
   assert_eq!(PatternType::Sphere.name(), "Sphere");
   assert_eq!(PatternType::Octgrams.name(), "Octgram");
   assert_eq!(PatternType::WarpedFbm.name(), "Warped");
+  assert_eq!(PatternType::Kaleidoscope.name(), "Kaleido");
+  assert_eq!(PatternType::Tunnel.name(), "Tunnel");
+  assert_eq!(PatternType::Metaballs.name(), "Metaball");
+  assert_eq!(PatternType::World.name(), "World");
+  assert_eq!(PatternType::Fluid.name(), "Fluid");
 }
 
 #[test]
@@ -51,13 +61,13 @@ fn test_pattern_type_next_cycles_through_all() {
   let mut current = PatternType::Plasma;
   let start = current;
 
-  for _ in 0..22 {
+  for _ in 0..23 {
     current = current.next();
     assert_ne!(current, start, "Should not cycle back too early");
   }
 
   current = current.next();
-  assert_eq!(current, start, "Should cycle back to start after 23 steps");
+  assert_eq!(current, start, "Should cycle back to start after 24 steps");
 }
 
 #[test]
@@ -65,13 +75,13 @@ fn test_pattern_type_previous_cycles_through_all() {
   let mut current = PatternType::Plasma;
   let start = current;
 
-  for _ in 0..22 {
+  for _ in 0..23 {
     current = current.previous();
     assert_ne!(current, start, "Should not cycle back too early");
   }
 
   current = current.previous();
-  assert_eq!(current, start, "Should cycle back to start after 23 steps");
+  assert_eq!(current, start, "Should cycle back to start after 24 steps");
 }
 
 #[test]

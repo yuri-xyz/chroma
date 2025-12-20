@@ -225,19 +225,36 @@ impl ShaderParams {
   pub fn randomize(&mut self) {
     let mut rng = rand::thread_rng();
 
-    // Weighted randomization - favor good-looking patterns, reduce problematic ones
-    self.pattern_type = match rng.gen_range(0..20) {
+    // Weighted randomization - favor good-looking patterns, reduce problematic ones (Noise)
+    self.pattern_type = match rng.gen_range(0..48) {
+      // Core patterns (higher weight)
       0..=2 => PatternType::Plasma,
       3..=5 => PatternType::Waves,
       6..=8 => PatternType::Ripples,
       9..=11 => PatternType::Vortex,
-      12..=13 => PatternType::Truchet,
-      14 => PatternType::Interference,
-      15 => PatternType::Fractal,
-      16 => PatternType::Spiral,
-      17 => PatternType::Rings,
-      18 => PatternType::Grid,
-      _ => PatternType::Voronoi,
+      // Standard patterns
+      12..=13 => PatternType::Geometric,
+      14..=15 => PatternType::Voronoi,
+      16..=17 => PatternType::Truchet,
+      18..=19 => PatternType::Hexagonal,
+      20..=21 => PatternType::Interference,
+      22..=23 => PatternType::Fractal,
+      24 => PatternType::Glitch,
+      25..=26 => PatternType::Spiral,
+      27..=28 => PatternType::Rings,
+      29 => PatternType::Grid,
+      30..=31 => PatternType::Diamonds,
+      32..=33 => PatternType::Sphere,
+      34 => PatternType::Octgrams,
+      35..=36 => PatternType::WarpedFbm,
+      // New patterns
+      37..=38 => PatternType::Kaleidoscope,
+      39..=40 => PatternType::Tunnel,
+      41..=42 => PatternType::Metaballs,
+      43..=44 => PatternType::World,
+      45..=46 => PatternType::Fluid,
+      // Noise has lower weight (can be less visually interesting)
+      _ => PatternType::Noise,
     };
 
     self.palette = match rng.gen_range(0..20) {

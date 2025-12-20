@@ -36,6 +36,7 @@ fn main() {
     "src/shader_patterns/tunnel.wgsl",
     "src/shader_patterns/metaballs.wgsl",
     "src/shader_patterns/world.wgsl",
+    "src/shader_patterns/fluid.wgsl",
     // Effects and main entry point
     "src/shader_common/effects.wgsl",
     "src/shader_common/beat_distortion.wgsl",

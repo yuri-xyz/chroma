@@ -258,6 +258,7 @@ fn parse_pattern_type(s: &str) -> chroma::params::PatternType {
     "tunnel" | "tun" => PatternType::Tunnel,
     "metaballs" | "metaball" | "meta" | "blobs" => PatternType::Metaballs,
     "world" | "globe" | "earth" => PatternType::World,
+    "fluid" | "water" | "caustics" => PatternType::Fluid,
     _ => PatternType::Plasma,
   }
 }
