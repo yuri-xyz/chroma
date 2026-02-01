@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PaletteType {
@@ -123,6 +124,32 @@ impl PaletteType {
       Self::Smooth => Self::Circles,
       Self::Circles => Self::Blocks,
       Self::Blocks => Self::Standard,
+    }
+  }
+}
+
+impl FromStr for PaletteType {
+  type Err = String;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s.to_lowercase().as_str() {
+      "standard" | "std" => Ok(Self::Standard),
+      "blocks" | "block" => Ok(Self::Blocks),
+      "circles" | "circle" => Ok(Self::Circles),
+      "smooth" => Ok(Self::Smooth),
+      "braille" => Ok(Self::Braille),
+      "geometric" | "geo" => Ok(Self::Geometric),
+      "mixed" => Ok(Self::Mixed),
+      "dots" => Ok(Self::Dots),
+      "shades" | "shade" => Ok(Self::Shades),
+      "lines" => Ok(Self::Lines),
+      "triangles" | "tri" => Ok(Self::Triangles),
+      "arrows" | "arrow" => Ok(Self::Arrows),
+      "powerline" | "power" => Ok(Self::Powerline),
+      "boxdraw" | "box" => Ok(Self::BoxDraw),
+      "extended" | "extend" => Ok(Self::Extended),
+      "simple" => Ok(Self::Simple),
+      _ => Err(format!("Unknown palette type: {}", s)),
     }
   }
 }

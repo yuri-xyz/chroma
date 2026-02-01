@@ -13,7 +13,8 @@ bytemuck = { version = "1.14", features = ["derive"] }
 crossterm = "0.28"
 
 # Audio (optional feature)
-cpal = { version = "0.15", optional = true }
+# NOTE: cpal 0.17+ required for macOS loopback audio support (macOS 14.6+)
+cpal = { version = "0.17", optional = true }
 rustfft = { version = "6.2", optional = true }
 
 # Utilities

@@ -19,10 +19,14 @@ pub struct AudioCapture {
 }
 
 impl AudioCapture {
-  /// List all available audio devices
+  /// List all available audio devices across all hosts
   #[cfg(feature = "audio")]
   pub fn list_devices() -> anyhow::Result<()> {
-    let host = cpal::default_host();
+    // Try to use the best host, fall back to default
+    let host = match device_selector::find_system_audio_auto() {
+      Ok((host, _)) => host,
+      Err(_) => cpal::default_host(),
+    };
 
     device_selector::list_devices(&host)
   }
@@ -40,18 +44,7 @@ impl AudioCapture {
       writeln!(log_file, "\n=== Audio Capture Initialization ===")?;
     }
 
-    let host = cpal::default_host();
-
-    #[cfg(debug_assertions)]
-    {
-      let mut log_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("audio_debug.log")?;
-      writeln!(log_file, "CPAL host: {:?}", host.id())?;
-    }
-
-    // Try to find the audio device
+    // Find the device - either by name or auto-detect system audio
     let device = if let Some(name) = device_name {
       #[cfg(debug_assertions)]
       {
@@ -61,26 +54,45 @@ impl AudioCapture {
           .open("audio_debug.log")?;
         writeln!(log_file, "Looking for specific device: {}", name)?;
       }
+      let host = cpal::default_host();
       device_selector::find_device_by_name(&host, name)?
     } else {
-      // Auto-detect system audio device (monitor source)
-      device_selector::find_system_audio_device(&host)?
-    };
-
-    #[cfg(debug_assertions)]
-    {
-      if let Ok(device_name) = device.name() {
+      // Auto-detect system audio across all available hosts
+      #[cfg(debug_assertions)]
+      {
         let mut log_file = OpenOptions::new()
           .create(true)
           .append(true)
           .open("audio_debug.log")?;
-        writeln!(log_file, "Using device: {}", device_name)?;
+        writeln!(log_file, "Auto-detecting system audio source...")?;
+      }
+      let (_host, device) = device_selector::find_system_audio_auto()?;
+      device
+    };
+
+    #[cfg(debug_assertions)]
+    {
+      if let Ok(desc) = device.description() {
+        let mut log_file = OpenOptions::new()
+          .create(true)
+          .append(true)
+          .open("audio_debug.log")?;
+        writeln!(log_file, "Using device: {}", desc.name())?;
       }
     }
 
-    let config = device
-      .default_input_config()
-      .map_err(|e| anyhow::anyhow!("Failed to get device config: {}", e))?;
+    // Get config - try input first, then output for loopback (macOS 14.2+)
+    let config = device.default_input_config().or_else(|_| {
+      // On macOS, output devices can be used for loopback
+      #[cfg(target_os = "macos")]
+      {
+        device.default_output_config()
+      }
+      #[cfg(not(target_os = "macos"))]
+      {
+        Err(cpal::DefaultStreamConfigError::DeviceNotAvailable)
+      }
+    }).map_err(|e| anyhow::anyhow!("Failed to get device config: {}", e))?;
 
     #[cfg(debug_assertions)]
     {
@@ -91,12 +103,12 @@ impl AudioCapture {
       writeln!(
         log_file,
         "Config: sample_rate={}, channels={}",
-        config.sample_rate().0,
+        config.sample_rate(),
         config.channels()
       )?;
     }
 
-    let sample_rate = config.sample_rate().0 as f32;
+    let sample_rate = config.sample_rate() as f32;
     let buffer = Arc::new(Mutex::new(Vec::with_capacity(4096)));
     let buffer_clone = Arc::clone(&buffer);
 

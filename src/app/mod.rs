@@ -13,6 +13,7 @@ use chroma::audio::{AudioAnalyzer, AudioCapture};
 use chroma::params::{PaletteType, ShaderParams};
 use chroma::shader::{ShaderPipeline, ShaderUniforms};
 use crossterm::terminal;
+#[cfg(debug_assertions)]
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::time::Instant;

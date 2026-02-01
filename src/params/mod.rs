@@ -1,6 +1,7 @@
 mod color_mode;
 mod palette_type;
 mod pattern_type;
+mod randomizer;
 mod shader_params;
 
 pub use color_mode::ColorMode;

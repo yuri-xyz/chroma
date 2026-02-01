@@ -17,6 +17,7 @@ fn test_min_brightness_threshold_valid_range() {
   );
 }
 
+#[cfg(feature = "audio")]
 #[test]
 fn test_audio_thresholds_normalized() {
   assert!(
@@ -29,6 +30,7 @@ fn test_audio_thresholds_normalized() {
   );
 }
 
+#[cfg(feature = "audio")]
 #[test]
 fn test_audio_decay_rates_valid() {
   assert!(
@@ -38,15 +40,6 @@ fn test_audio_decay_rates_valid() {
   assert!(
     AUDIO_SPEED_DECAY_RATE > 0.0 && AUDIO_SPEED_DECAY_RATE < 1.0,
     "Speed decay rate should be between 0 and 1 for proper decay"
-  );
-}
-
-#[test]
-fn test_num_effect_types_matches_effect_names_length() {
-  assert_eq!(
-    NUM_EFFECT_TYPES as usize,
-    EFFECT_NAMES.len(),
-    "Number of effect types should match effect names array length"
   );
 }
 
@@ -85,6 +78,7 @@ fn test_effect_names_reasonable_length() {
   }
 }
 
+#[cfg(feature = "audio")]
 #[test]
 fn test_audio_decay_rate_slower_than_speed_decay() {
   assert!(

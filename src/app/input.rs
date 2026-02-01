@@ -2,7 +2,7 @@ use super::DebugLog;
 use anyhow::Result;
 use chroma::ascii::{AsciiConverter, AsciiPalette};
 use chroma::params::{PaletteType, ShaderParams};
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::io::Write;
 use std::time::Duration;
 
@@ -19,11 +19,12 @@ pub fn handle_input(
 
   if let Event::Key(KeyEvent {
     code,
+    modifiers,
     kind: KeyEventKind::Press,
     ..
   }) = event::read()?
   {
-    handle_key_press(code, params, converter, running, debug_log)?;
+    handle_key_press(code, modifiers, params, converter, running, debug_log)?;
   }
 
   Ok(())
@@ -32,11 +33,18 @@ pub fn handle_input(
 /// Handle individual key press events
 fn handle_key_press(
   code: KeyCode,
+  modifiers: KeyModifiers,
   params: &mut ShaderParams,
   converter: &mut AsciiConverter,
   running: &mut bool,
   debug_log: &mut DebugLog,
 ) -> Result<()> {
+  // Handle Ctrl+C to exit
+  if modifiers.contains(KeyModifiers::CONTROL) && matches!(code, KeyCode::Char('c')) {
+    *running = false;
+    return Ok(());
+  }
+
   match code {
     // Quit
     KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => {

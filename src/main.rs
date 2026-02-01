@@ -3,12 +3,12 @@
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use crossterm::{cursor, execute, terminal};
-use std::io::stdout;
 
 mod app;
 mod cli;
 mod constants;
+mod list_commands;
+mod terminal;
 mod utils;
 
 use app::App;
@@ -28,17 +28,17 @@ fn main() -> Result<()> {
 
   // Handle --list-patterns flag
   if cli_args.list_patterns {
-    return list_patterns();
+    return list_commands::list_patterns();
   }
 
   // Handle --list-color-modes flag
   if cli_args.list_color_modes {
-    return list_color_modes();
+    return list_commands::list_color_modes();
   }
 
   // Handle --list-palettes flag
   if cli_args.list_palettes {
-    return list_palettes();
+    return list_commands::list_palettes();
   }
 
   let loaded_config = load_config_with_overrides(&cli_args)?;
@@ -163,17 +163,23 @@ fn apply_cli_overrides(params: &mut ShaderParams, cli: &CliArgs) -> Result<()> {
 
   // Pattern type
   if let Some(ref pattern_str) = cli.pattern {
-    params.pattern_type = parse_pattern_type(pattern_str);
+    params.pattern_type = pattern_str
+      .parse()
+      .unwrap_or(chroma::params::PatternType::Plasma);
   }
 
   // Color mode
   if let Some(ref mode_str) = cli.color_mode {
-    params.color_mode = parse_color_mode(mode_str);
+    params.color_mode = mode_str
+      .parse()
+      .unwrap_or(chroma::params::ColorMode::Rainbow);
   }
 
   // Palette
   if let Some(ref palette_str) = cli.palette {
-    params.palette = parse_palette_type(palette_str);
+    params.palette = palette_str
+      .parse()
+      .unwrap_or(chroma::params::PaletteType::Simple);
   }
 
   // Audio parameters
@@ -231,80 +237,6 @@ fn apply_cli_overrides(params: &mut ShaderParams, cli: &CliArgs) -> Result<()> {
   Ok(())
 }
 
-fn parse_pattern_type(s: &str) -> chroma::params::PatternType {
-  use chroma::params::PatternType;
-
-  match s.to_lowercase().as_str() {
-    "plasma" => PatternType::Plasma,
-    "waves" => PatternType::Waves,
-    "ripples" => PatternType::Ripples,
-    "vortex" => PatternType::Vortex,
-    "noise" => PatternType::Noise,
-    "geometric" | "geo" => PatternType::Geometric,
-    "voronoi" => PatternType::Voronoi,
-    "truchet" => PatternType::Truchet,
-    "hexagonal" | "hexagon" | "hex" => PatternType::Hexagonal,
-    "interference" | "interf" => PatternType::Interference,
-    "fractal" => PatternType::Fractal,
-    "glitch" => PatternType::Glitch,
-    "spiral" => PatternType::Spiral,
-    "rings" => PatternType::Rings,
-    "grid" => PatternType::Grid,
-    "diamonds" | "diamond" => PatternType::Diamonds,
-    "sphere" => PatternType::Sphere,
-    "octgrams" | "octgram" => PatternType::Octgrams,
-    "warped" | "warpedfbm" => PatternType::WarpedFbm,
-    "kaleidoscope" | "kaleido" | "kal" => PatternType::Kaleidoscope,
-    "tunnel" | "tun" => PatternType::Tunnel,
-    "metaballs" | "metaball" | "meta" | "blobs" => PatternType::Metaballs,
-    "world" | "globe" | "earth" => PatternType::World,
-    "fluid" | "water" | "caustics" => PatternType::Fluid,
-    _ => PatternType::Plasma,
-  }
-}
-
-fn parse_color_mode(s: &str) -> chroma::params::ColorMode {
-  use chroma::params::ColorMode;
-
-  match s.to_lowercase().as_str() {
-    "rainbow" => ColorMode::Rainbow,
-    "monochrome" | "mono" => ColorMode::Monochrome,
-    "duotone" => ColorMode::Duotone,
-    "warm" => ColorMode::Warm,
-    "cool" => ColorMode::Cool,
-    "neon" => ColorMode::Neon,
-    "pastel" => ColorMode::Pastel,
-    "cyberpunk" | "cyber" => ColorMode::Cyberpunk,
-    "warped" => ColorMode::Warped,
-    "chromatic" | "chrome" => ColorMode::Chromatic,
-    _ => ColorMode::Rainbow,
-  }
-}
-
-fn parse_palette_type(s: &str) -> chroma::params::PaletteType {
-  use chroma::params::PaletteType;
-
-  match s.to_lowercase().as_str() {
-    "standard" | "std" => PaletteType::Standard,
-    "blocks" | "block" => PaletteType::Blocks,
-    "circles" | "circle" => PaletteType::Circles,
-    "smooth" => PaletteType::Smooth,
-    "braille" => PaletteType::Braille,
-    "geometric" | "geo" => PaletteType::Geometric,
-    "mixed" => PaletteType::Mixed,
-    "dots" => PaletteType::Dots,
-    "shades" | "shade" => PaletteType::Shades,
-    "lines" => PaletteType::Lines,
-    "triangles" | "tri" => PaletteType::Triangles,
-    "arrows" | "arrow" => PaletteType::Arrows,
-    "powerline" | "power" => PaletteType::Powerline,
-    "boxdraw" | "box" => PaletteType::BoxDraw,
-    "extended" | "extend" => PaletteType::Extended,
-    "simple" => PaletteType::Simple,
-    _ => PaletteType::Simple,
-  }
-}
-
 /// Load and validate custom shader file
 fn load_custom_shader(shader_path: &str) -> Result<String> {
   use std::fs;
@@ -354,7 +286,7 @@ fn run_application(
 ) -> Result<()> {
   // Skip terminal setup in stream mode
   if stream_dimensions.is_none() {
-    setup_terminal()?;
+    terminal::setup()?;
   }
 
   let result = pollster::block_on(async {
@@ -373,7 +305,7 @@ fn run_application(
 
   // Skip terminal cleanup in stream mode
   if stream_dimensions.is_none() {
-    cleanup_terminal()?;
+    terminal::cleanup()?;
   }
 
   result
@@ -391,7 +323,7 @@ fn run_application(
 ) -> Result<()> {
   // Skip terminal setup in stream mode
   if stream_dimensions.is_none() {
-    setup_terminal()?;
+    terminal::setup()?;
   }
 
   let result = pollster::block_on(async {
@@ -409,92 +341,8 @@ fn run_application(
 
   // Skip terminal cleanup in stream mode
   if stream_dimensions.is_none() {
-    cleanup_terminal()?;
+    terminal::cleanup()?;
   }
 
   result
-}
-
-/// Setup terminal for rendering
-fn setup_terminal() -> Result<()> {
-  terminal::enable_raw_mode()?;
-
-  execute!(
-    stdout(),
-    terminal::EnterAlternateScreen,
-    cursor::Hide,
-    terminal::Clear(terminal::ClearType::All)
-  )?;
-
-  Ok(())
-}
-
-/// Restore terminal to normal state
-fn cleanup_terminal() -> Result<()> {
-  execute!(stdout(), cursor::Show, terminal::LeaveAlternateScreen)?;
-  terminal::disable_raw_mode()?;
-
-  Ok(())
-}
-
-/// List all available pattern types
-fn list_patterns() -> Result<()> {
-  use chroma::params::PatternType;
-
-  println!("Available Pattern Types:");
-  println!();
-
-  for pattern in PatternType::all() {
-    println!(
-      "  {:<15} (display: {})",
-      pattern.full_name(),
-      pattern.name()
-    );
-  }
-
-  println!();
-  println!("Use with: --pattern <PATTERN>");
-  println!("In-app: Press 'T' to cycle through patterns");
-
-  Ok(())
-}
-
-/// List all available color modes
-fn list_color_modes() -> Result<()> {
-  use chroma::params::ColorMode;
-
-  println!("Available Color Modes:");
-  println!();
-
-  for mode in ColorMode::all() {
-    println!("  {:<15} (display: {})", mode.full_name(), mode.name());
-  }
-
-  println!();
-  println!("Use with: --color-mode <MODE>");
-  println!("In-app: Press 'C' to cycle through color modes");
-
-  Ok(())
-}
-
-/// List all available palette types
-fn list_palettes() -> Result<()> {
-  use chroma::params::PaletteType;
-
-  println!("Available ASCII Palettes:");
-  println!();
-
-  for palette in PaletteType::all() {
-    println!(
-      "  {:<15} (display: {})",
-      palette.full_name(),
-      palette.name()
-    );
-  }
-
-  println!();
-  println!("Use with: --palette <PALETTE>");
-  println!("In-app: Press 'P' to cycle through palettes");
-
-  Ok(())
 }

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PatternType {
@@ -200,6 +201,40 @@ impl PatternType {
       Self::Vortex => Self::Ripples,
       Self::Ripples => Self::Waves,
       Self::Waves => Self::Plasma,
+    }
+  }
+}
+
+impl FromStr for PatternType {
+  type Err = String;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s.to_lowercase().as_str() {
+      "plasma" => Ok(Self::Plasma),
+      "waves" => Ok(Self::Waves),
+      "ripples" => Ok(Self::Ripples),
+      "vortex" => Ok(Self::Vortex),
+      "noise" => Ok(Self::Noise),
+      "geometric" | "geo" => Ok(Self::Geometric),
+      "voronoi" => Ok(Self::Voronoi),
+      "truchet" => Ok(Self::Truchet),
+      "hexagonal" | "hexagon" | "hex" => Ok(Self::Hexagonal),
+      "interference" | "interf" => Ok(Self::Interference),
+      "fractal" => Ok(Self::Fractal),
+      "glitch" => Ok(Self::Glitch),
+      "spiral" => Ok(Self::Spiral),
+      "rings" => Ok(Self::Rings),
+      "grid" => Ok(Self::Grid),
+      "diamonds" | "diamond" => Ok(Self::Diamonds),
+      "sphere" => Ok(Self::Sphere),
+      "octgrams" | "octgram" => Ok(Self::Octgrams),
+      "warped" | "warpedfbm" => Ok(Self::WarpedFbm),
+      "kaleidoscope" | "kaleido" | "kal" => Ok(Self::Kaleidoscope),
+      "tunnel" | "tun" => Ok(Self::Tunnel),
+      "metaballs" | "metaball" | "meta" | "blobs" => Ok(Self::Metaballs),
+      "world" | "globe" | "earth" => Ok(Self::World),
+      "fluid" | "water" | "caustics" => Ok(Self::Fluid),
+      _ => Err(format!("Unknown pattern type: {}", s)),
     }
   }
 }

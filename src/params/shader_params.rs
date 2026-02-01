@@ -2,11 +2,10 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use super::{ColorMode, PaletteType, PatternType};
+use super::{randomizer, ColorMode, PaletteType, PatternType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShaderParams {
@@ -223,96 +222,7 @@ impl ShaderParams {
   }
 
   pub fn randomize(&mut self) {
-    let mut rng = rand::thread_rng();
-
-    // Weighted randomization - favor good-looking patterns, reduce problematic ones (Noise)
-    self.pattern_type = match rng.gen_range(0..48) {
-      // Core patterns (higher weight)
-      0..=2 => PatternType::Plasma,
-      3..=5 => PatternType::Waves,
-      6..=8 => PatternType::Ripples,
-      9..=11 => PatternType::Vortex,
-      // Standard patterns
-      12..=13 => PatternType::Geometric,
-      14..=15 => PatternType::Voronoi,
-      16..=17 => PatternType::Truchet,
-      18..=19 => PatternType::Hexagonal,
-      20..=21 => PatternType::Interference,
-      22..=23 => PatternType::Fractal,
-      24 => PatternType::Glitch,
-      25..=26 => PatternType::Spiral,
-      27..=28 => PatternType::Rings,
-      29 => PatternType::Grid,
-      30..=31 => PatternType::Diamonds,
-      32..=33 => PatternType::Sphere,
-      34 => PatternType::Octgrams,
-      35..=36 => PatternType::WarpedFbm,
-      // New patterns
-      37..=38 => PatternType::Kaleidoscope,
-      39..=40 => PatternType::Tunnel,
-      41..=42 => PatternType::Metaballs,
-      43..=44 => PatternType::World,
-      45..=46 => PatternType::Fluid,
-      // Noise has lower weight (can be less visually interesting)
-      _ => PatternType::Noise,
-    };
-
-    self.palette = match rng.gen_range(0..20) {
-      0..=3 => PaletteType::Circles,
-      4..=6 => PaletteType::Braille,
-      7..=9 => PaletteType::Dots,
-      10..=11 => PaletteType::Lines,
-      12..=13 => PaletteType::Triangles,
-      14 => PaletteType::Arrows,
-      15 => PaletteType::Powerline,
-      16 => PaletteType::BoxDraw,
-      17 => PaletteType::Extended,
-      18 => PaletteType::Mixed,
-      _ => PaletteType::Circles,
-    };
-
-    self.effect_type = rng.gen_range(2..=6);
-
-    self.frequency = rng.gen_range(3.0..=18.0);
-    self.amplitude = rng.gen_range(0.5..=2.0);
-    self.speed = rng.gen_range(0.1..=1.0);
-    self.scale = rng.gen_range(0.5..=3.0);
-    self.color_shift = rng.gen_range(0.0..=std::f32::consts::TAU);
-    self.octaves = rng.gen_range(2..=6);
-
-    self.noise_strength = rng.gen_range(0.0..=0.3);
-    self.distort_amplitude = rng.gen_range(0.0..=1.5);
-    self.noise_scale = rng.gen_range(0.001..=0.008);
-    self.z_rate = rng.gen_range(0.01..=0.05);
-
-    self.brightness = rng.gen_range(0.8..=1.8);
-    self.contrast = rng.gen_range(0.5..=1.8);
-    self.saturation = rng.gen_range(0.6..=1.5);
-    self.gamma = rng.gen_range(0.8..=1.3);
-
-    self.vignette = if rng.gen_bool(0.3) {
-      rng.gen_range(0.1..=0.5)
-    } else {
-      0.0
-    };
-
-    self.vignette_softness = rng.gen_range(0.3..=0.8);
-    self.glyph_sharpness = rng.gen_range(0.7..=1.5);
-
-    if rng.gen_bool(0.2) {
-      self.background_tint_r = rng.gen_range(0.0..=0.3);
-      self.background_tint_g = rng.gen_range(0.0..=0.3);
-      self.background_tint_b = rng.gen_range(0.0..=0.3);
-    } else {
-      self.background_tint_r = 0.0;
-      self.background_tint_g = 0.0;
-      self.background_tint_b = 0.0;
-    }
-
-    self.bass_influence = rng.gen_range(0.3..=0.8);
-    self.mid_influence = rng.gen_range(0.2..=0.6);
-    self.treble_influence = rng.gen_range(0.1..=0.5);
-    self.beat_sensitivity = rng.gen_range(0.5..=2.0);
+    randomizer::randomize(self);
   }
 
   fn compute_hash(&self) -> String {

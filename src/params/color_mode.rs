@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ColorMode {
@@ -130,6 +131,30 @@ impl ColorMode {
       Self::Warm => Self::Duotone,
       Self::Duotone => Self::Monochrome,
       Self::Monochrome => Self::Rainbow,
+    }
+  }
+}
+
+impl FromStr for ColorMode {
+  type Err = String;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s.to_lowercase().as_str() {
+      "rainbow" => Ok(Self::Rainbow),
+      "monochrome" | "mono" => Ok(Self::Monochrome),
+      "duotone" => Ok(Self::Duotone),
+      "warm" => Ok(Self::Warm),
+      "cool" => Ok(Self::Cool),
+      "neon" => Ok(Self::Neon),
+      "pastel" => Ok(Self::Pastel),
+      "cyberpunk" | "cyber" => Ok(Self::Cyberpunk),
+      "warped" => Ok(Self::Warped),
+      "fire" => Ok(Self::Fire),
+      "ocean" => Ok(Self::Ocean),
+      "aurora" => Ok(Self::Aurora),
+      "galaxy" => Ok(Self::Galaxy),
+      "chromatic" | "chrome" => Ok(Self::Chromatic),
+      _ => Err(format!("Unknown color mode: {}", s)),
     }
   }
 }
