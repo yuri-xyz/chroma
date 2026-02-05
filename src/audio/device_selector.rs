@@ -77,6 +77,15 @@ fn is_device_usable(device: &Device) -> bool {
   false
 }
 
+// Check if a device is a dummy (null) device
+fn is_dummy_device(name: &str) -> bool {
+  let name = name.to_lowercase();
+  name.contains("discard")
+    || name.contains("dummy")
+    || name.contains("null")
+    || name.contains("zero samples")
+}
+
 /// Try to get the best host for system audio capture
 fn get_best_host() -> Host {
   // Try to find a host that supports loopback/screen capture
@@ -143,7 +152,7 @@ pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
 
   // Priority 1: Find explicit monitor/loopback source that is actually usable
   for (device, name) in &devices {
-    if is_monitor_source(name) && is_device_usable(device) {
+    if !is_dummy_device(name) && is_monitor_source(name) && is_device_usable(device) {
       return Ok(device.clone());
     }
   }
@@ -168,7 +177,7 @@ pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
   // Priority 2 (non-macOS): Find any usable device that's NOT a microphone
   #[cfg(not(target_os = "macos"))]
   for (device, name) in &devices {
-    if !is_microphone(name) && is_device_usable(device) {
+    if !is_dummy_device(name) && !is_microphone(name) && is_device_usable(device) {
       return Ok(device.clone());
     }
   }
