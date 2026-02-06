@@ -1,0 +1,53 @@
+name: Debian And Redhat Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install dependencies for debian release
+        run: |
+          sudo apt update
+          sudo apt install -y devscripts debhelper dput gnupg
+          cargo install cargo-deb
+
+      - name: Install dependencies for redhat release
+        run: | 
+          sudo apt-get update
+          sudo apt-get install -y rpm
+          cargo install cargo-rpm
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Generate DEB package
+        run: cargo deb
+
+      - name: Generate RPM package
+        run: cargo rpm build
+
+      - name: Upload packages to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            target/debian/chroma_*.deb
+            target/release/rpmbuild/RPMS/x86_64/chroma-*.rpm
+          append_body: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
