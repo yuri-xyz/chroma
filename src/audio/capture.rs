@@ -82,17 +82,18 @@ impl AudioCapture {
     }
 
     // Get config - try input first, then output for loopback (macOS 14.2+)
-    let config = device.default_input_config().or_else(|_| {
-      // On macOS, output devices can be used for loopback
-      #[cfg(target_os = "macos")]
-      {
-        device.default_output_config()
-      }
-      #[cfg(not(target_os = "macos"))]
-      {
-        Err(cpal::DefaultStreamConfigError::DeviceNotAvailable)
-      }
-    }).map_err(|e| anyhow::anyhow!("Failed to get device config: {}", e))?;
+    #[cfg(target_os = "macos")]
+    let config = match device.default_input_config() {
+      Ok(config) => config,
+      Err(_) => device
+        .default_output_config()
+        .map_err(|e| anyhow::anyhow!("Failed to get device config: {}", e))?,
+    };
+
+    #[cfg(not(target_os = "macos"))]
+    let config = device
+      .default_input_config()
+      .map_err(|e| anyhow::anyhow!("Failed to get device config: {}", e))?;
 
     #[cfg(debug_assertions)]
     {

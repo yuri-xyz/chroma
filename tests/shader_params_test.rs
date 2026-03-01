@@ -90,11 +90,12 @@ fn test_beat_distortion_parameters_default() {
 
 #[test]
 fn test_beat_distortion_parameters_persistence() {
-  let mut params = ShaderParams::default();
-
-  params.beat_distortion_time = 5.0;
-  params.beat_distortion_strength = 1.2;
-  params.beat_zoom_strength = 0.8;
+  let params = ShaderParams {
+    beat_distortion_time: 5.0,
+    beat_distortion_strength: 1.2,
+    beat_zoom_strength: 0.8,
+    ..Default::default()
+  };
 
   assert_eq!(params.beat_distortion_time, 5.0);
   assert_eq!(params.beat_distortion_strength, 1.2);
@@ -213,10 +214,12 @@ fn test_adjust_hue_wrapping() {
 
 #[test]
 fn test_file_persistence() {
-  let mut params = ShaderParams::default();
-  params.frequency = 15.0;
-  params.brightness = 1.5;
-  params.beat_distortion_strength = 0.9;
+  let params = ShaderParams {
+    frequency: 15.0,
+    brightness: 1.5,
+    beat_distortion_strength: 0.9,
+    ..Default::default()
+  };
 
   // Save to file
   let filename = params.save_to_file().expect("Failed to save");

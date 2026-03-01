@@ -418,8 +418,8 @@ mod tests {
 
     // Create buffer with some energy
     let mut buffer = vec![rustfft::num_complex::Complex::new(0.0, 0.0); 512];
-    for i in 0..10 {
-      buffer[i] = rustfft::num_complex::Complex::new(1.0, 1.0);
+    for sample in buffer.iter_mut().take(10) {
+      *sample = rustfft::num_complex::Complex::new(1.0, 1.0);
     }
 
     let energy = analyzer.get_band_energy(&buffer, 0.0, 100.0, 10.0);

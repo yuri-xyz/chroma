@@ -70,12 +70,12 @@ fn test_color_mode_switching() {
 
 #[test]
 fn test_enhanced_warm_mode_parameters() {
-  let mut params = ShaderParams::default();
-  params.color_mode = ColorMode::Warm;
-
-  // Warm mode should maintain proper parameter ranges
-  params.brightness = 1.5;
-  params.saturation = 1.0;
+  let params = ShaderParams {
+    color_mode: ColorMode::Warm,
+    brightness: 1.5,
+    saturation: 1.0,
+    ..Default::default()
+  };
 
   assert_eq!(params.brightness, 1.5);
   assert_eq!(params.saturation, 1.0);
@@ -84,12 +84,12 @@ fn test_enhanced_warm_mode_parameters() {
 
 #[test]
 fn test_enhanced_cool_mode_parameters() {
-  let mut params = ShaderParams::default();
-  params.color_mode = ColorMode::Cool;
-
-  // Cool mode should maintain proper parameter ranges
-  params.brightness = 1.2;
-  params.contrast = 1.1;
+  let params = ShaderParams {
+    color_mode: ColorMode::Cool,
+    brightness: 1.2,
+    contrast: 1.1,
+    ..Default::default()
+  };
 
   assert_eq!(params.brightness, 1.2);
   assert_eq!(params.contrast, 1.1);
@@ -98,12 +98,12 @@ fn test_enhanced_cool_mode_parameters() {
 
 #[test]
 fn test_enhanced_pastel_mode_parameters() {
-  let mut params = ShaderParams::default();
-  params.color_mode = ColorMode::Pastel;
-
-  // Pastel mode with brightness adjustment
-  params.brightness = 1.0;
-  params.saturation = 0.8;
+  let params = ShaderParams {
+    color_mode: ColorMode::Pastel,
+    brightness: 1.0,
+    saturation: 0.8,
+    ..Default::default()
+  };
 
   assert_eq!(params.brightness, 1.0);
   assert_eq!(params.saturation, 0.8);
@@ -111,10 +111,11 @@ fn test_enhanced_pastel_mode_parameters() {
 
 #[test]
 fn test_color_mode_with_time_based_changes() {
-  let mut params = ShaderParams::default();
-
   // Aurora and Galaxy modes have time-dependent animation
-  params.color_mode = ColorMode::Aurora;
+  let mut params = ShaderParams {
+    color_mode: ColorMode::Aurora,
+    ..Default::default()
+  };
   params.update_time(0.016); // One frame at ~60fps
 
   assert!(params.time > 0.0);
@@ -142,11 +143,12 @@ fn test_pattern_type_compatibility_with_color_modes() {
 
 #[test]
 fn test_fire_mode_animation_properties() {
-  let mut params = ShaderParams::default();
-  params.color_mode = ColorMode::Fire;
-
   // Fire mode benefits from animation through distort_amplitude
-  params.distort_amplitude = 0.5;
+  let mut params = ShaderParams {
+    color_mode: ColorMode::Fire,
+    distort_amplitude: 0.5,
+    ..Default::default()
+  };
   params.update_time(0.016);
 
   assert_eq!(params.color_mode, ColorMode::Fire);
@@ -156,12 +158,13 @@ fn test_fire_mode_animation_properties() {
 
 #[test]
 fn test_ocean_mode_with_noise() {
-  let mut params = ShaderParams::default();
-  params.color_mode = ColorMode::Ocean;
-
   // Ocean mode works well with noise parameters
-  params.noise_strength = 0.4;
-  params.frequency = 8.0;
+  let params = ShaderParams {
+    color_mode: ColorMode::Ocean,
+    noise_strength: 0.4,
+    frequency: 8.0,
+    ..Default::default()
+  };
 
   assert_eq!(params.color_mode, ColorMode::Ocean);
   assert_eq!(params.noise_strength, 0.4);
@@ -170,12 +173,13 @@ fn test_ocean_mode_with_noise() {
 
 #[test]
 fn test_aurora_mode_with_high_saturation() {
-  let mut params = ShaderParams::default();
-  params.color_mode = ColorMode::Aurora;
-
   // Aurora mode can use high saturation for vibrant effects
-  params.saturation = 1.5;
-  params.brightness = 1.0;
+  let params = ShaderParams {
+    color_mode: ColorMode::Aurora,
+    saturation: 1.5,
+    brightness: 1.0,
+    ..Default::default()
+  };
 
   assert_eq!(params.color_mode, ColorMode::Aurora);
   assert_eq!(params.saturation, 1.5);
@@ -183,12 +187,13 @@ fn test_aurora_mode_with_high_saturation() {
 
 #[test]
 fn test_galaxy_mode_with_vignette() {
-  let mut params = ShaderParams::default();
-  params.color_mode = ColorMode::Galaxy;
-
   // Galaxy mode works well with vignetting for deep space effect
-  params.vignette = 0.6;
-  params.vignette_softness = 0.3;
+  let params = ShaderParams {
+    color_mode: ColorMode::Galaxy,
+    vignette: 0.6,
+    vignette_softness: 0.3,
+    ..Default::default()
+  };
 
   assert_eq!(params.color_mode, ColorMode::Galaxy);
   assert_eq!(params.vignette, 0.6);
@@ -196,9 +201,11 @@ fn test_galaxy_mode_with_vignette() {
 
 #[test]
 fn test_color_mode_persistence() {
-  let mut params = ShaderParams::default();
-  params.color_mode = ColorMode::Fire;
-  params.brightness = 1.5;
+  let params = ShaderParams {
+    color_mode: ColorMode::Fire,
+    brightness: 1.5,
+    ..Default::default()
+  };
 
   // Save and load
   let filename = params.save_to_file().expect("Failed to save");
@@ -215,11 +222,12 @@ fn test_pattern_improved_properties() {
   use chroma::params::PatternType;
 
   // Test that improved patterns (noise, waves, plasma) have proper octaves
-  let mut params = ShaderParams::default();
-
   // Noise pattern benefits from octaves parameter
-  params.pattern_type = PatternType::Noise;
-  params.octaves = 5;
+  let params = ShaderParams {
+    pattern_type: PatternType::Noise,
+    octaves: 5,
+    ..Default::default()
+  };
 
   assert_eq!(params.pattern_type, PatternType::Noise);
   assert_eq!(params.octaves, 5);
@@ -229,12 +237,13 @@ fn test_pattern_improved_properties() {
 fn test_waves_pattern_with_amplitude() {
   use chroma::params::PatternType;
 
-  let mut params = ShaderParams::default();
-  params.pattern_type = PatternType::Waves;
-
   // Enhanced waves pattern uses amplitude for modulation
-  params.amplitude = 0.8;
-  params.frequency = 10.0;
+  let params = ShaderParams {
+    pattern_type: PatternType::Waves,
+    amplitude: 0.8,
+    frequency: 10.0,
+    ..Default::default()
+  };
 
   assert_eq!(params.pattern_type, PatternType::Waves);
   assert_eq!(params.amplitude, 0.8);
@@ -244,12 +253,13 @@ fn test_waves_pattern_with_amplitude() {
 fn test_plasma_pattern_with_distortion() {
   use chroma::params::PatternType;
 
-  let mut params = ShaderParams::default();
-  params.pattern_type = PatternType::Plasma;
-
   // Enhanced plasma pattern uses more distortion parameters
-  params.distort_amplitude = 0.6;
-  params.speed = 1.0;
+  let params = ShaderParams {
+    pattern_type: PatternType::Plasma,
+    distort_amplitude: 0.6,
+    speed: 1.0,
+    ..Default::default()
+  };
 
   assert_eq!(params.pattern_type, PatternType::Plasma);
   assert_eq!(params.distort_amplitude, 0.6);
@@ -274,12 +284,13 @@ fn test_color_mode_randomization() {
 
 #[test]
 fn test_enhanced_gradient_calculation() {
-  let mut params = ShaderParams::default();
-
   // New color modes use gradient for edge effects
   // Test that gradient parameters are preserved
-  params.contrast = 1.2;
-  params.noise_strength = 0.5;
+  let params = ShaderParams {
+    contrast: 1.2,
+    noise_strength: 0.5,
+    ..Default::default()
+  };
 
   let filename = params.save_to_file().expect("Failed to save");
   let loaded = ShaderParams::load_from_file(&filename).expect("Failed to load");
@@ -292,12 +303,13 @@ fn test_enhanced_gradient_calculation() {
 
 #[test]
 fn test_color_mode_with_beat_distortion() {
-  let mut params = ShaderParams::default();
-  params.color_mode = ColorMode::Fire;
-
   // Beat distortion should work with new color modes
-  params.beat_distortion_strength = 1.0;
-  params.beat_distortion_time = 5.0;
+  let params = ShaderParams {
+    color_mode: ColorMode::Fire,
+    beat_distortion_strength: 1.0,
+    beat_distortion_time: 5.0,
+    ..Default::default()
+  };
 
   assert_eq!(params.color_mode, ColorMode::Fire);
   assert_eq!(params.beat_distortion_strength, 1.0);

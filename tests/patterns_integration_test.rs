@@ -159,13 +159,14 @@ fn test_pattern_randomization() {
 
 #[test]
 fn test_improved_pattern_persistence() {
-  let mut params = ShaderParams::default();
-
-  params.pattern_type = PatternType::Noise;
-  params.octaves = 5;
-  params.frequency = 12.0;
-  params.amplitude = 0.9;
-  params.distort_amplitude = 0.4;
+  let params = ShaderParams {
+    pattern_type: PatternType::Noise,
+    octaves: 5,
+    frequency: 12.0,
+    amplitude: 0.9,
+    distort_amplitude: 0.4,
+    ..Default::default()
+  };
 
   let filename = params.save_to_file().expect("Failed to save");
   let loaded = ShaderParams::load_from_file(&filename).expect("Failed to load");
@@ -181,13 +182,14 @@ fn test_improved_pattern_persistence() {
 
 #[test]
 fn test_waves_pattern_persistence() {
-  let mut params = ShaderParams::default();
-
-  params.pattern_type = PatternType::Waves;
-  params.frequency = 9.0;
-  params.amplitude = 0.7;
-  params.speed = 0.9;
-  params.distort_amplitude = 0.3;
+  let params = ShaderParams {
+    pattern_type: PatternType::Waves,
+    frequency: 9.0,
+    amplitude: 0.7,
+    speed: 0.9,
+    distort_amplitude: 0.3,
+    ..Default::default()
+  };
 
   let filename = params.save_to_file().expect("Failed to save");
   let loaded = ShaderParams::load_from_file(&filename).expect("Failed to load");
@@ -203,12 +205,13 @@ fn test_waves_pattern_persistence() {
 
 #[test]
 fn test_plasma_pattern_persistence() {
-  let mut params = ShaderParams::default();
-
-  params.pattern_type = PatternType::Plasma;
-  params.frequency = 11.0;
-  params.distort_amplitude = 0.55;
-  params.speed = 1.0; // Use reasonable value within limits
+  let params = ShaderParams {
+    pattern_type: PatternType::Plasma,
+    frequency: 11.0,
+    distort_amplitude: 0.55,
+    speed: 1.0, // Use reasonable value within limits
+    ..Default::default()
+  };
 
   let filename = params.save_to_file().expect("Failed to save");
   let loaded = ShaderParams::load_from_file(&filename).expect("Failed to load");
@@ -326,19 +329,20 @@ fn test_combined_parameter_updates() {
 fn test_pattern_state_preservation() {
   use chroma::params::ColorMode;
 
-  let mut params = ShaderParams::default();
-
-  // Set up complex state
-  params.pattern_type = PatternType::Noise;
-  params.color_mode = ColorMode::Aurora;
-  params.frequency = 12.5;
-  params.amplitude = 0.85;
-  params.octaves = 6;
-  params.distort_amplitude = 0.45;
-  params.speed = 0.95;
-  params.brightness = 1.35;
-  params.contrast = 1.15;
-  params.saturation = 1.25;
+  let mut params = ShaderParams {
+    // Set up complex state
+    pattern_type: PatternType::Noise,
+    color_mode: ColorMode::Aurora,
+    frequency: 12.5,
+    amplitude: 0.85,
+    octaves: 6,
+    distort_amplitude: 0.45,
+    speed: 0.95,
+    brightness: 1.35,
+    contrast: 1.15,
+    saturation: 1.25,
+    ..Default::default()
+  };
 
   // Update time several times
   for _ in 0..10 {

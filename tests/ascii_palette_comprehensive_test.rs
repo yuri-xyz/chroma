@@ -195,7 +195,6 @@ fn test_all_palettes_are_not_empty() {
 
   for palette in palettes {
     assert!(!palette.is_empty());
-    assert!(palette.len() > 0);
   }
 }
 

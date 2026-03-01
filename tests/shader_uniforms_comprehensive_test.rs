@@ -3,15 +3,16 @@ use chroma::shader::ShaderUniforms;
 
 #[test]
 fn test_uniforms_all_basic_fields_mapped() {
-  let mut params = ShaderParams::default();
-
-  params.time = 5.5;
-  params.frequency = 12.5;
-  params.amplitude = 1.5;
-  params.speed = 0.7;
-  params.color_shift = 2.5;
-  params.scale = 2.0;
-  params.octaves = 6;
+  let params = ShaderParams {
+    time: 5.5,
+    frequency: 12.5,
+    amplitude: 1.5,
+    speed: 0.7,
+    color_shift: 2.5,
+    scale: 2.0,
+    octaves: 6,
+    ..Default::default()
+  };
 
   let uniforms = ShaderUniforms::from_params(&params);
 
@@ -38,12 +39,13 @@ fn test_uniforms_resolution_conversion() {
 
 #[test]
 fn test_uniforms_noise_parameters_mapped() {
-  let mut params = ShaderParams::default();
-
-  params.noise_strength = 0.25;
-  params.distort_amplitude = 1.2;
-  params.noise_scale = 0.008;
-  params.z_rate = 0.05;
+  let params = ShaderParams {
+    noise_strength: 0.25,
+    distort_amplitude: 1.2,
+    noise_scale: 0.008,
+    z_rate: 0.05,
+    ..Default::default()
+  };
 
   let uniforms = ShaderUniforms::from_params(&params);
 
@@ -55,13 +57,14 @@ fn test_uniforms_noise_parameters_mapped() {
 
 #[test]
 fn test_uniforms_color_correction_mapped() {
-  let mut params = ShaderParams::default();
-
-  params.brightness = 1.5;
-  params.contrast = 0.9;
-  params.hue = 180.0;
-  params.saturation = 1.3;
-  params.gamma = 1.1;
+  let params = ShaderParams {
+    brightness: 1.5,
+    contrast: 0.9,
+    hue: 180.0,
+    saturation: 1.3,
+    gamma: 1.1,
+    ..Default::default()
+  };
 
   let uniforms = ShaderUniforms::from_params(&params);
 
@@ -74,11 +77,12 @@ fn test_uniforms_color_correction_mapped() {
 
 #[test]
 fn test_uniforms_effect_parameters_mapped() {
-  let mut params = ShaderParams::default();
-
-  params.vignette = 0.4;
-  params.vignette_softness = 0.7;
-  params.glyph_sharpness = 1.2;
+  let params = ShaderParams {
+    vignette: 0.4,
+    vignette_softness: 0.7,
+    glyph_sharpness: 1.2,
+    ..Default::default()
+  };
 
   let uniforms = ShaderUniforms::from_params(&params);
 
@@ -89,11 +93,12 @@ fn test_uniforms_effect_parameters_mapped() {
 
 #[test]
 fn test_uniforms_background_tint_mapped() {
-  let mut params = ShaderParams::default();
-
-  params.background_tint_r = 0.1;
-  params.background_tint_g = 0.2;
-  params.background_tint_b = 0.3;
+  let params = ShaderParams {
+    background_tint_r: 0.1,
+    background_tint_g: 0.2,
+    background_tint_b: 0.3,
+    ..Default::default()
+  };
 
   let uniforms = ShaderUniforms::from_params(&params);
 
@@ -104,44 +109,49 @@ fn test_uniforms_background_tint_mapped() {
 
 #[test]
 fn test_uniforms_color_mode_to_u32() {
-  let mut params = ShaderParams::default();
-
-  params.color_mode = ColorMode::Rainbow;
-
-  let uniforms = ShaderUniforms::from_params(&params);
+  let rainbow_params = ShaderParams {
+    color_mode: ColorMode::Rainbow,
+    ..Default::default()
+  };
+  let uniforms = ShaderUniforms::from_params(&rainbow_params);
 
   assert_eq!(uniforms.color_mode, 0);
 
-  params.color_mode = ColorMode::Neon;
-
-  let uniforms = ShaderUniforms::from_params(&params);
+  let neon_params = ShaderParams {
+    color_mode: ColorMode::Neon,
+    ..Default::default()
+  };
+  let uniforms = ShaderUniforms::from_params(&neon_params);
 
   assert_eq!(uniforms.color_mode, 5);
 }
 
 #[test]
 fn test_uniforms_pattern_type_to_u32() {
-  let mut params = ShaderParams::default();
-
-  params.pattern_type = PatternType::Plasma;
-
-  let uniforms = ShaderUniforms::from_params(&params);
+  let plasma_params = ShaderParams {
+    pattern_type: PatternType::Plasma,
+    ..Default::default()
+  };
+  let uniforms = ShaderUniforms::from_params(&plasma_params);
 
   assert_eq!(uniforms.pattern_type, 0);
 
-  params.pattern_type = PatternType::Fractal;
-
-  let uniforms = ShaderUniforms::from_params(&params);
+  let fractal_params = ShaderParams {
+    pattern_type: PatternType::Fractal,
+    ..Default::default()
+  };
+  let uniforms = ShaderUniforms::from_params(&fractal_params);
 
   assert_eq!(uniforms.pattern_type, 10);
 }
 
 #[test]
 fn test_uniforms_effect_time_and_type_mapped() {
-  let mut params = ShaderParams::default();
-
-  params.effect_time = 42.5;
-  params.effect_type = 3;
+  let params = ShaderParams {
+    effect_time: 42.5,
+    effect_type: 3,
+    ..Default::default()
+  };
 
   let uniforms = ShaderUniforms::from_params(&params);
 
@@ -175,12 +185,13 @@ fn test_uniforms_from_audio_reactive_defaults() {
 
 #[test]
 fn test_uniforms_extreme_values() {
-  let mut params = ShaderParams::default();
-
-  params.frequency = 18.0;
-  params.brightness = 2.0;
-  params.contrast = 2.0;
-  params.saturation = 2.0;
+  let params = ShaderParams {
+    frequency: 18.0,
+    brightness: 2.0,
+    contrast: 2.0,
+    saturation: 2.0,
+    ..Default::default()
+  };
 
   let uniforms = ShaderUniforms::from_params(&params);
 
@@ -192,12 +203,13 @@ fn test_uniforms_extreme_values() {
 
 #[test]
 fn test_uniforms_zero_values() {
-  let mut params = ShaderParams::default();
-
-  params.time = 0.0;
-  params.amplitude = 0.0;
-  params.brightness = 0.0;
-  params.vignette = 0.0;
+  let params = ShaderParams {
+    time: 0.0,
+    amplitude: 0.0,
+    brightness: 0.0,
+    vignette: 0.0,
+    ..Default::default()
+  };
 
   let uniforms = ShaderUniforms::from_params(&params);
 
