@@ -98,6 +98,8 @@ impl ShaderUniforms {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::params::{ColorMode, PatternType, ShaderParams};
+  use std::mem;
 
   #[test]
   fn test_uniforms_from_params() {
@@ -107,5 +109,81 @@ mod tests {
     assert_eq!(uniforms.time, 0.0);
     assert_eq!(uniforms.resolution[0], 80.0);
     assert_eq!(uniforms.resolution[1], 24.0);
+  }
+
+  #[test]
+  fn test_uniforms_from_params_maps_all_selected_fields() {
+    let params = ShaderParams {
+      time: 12.5,
+      resolution_width: 132,
+      resolution_height: 41,
+      frequency: 3.5,
+      amplitude: 1.25,
+      speed: 0.75,
+      color_shift: 1.2,
+      scale: 2.2,
+      octaves: 5,
+      noise_strength: 0.45,
+      distort_amplitude: 0.33,
+      noise_scale: 1.7,
+      z_rate: 0.2,
+      brightness: 1.4,
+      contrast: 0.9,
+      hue: 0.6,
+      saturation: 1.1,
+      gamma: 1.8,
+      vignette: 0.3,
+      vignette_softness: 0.7,
+      glyph_sharpness: 1.5,
+      color_mode: ColorMode::Galaxy,
+      pattern_type: PatternType::Tunnel,
+      effect_time: 8.0,
+      effect_type: 4,
+      beat_distortion_time: 6.5,
+      beat_distortion_strength: 0.95,
+      beat_zoom_strength: 0.55,
+      background_tint_r: 0.1,
+      background_tint_g: 0.2,
+      background_tint_b: 0.3,
+      ..ShaderParams::default()
+    };
+
+    let uniforms = ShaderUniforms::from_params(&params);
+
+    assert_eq!(uniforms.time, 12.5);
+    assert_eq!(uniforms.resolution, [132.0, 41.0]);
+    assert_eq!(uniforms.frequency, 3.5);
+    assert_eq!(uniforms.amplitude, 1.25);
+    assert_eq!(uniforms.speed, 0.75);
+    assert_eq!(uniforms.color_shift, 1.2);
+    assert_eq!(uniforms.scale, 2.2);
+    assert_eq!(uniforms.octaves, 5);
+    assert_eq!(uniforms.noise_strength, 0.45);
+    assert_eq!(uniforms.distort_amplitude, 0.33);
+    assert_eq!(uniforms.noise_scale, 1.7);
+    assert_eq!(uniforms.z_rate, 0.2);
+    assert_eq!(uniforms.brightness, 1.4);
+    assert_eq!(uniforms.contrast, 0.9);
+    assert_eq!(uniforms.hue, 0.6);
+    assert_eq!(uniforms.saturation, 1.1);
+    assert_eq!(uniforms.gamma, 1.8);
+    assert_eq!(uniforms.vignette, 0.3);
+    assert_eq!(uniforms.vignette_softness, 0.7);
+    assert_eq!(uniforms.glyph_sharpness, 1.5);
+    assert_eq!(uniforms.color_mode, ColorMode::Galaxy.to_u32());
+    assert_eq!(uniforms.pattern_type, PatternType::Tunnel.to_u32());
+    assert_eq!(uniforms.effect_time, 8.0);
+    assert_eq!(uniforms.effect_type, 4);
+    assert_eq!(uniforms.beat_distortion_time, 6.5);
+    assert_eq!(uniforms.beat_distortion_strength, 0.95);
+    assert_eq!(uniforms.beat_zoom_strength, 0.55);
+    assert_eq!(uniforms.background_tint, [0.1, 0.2, 0.3]);
+  }
+
+  #[test]
+  fn test_uniforms_layout_matches_expected_alignment() {
+    assert_eq!(mem::size_of::<ShaderUniforms>(), 144);
+    assert_eq!(mem::align_of::<ShaderUniforms>(), 4);
+    assert_eq!(mem::size_of::<ShaderUniforms>() % 16, 0);
   }
 }

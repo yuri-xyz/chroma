@@ -1,16 +1,32 @@
+macro_rules! debug_logln {
+  ($writer:expr, $($arg:tt)*) => {{
+    #[cfg(debug_assertions)]
+    {
+      use std::io::Write as _;
+      writeln!($writer, $($arg)*)
+    }
+    #[cfg(not(debug_assertions))]
+    {
+      let _ = &$writer;
+      std::io::Result::Ok(())
+    }
+  }};
+}
+
 mod audio;
 mod config_watcher;
 mod input;
 mod rendering;
 mod status_bar;
 
-#[cfg(feature = "audio")]
-use crate::constants::AUDIO_SAMPLE_THRESHOLD;
 use anyhow::Result;
 use chroma::ascii::{AsciiConverter, AsciiPalette};
 #[cfg(feature = "audio")]
-use chroma::audio::{AudioAnalyzer, AudioCapture};
-use chroma::params::{PaletteType, ShaderParams};
+use chroma::audio::{AudioAnalyzer, AudioCapture, AudioFeatures};
+#[cfg(feature = "audio")]
+use chroma::constants::AUDIO_SILENCE_THRESHOLD;
+use chroma::params::ShaderParams;
+use chroma::render::RenderedCell;
 use chroma::shader::{ShaderPipeline, ShaderUniforms};
 use crossterm::terminal;
 #[cfg(debug_assertions)]
@@ -23,6 +39,50 @@ pub(crate) type DebugLog = BufWriter<File>;
 
 #[cfg(not(debug_assertions))]
 pub(crate) type DebugLog = BufWriter<std::io::Sink>;
+
+fn shader_dimensions(
+  terminal_width: u16,
+  terminal_height: u16,
+  show_status_bar: bool,
+  stream_mode: bool,
+) -> (u32, u32) {
+  let shader_width = terminal_width as u32;
+  let shader_height = if show_status_bar && !stream_mode {
+    terminal_height.saturating_sub(1) as u32
+  } else {
+    terminal_height as u32
+  };
+
+  (shader_width, shader_height)
+}
+
+fn create_converter(params: &ShaderParams) -> AsciiConverter {
+  AsciiConverter::new(AsciiPalette::from(params.palette), true)
+}
+
+fn terminal_background_color(params: &ShaderParams) -> Option<(u8, u8, u8)> {
+  if params.terminal_bg_r > 0.0 || params.terminal_bg_g > 0.0 || params.terminal_bg_b > 0.0 {
+    Some((
+      (params.terminal_bg_r * 255.0) as u8,
+      (params.terminal_bg_g * 255.0) as u8,
+      (params.terminal_bg_b * 255.0) as u8,
+    ))
+  } else {
+    None
+  }
+}
+
+fn prepare_reloaded_params(
+  current_params: &ShaderParams,
+  mut new_params: ShaderParams,
+) -> ShaderParams {
+  new_params.time = current_params.time;
+  new_params.set_resolution(
+    current_params.resolution_width,
+    current_params.resolution_height,
+  );
+  new_params
+}
 
 /// Main application state
 pub struct App {
@@ -42,6 +102,8 @@ pub struct App {
   audio_capture: Option<AudioCapture>,
   #[cfg(feature = "audio")]
   audio_analyzer: Option<AudioAnalyzer>,
+  #[cfg(feature = "audio")]
+  latest_audio_features: AudioFeatures,
 }
 
 impl App {
@@ -80,13 +142,12 @@ impl App {
       terminal_width, terminal_height, stream_mode
     )?;
 
-    let shader_width = terminal_width as u32;
-
-    let shader_height = if show_status_bar && !stream_mode {
-      (terminal_height - 1) as u32
-    } else {
-      terminal_height as u32
-    };
+    let (shader_width, shader_height) = shader_dimensions(
+      terminal_width,
+      terminal_height,
+      show_status_bar,
+      stream_mode,
+    );
 
     writeln!(
       debug_log,
@@ -122,8 +183,7 @@ impl App {
     )
     .await?;
 
-    let palette = Self::palette_from_type(params.palette);
-    let converter = AsciiConverter::new(palette, true);
+    let converter = create_converter(&params);
 
     #[cfg(feature = "audio")]
     let (audio_capture, audio_analyzer) =
@@ -148,6 +208,8 @@ impl App {
       audio_capture,
       #[cfg(feature = "audio")]
       audio_analyzer,
+      #[cfg(feature = "audio")]
+      latest_audio_features: AudioFeatures::default(),
     })
   }
 
@@ -195,28 +257,6 @@ impl App {
     }
   }
 
-  /// Convert palette type to ASCII palette
-  fn palette_from_type(palette_type: PaletteType) -> AsciiPalette {
-    match palette_type {
-      PaletteType::Standard => AsciiPalette::standard(),
-      PaletteType::Blocks => AsciiPalette::blocks(),
-      PaletteType::Circles => AsciiPalette::circles(),
-      PaletteType::Smooth => AsciiPalette::smooth(),
-      PaletteType::Braille => AsciiPalette::braille(),
-      PaletteType::Geometric => AsciiPalette::geometric(),
-      PaletteType::Mixed => AsciiPalette::mixed(),
-      PaletteType::Dots => AsciiPalette::dots(),
-      PaletteType::Shades => AsciiPalette::shades(),
-      PaletteType::Lines => AsciiPalette::lines(),
-      PaletteType::Triangles => AsciiPalette::triangles(),
-      PaletteType::Arrows => AsciiPalette::arrows(),
-      PaletteType::Powerline => AsciiPalette::powerline(),
-      PaletteType::BoxDraw => AsciiPalette::boxdraw(),
-      PaletteType::Extended => AsciiPalette::extended(),
-      PaletteType::Simple => AsciiPalette::simple(),
-    }
-  }
-
   /// Update application state
   fn update(&mut self) {
     let current_time = Instant::now();
@@ -227,13 +267,16 @@ impl App {
     self.params.update_time(delta_time);
 
     #[cfg(feature = "audio")]
-    audio::update_audio_reactive(
-      &mut self.params,
-      &self.audio_capture,
-      &mut self.audio_analyzer,
-      delta_time,
-      &mut self.debug_log,
-    );
+    {
+      let features = audio::update_audio_reactive(
+        &mut self.params,
+        &self.audio_capture,
+        &mut self.audio_analyzer,
+        delta_time,
+        &mut self.debug_log,
+      );
+      self.latest_audio_features = features;
+    }
 
     self.check_and_apply_config_reload();
 
@@ -243,22 +286,16 @@ impl App {
   /// Check for config file changes and apply them if valid
   fn check_and_apply_config_reload(&mut self) {
     if let Some(ref watcher) = self.config_watcher {
-      if let Some(mut new_params) = watcher.try_receive_config() {
-        let current_time = self.params.time;
-        let current_width = self.params.resolution_width;
-        let current_height = self.params.resolution_height;
-
-        new_params.time = current_time;
-        new_params.set_resolution(current_width, current_height);
+      if let Some(new_params) = watcher.try_receive_config() {
+        let new_params = prepare_reloaded_params(&self.params, new_params);
 
         if new_params.palette != self.params.palette {
-          let new_palette = Self::palette_from_type(new_params.palette);
-          self.converter = AsciiConverter::new(new_palette, true);
+          self.converter = create_converter(&new_params);
         }
 
         self.params = new_params;
 
-        let _ = writeln!(self.debug_log, "Config reloaded successfully");
+        let _ = debug_logln!(self.debug_log, "Config reloaded successfully");
       }
     }
   }
@@ -267,15 +304,19 @@ impl App {
   fn render(&mut self) -> Result<()> {
     let uniforms = ShaderUniforms::from_params(&self.params);
 
-    writeln!(
+    debug_logln!(
       self.debug_log,
       "DEBUG: Uniforms - time: {}, freq: {}, amp: {}, scale: {}",
-      self.params.time, self.params.frequency, self.params.amplitude, self.params.scale
+      self.params.time,
+      self.params.frequency,
+      self.params.amplitude,
+      self.params.scale
     )?;
-    writeln!(
+    debug_logln!(
       self.debug_log,
       "DEBUG: Resolution in uniforms: {}x{}",
-      self.params.resolution_width, self.params.resolution_height
+      self.params.resolution_width,
+      self.params.resolution_height
     )?;
 
     // Stream mode: use simplified rendering
@@ -300,26 +341,12 @@ impl App {
       None
     };
 
-    // Convert terminal background color from normalized floats to u8
-    let terminal_bg = if self.params.terminal_bg_r > 0.0
-      || self.params.terminal_bg_g > 0.0
-      || self.params.terminal_bg_b > 0.0
-    {
-      Some((
-        (self.params.terminal_bg_r * 255.0) as u8,
-        (self.params.terminal_bg_g * 255.0) as u8,
-        (self.params.terminal_bg_b * 255.0) as u8,
-      ))
-    } else {
-      None
-    };
-
     rendering::render_frame(
       &self.pipeline,
       &self.converter,
       &uniforms,
       status_bar,
-      terminal_bg,
+      terminal_background_color(&self.params),
       &mut self.debug_log,
     )?;
 
@@ -331,39 +358,40 @@ impl App {
   fn check_audio_activity(&self) -> bool {
     #[cfg(feature = "audio")]
     {
-      if self.params.audio_enabled {
-        if let (Some(capture), Some(_)) = (&self.audio_capture, &self.audio_analyzer) {
-          let samples = capture.get_samples();
-          return !samples.is_empty() && samples.iter().any(|s| s.abs() > AUDIO_SAMPLE_THRESHOLD);
-        }
-      }
+      self.params.audio_enabled && self.latest_audio_features.overall >= AUDIO_SILENCE_THRESHOLD
     }
-    false
+
+    #[cfg(not(feature = "audio"))]
+    {
+      false
+    }
   }
 
-  /// Build status bar string
-  fn build_status_bar(&self, has_sound: bool) -> String {
-    let (current_width, _) = terminal::size().unwrap_or((80, 24));
-    let available_cols = current_width as usize;
+  /// Build status bar cells
+  fn build_status_bar(&self, has_sound: bool) -> Vec<RenderedCell> {
+    let available_cols = self.last_terminal_size.0 as usize;
     let status_text = status_bar::build_status_text(&self.params, self.params.effect_type);
 
-    status_bar::format_status_bar(status_text, available_cols, has_sound, self.params.time)
+    status_bar::format_status_bar(&status_text, available_cols, has_sound, self.params.time)
   }
 
   /// Handle window resize
   async fn handle_resize(&mut self, new_width: u16, new_height: u16) -> Result<()> {
-    writeln!(
+    debug_logln!(
       self.debug_log,
       "RESIZE: Terminal resized to {}x{} (was {}x{})",
-      new_width, new_height, self.last_terminal_size.0, self.last_terminal_size.1
+      new_width,
+      new_height,
+      self.last_terminal_size.0,
+      self.last_terminal_size.1
     )?;
 
-    let shader_width = new_width as u32;
-    let shader_height = if self.show_status_bar {
-      (new_height - 1) as u32
-    } else {
-      new_height as u32
-    };
+    let (shader_width, shader_height) = shader_dimensions(
+      new_width,
+      new_height,
+      self.show_status_bar,
+      self.stream_mode,
+    );
 
     self.params.set_resolution(shader_width, shader_height);
 
@@ -377,10 +405,11 @@ impl App {
 
     self.last_terminal_size = (new_width, new_height);
 
-    writeln!(
+    debug_logln!(
       self.debug_log,
       "RESIZE: Pipeline recreated with dimensions {}x{}",
-      shader_width, shader_height
+      shader_width,
+      shader_height
     )?;
 
     Ok(())
@@ -421,5 +450,118 @@ impl App {
     }
 
     Ok(())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use chroma::params::PaletteType;
+
+  #[test]
+  fn test_shader_dimensions_only_reserve_status_row_outside_stream_mode() {
+    assert_eq!(shader_dimensions(80, 24, true, false), (80, 23));
+    assert_eq!(shader_dimensions(80, 24, true, true), (80, 24));
+    assert_eq!(shader_dimensions(80, 24, false, false), (80, 24));
+  }
+
+  #[test]
+  fn test_shader_dimensions_saturate_when_terminal_height_is_tiny() {
+    assert_eq!(shader_dimensions(80, 0, true, false), (80, 0));
+    assert_eq!(shader_dimensions(80, 1, true, false), (80, 0));
+  }
+
+  #[test]
+  fn test_terminal_background_color_converts_normalized_channels() {
+    let params = ShaderParams {
+      terminal_bg_r: 1.0,
+      terminal_bg_g: 0.5,
+      terminal_bg_b: 0.25,
+      ..ShaderParams::default()
+    };
+
+    assert_eq!(terminal_background_color(&params), Some((255, 127, 63)));
+  }
+
+  #[test]
+  fn test_terminal_background_color_returns_none_for_black_background() {
+    let params = ShaderParams::default();
+
+    assert_eq!(terminal_background_color(&params), None);
+  }
+
+  #[test]
+  fn test_terminal_background_color_returns_some_when_any_channel_is_non_zero() {
+    let params = ShaderParams {
+      terminal_bg_b: 0.1,
+      ..ShaderParams::default()
+    };
+
+    assert_eq!(terminal_background_color(&params), Some((0, 0, 25)));
+  }
+
+  #[test]
+  fn test_create_converter_uses_selected_palette() {
+    let params = ShaderParams {
+      palette: PaletteType::Simple,
+      ..ShaderParams::default()
+    };
+    let converter = create_converter(&params);
+    let pixels = vec![128, 128, 128, 255];
+    let frame = converter.convert_frame(&pixels, 1, 1);
+
+    assert_eq!(frame[0][0].0, 'o');
+  }
+
+  #[test]
+  fn test_prepare_reloaded_params_preserves_runtime_state() {
+    let current = ShaderParams {
+      time: 12.5,
+      resolution_width: 120,
+      resolution_height: 40,
+      palette: PaletteType::Braille,
+      ..ShaderParams::default()
+    };
+    let incoming = ShaderParams {
+      time: 1.0,
+      resolution_width: 10,
+      resolution_height: 10,
+      palette: PaletteType::Lines,
+      frequency: 14.0,
+      ..ShaderParams::default()
+    };
+
+    let prepared = prepare_reloaded_params(&current, incoming);
+
+    assert_eq!(prepared.time, current.time);
+    assert_eq!(prepared.resolution_width, current.resolution_width);
+    assert_eq!(prepared.resolution_height, current.resolution_height);
+    assert_eq!(prepared.palette, PaletteType::Lines);
+    assert_eq!(prepared.frequency, 14.0);
+  }
+
+  #[test]
+  fn test_prepare_reloaded_params_keeps_incoming_non_runtime_fields() {
+    let current = ShaderParams {
+      time: 5.0,
+      resolution_width: 100,
+      resolution_height: 30,
+      ..ShaderParams::default()
+    };
+    let incoming = ShaderParams {
+      terminal_bg_r: 0.5,
+      audio_enabled: false,
+      beat_sensitivity: 2.5,
+      ..ShaderParams::default()
+    };
+
+    let prepared = prepare_reloaded_params(&current, incoming);
+
+    assert_eq!(prepared.time, 5.0);
+    assert_eq!(prepared.resolution_width, 100);
+    assert_eq!(prepared.resolution_height, 30);
+    assert_eq!(prepared.terminal_bg_r, 0.5);
+    assert!(!prepared.audio_enabled);
+    assert_eq!(prepared.beat_sensitivity, 2.5);
   }
 }

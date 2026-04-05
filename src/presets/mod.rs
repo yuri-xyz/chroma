@@ -31,6 +31,8 @@ mod p9;
 
 use crate::params::ShaderParams;
 use rand::Rng;
+#[cfg(test)]
+use rand::SeedableRng;
 
 /// All preset functions
 const PRESETS: &[fn() -> ShaderParams] = &[
@@ -70,6 +72,15 @@ pub fn get_preset(index: u32) -> ShaderParams {
 /// Get a random preset.
 pub fn get_random_preset() -> ShaderParams {
   let index = rand::thread_rng().gen_range(0..PRESETS.len());
+
+  PRESETS[index]()
+}
+
+#[cfg(test)]
+fn get_random_preset_with_seed(seed: u64) -> ShaderParams {
+  let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+  let index = rng.gen_range(0..PRESETS.len());
+
   PRESETS[index]()
 }
 
@@ -117,11 +128,32 @@ mod tests {
   }
 
   #[test]
-  fn test_get_random_preset() {
-    let preset = get_random_preset();
+  fn test_get_random_preset_with_seed() {
+    let preset_a = get_random_preset_with_seed(42);
+    let preset_b = get_random_preset_with_seed(42);
+    let preset_c = get_random_preset_with_seed(7);
+
+    assert_eq!(preset_a.frequency, preset_b.frequency);
+    assert_eq!(preset_a.pattern_type, preset_b.pattern_type);
+    assert_eq!(preset_a.color_mode, preset_b.color_mode);
     assert!(
-      preset.frequency > 0.0,
-      "Random preset should have positive frequency"
+      preset_a.frequency != preset_c.frequency
+        || preset_a.pattern_type != preset_c.pattern_type
+        || preset_a.color_mode != preset_c.color_mode
     );
+  }
+
+  #[test]
+  fn test_all_presets_produce_clamped_valid_ranges() {
+    for i in 0..preset_count() {
+      let preset = get_preset(i as u32);
+
+      assert!((0.1..=20.0).contains(&preset.frequency));
+      assert!((0.0..=2.0).contains(&preset.amplitude));
+      assert!((0.0..=2.0).contains(&preset.speed));
+      assert!((0.1..=5.0).contains(&preset.scale));
+      assert!(preset.octaves >= 1);
+      assert!(preset.octaves <= 8);
+    }
   }
 }

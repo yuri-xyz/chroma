@@ -73,8 +73,12 @@ fn select_weighted<T: Copy>(weights: &[(T, u32)], rng: &mut impl Rng) -> T {
 pub fn randomize(params: &mut ShaderParams) {
   let mut rng = rand::thread_rng();
 
-  params.pattern_type = select_weighted(PATTERN_WEIGHTS, &mut rng);
-  params.palette = select_weighted(PALETTE_WEIGHTS, &mut rng);
+  randomize_with_rng(params, &mut rng);
+}
+
+pub fn randomize_with_rng(params: &mut ShaderParams, rng: &mut impl Rng) {
+  params.pattern_type = select_weighted(PATTERN_WEIGHTS, rng);
+  params.palette = select_weighted(PALETTE_WEIGHTS, rng);
 
   params.effect_type = rng.gen_range(2..=6);
 

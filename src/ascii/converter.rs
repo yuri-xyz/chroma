@@ -22,26 +22,30 @@ impl AsciiConverter {
   }
 
   pub fn convert_frame(&self, pixels: &[u8], width: u32, height: u32) -> Vec<Vec<(char, Color)>> {
+    if width == 0 || height == 0 {
+      return Vec::new();
+    }
+
+    let row_stride = width as usize * 4;
     let mut result = Vec::with_capacity(height as usize);
+    let mut rows = pixels.chunks_exact(row_stride);
 
-    for y in 0..height {
+    for _ in 0..height {
       let mut row = Vec::with_capacity(width as usize);
+      let row_pixels = rows.next().unwrap_or(&[]);
 
-      for x in 0..width {
-        let pixel_index = ((y * width + x) * 4) as usize;
-
-        let red = pixels[pixel_index] as f32 / 255.0;
-        let green = pixels[pixel_index + 1] as f32 / 255.0;
-        let blue = pixels[pixel_index + 2] as f32 / 255.0;
-
-        let brightness = self.calculate_brightness(red, green, blue);
-        let character = self.palette.get_character(brightness);
+      for pixel in row_pixels.chunks_exact(4) {
+        let red = pixel[0];
+        let green = pixel[1];
+        let blue = pixel[2];
+        let brightness = Self::calculate_brightness(red, green, blue);
+        let character = self.palette.get_character_for_brightness(brightness);
 
         let color = if self.use_color {
           Color::Rgb {
-            r: (red * 255.0) as u8,
-            g: (green * 255.0) as u8,
-            b: (blue * 255.0) as u8,
+            r: red,
+            g: green,
+            b: blue,
           }
         } else {
           Color::White
@@ -56,8 +60,8 @@ impl AsciiConverter {
     result
   }
 
-  fn calculate_brightness(&self, red: f32, green: f32, blue: f32) -> f32 {
-    0.299 * red + 0.587 * green + 0.114 * blue
+  fn calculate_brightness(red: u8, green: u8, blue: u8) -> u8 {
+    ((299 * red as u32 + 587 * green as u32 + 114 * blue as u32 + 500) / 1000) as u8
   }
 
   pub fn set_palette(&mut self, palette: AsciiPalette) {
@@ -75,14 +79,20 @@ mod tests {
 
   #[test]
   fn test_brightness_calculation() {
-    let converter = AsciiConverter::default();
-    let white_brightness = converter.calculate_brightness(1.0, 1.0, 1.0);
+    let white_brightness = AsciiConverter::calculate_brightness(255, 255, 255);
 
-    assert!((white_brightness - 1.0).abs() < 0.001);
+    assert_eq!(white_brightness, 255);
 
-    let black_brightness = converter.calculate_brightness(0.0, 0.0, 0.0);
+    let black_brightness = AsciiConverter::calculate_brightness(0, 0, 0);
 
-    assert!((black_brightness - 0.0).abs() < 0.001);
+    assert_eq!(black_brightness, 0);
+  }
+
+  #[test]
+  fn test_brightness_calculation_matches_expected_luma_rounding() {
+    let brightness = AsciiConverter::calculate_brightness(255, 0, 0);
+
+    assert_eq!(brightness, 76);
   }
 
   #[test]

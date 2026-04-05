@@ -2,7 +2,7 @@ pub mod analyzer;
 pub mod capture;
 pub mod device_selector;
 
-pub use analyzer::AudioAnalyzer;
+pub use analyzer::{AudioAnalyzer, ANALYSIS_HOP_SIZE, ANALYSIS_WINDOW_SIZE};
 pub use capture::AudioCapture;
 
 #[derive(Debug, Clone, Copy)]

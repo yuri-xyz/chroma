@@ -6,15 +6,13 @@ use clap::Parser;
 
 mod app;
 mod cli;
-mod constants;
 mod list_commands;
 mod terminal;
-mod utils;
 
 use app::App;
+use chroma::constants::DEFAULT_FPS;
 use chroma::params::ShaderParams;
 use cli::CliArgs;
-use constants::DEFAULT_FPS;
 
 fn main() -> Result<()> {
   let cli_args = CliArgs::parse();

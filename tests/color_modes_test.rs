@@ -1,3 +1,5 @@
+mod support;
+
 // Tests for enhanced color modes and pattern improvements
 // Note: These tests validate parameter ranges and color output properties in CPU space
 // GPU shader functions are tested through integration testing
@@ -208,13 +210,12 @@ fn test_color_mode_persistence() {
   };
 
   // Save and load
-  let filename = params.save_to_file().expect("Failed to save");
-  let loaded = ShaderParams::load_from_file(&filename).expect("Failed to load");
+  let dir = support::fresh_test_dir("color_modes_test_color_mode_persistence");
+  let path = params.save_to_file_in(&dir).expect("Failed to save");
+  let loaded = ShaderParams::load_from_file(&path).expect("Failed to load");
 
   assert_eq!(loaded.color_mode, ColorMode::Fire);
   assert_eq!(loaded.brightness, 1.5);
-
-  std::fs::remove_file(&filename).ok();
 }
 
 #[test]
@@ -269,15 +270,12 @@ fn test_plasma_pattern_with_distortion() {
 fn test_color_mode_randomization() {
   use chroma::params::PatternType;
 
-  let mut params = ShaderParams::default();
+  for seed in [3_u64, 17, 29, 41, 59] {
+    let mut params = ShaderParams::default();
 
-  for _ in 0..10 {
-    params.randomize();
+    params.randomize_with_seed(seed);
 
-    // Color mode should be randomized within valid set
     assert!(ColorMode::all().contains(&params.color_mode));
-
-    // Pattern should also be randomized
     assert!(PatternType::all().contains(&params.pattern_type));
   }
 }
@@ -292,13 +290,12 @@ fn test_enhanced_gradient_calculation() {
     ..Default::default()
   };
 
-  let filename = params.save_to_file().expect("Failed to save");
-  let loaded = ShaderParams::load_from_file(&filename).expect("Failed to load");
+  let dir = support::fresh_test_dir("color_modes_test_enhanced_gradient_calculation");
+  let path = params.save_to_file_in(&dir).expect("Failed to save");
+  let loaded = ShaderParams::load_from_file(&path).expect("Failed to load");
 
   assert_eq!(loaded.contrast, 1.2);
   assert_eq!(loaded.noise_strength, 0.5);
-
-  std::fs::remove_file(&filename).ok();
 }
 
 #[test]

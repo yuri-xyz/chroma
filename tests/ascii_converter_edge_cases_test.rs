@@ -155,6 +155,32 @@ fn test_brightness_calculation_weighted() {
 }
 
 #[test]
+fn test_convert_frame_uses_expected_byte_brightness_breakpoints() {
+  let converter = AsciiConverter::new(AsciiPalette::simple(), true);
+  let pixels: Vec<u8> = vec![
+    0, 0, 0, 255, 64, 64, 64, 255, 128, 128, 128, 255, 191, 191, 191, 255, 255, 255, 255, 255,
+  ];
+  let result = converter.convert_frame(&pixels, 5, 1);
+  let rendered = result[0].iter().map(|(ch, _)| *ch).collect::<String>();
+
+  assert_eq!(rendered, " .oO@");
+}
+
+#[test]
+fn test_convert_frame_uses_exact_integer_luma_for_primary_colors() {
+  let converter = AsciiConverter::new(AsciiPalette::standard(), true);
+  let palette = AsciiPalette::standard();
+  let pixels: Vec<u8> = vec![
+    255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255,
+  ];
+  let result = converter.convert_frame(&pixels, 3, 1);
+
+  assert_eq!(result[0][0].0, palette.get_character_for_brightness(76));
+  assert_eq!(result[0][1].0, palette.get_character_for_brightness(150));
+  assert_eq!(result[0][2].0, palette.get_character_for_brightness(29));
+}
+
+#[test]
 fn test_black_and_white_extremes() {
   let converter = AsciiConverter::new(AsciiPalette::standard(), true);
 

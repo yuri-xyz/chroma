@@ -1,3 +1,5 @@
+mod support;
+
 use chroma::params::ShaderParams;
 
 #[test]
@@ -36,16 +38,21 @@ fn test_set_resolution() {
 #[test]
 fn test_randomize() {
   let mut params = ShaderParams::default();
-  let original_frequency = params.frequency;
+  let mut same_seed_params = ShaderParams::default();
 
-  params.randomize();
+  params.randomize_with_seed(7);
+  same_seed_params.randomize_with_seed(7);
 
+  assert_eq!(params.frequency, same_seed_params.frequency);
+  assert_eq!(params.brightness, same_seed_params.brightness);
+  assert_eq!(params.contrast, same_seed_params.contrast);
+  assert_eq!(params.hue, same_seed_params.hue);
+  assert_eq!(params.pattern_type, same_seed_params.pattern_type);
+  assert_eq!(params.palette, same_seed_params.palette);
   assert!(params.frequency >= 3.0 && params.frequency <= 18.0);
   assert!(params.brightness >= 0.8 && params.brightness <= 1.8);
   assert!(params.contrast >= 0.5 && params.contrast <= 1.8);
   assert!(params.hue >= 0.0 && params.hue < 360.0);
-
-  assert_ne!(params.frequency, original_frequency);
 }
 
 #[test]
@@ -221,16 +228,29 @@ fn test_file_persistence() {
     ..Default::default()
   };
 
-  // Save to file
-  let filename = params.save_to_file().expect("Failed to save");
+  let dir = support::fresh_test_dir("shader_params_test_file_persistence");
+  let path = params.save_to_file_in(&dir).expect("Failed to save");
 
-  // Load from file
-  let loaded = ShaderParams::load_from_file(&filename).expect("Failed to load");
+  let loaded = ShaderParams::load_from_file(&path).expect("Failed to load");
 
   assert_eq!(loaded.frequency, 15.0);
   assert_eq!(loaded.brightness, 1.5);
   assert_eq!(loaded.beat_distortion_strength, 0.9);
+}
 
-  // Cleanup
-  std::fs::remove_file(&filename).ok();
+#[test]
+fn test_save_to_file_in_reuses_hash_based_path() {
+  let params = ShaderParams {
+    frequency: 15.0,
+    brightness: 1.5,
+    ..Default::default()
+  };
+
+  let dir = support::fresh_test_dir("shader_params_test_reuses_hash_path");
+  let first_path = params.save_to_file_in(&dir).expect("Failed to save");
+  let second_path = params.save_to_file_in(&dir).expect("Failed to save twice");
+
+  assert_eq!(first_path, second_path);
+  assert_eq!(first_path.parent(), Some(dir.as_path()));
+  assert!(first_path.file_name().is_some());
 }

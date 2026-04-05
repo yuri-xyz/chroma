@@ -21,6 +21,7 @@ exports/debug.log
 *.log
 debug.log
 config_*.toml
+/.base/
 
 # Arch packaging build artifacts
 /packaging/arch/src/

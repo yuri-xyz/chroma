@@ -205,3 +205,78 @@ pub struct CliArgs {
   #[arg(long, value_name = "FPS", default_value = "60")]
   pub fps: u32,
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_stream_dimensions_parses_valid_input() {
+    let dimensions = "80x24".parse::<StreamDimensions>().unwrap();
+
+    assert_eq!(dimensions.width, 80);
+    assert_eq!(dimensions.height, 24);
+  }
+
+  #[test]
+  fn test_stream_dimensions_rejects_missing_separator() {
+    let error = "8024".parse::<StreamDimensions>().unwrap_err();
+
+    assert!(error.contains("Expected format"));
+  }
+
+  #[test]
+  fn test_stream_dimensions_rejects_zero_dimension() {
+    let error = "80x0".parse::<StreamDimensions>().unwrap_err();
+
+    assert!(error.contains("greater than 0"));
+  }
+
+  #[test]
+  fn test_stream_dimensions_rejects_oversized_dimension() {
+    let error = "1001x24".parse::<StreamDimensions>().unwrap_err();
+
+    assert!(error.contains("too large"));
+  }
+
+  #[test]
+  fn test_cli_args_parse_stream_and_flags() {
+    let args = CliArgs::try_parse_from([
+      "chroma",
+      "--stream",
+      "64x32",
+      "--no-status",
+      "--fps",
+      "30",
+      "--pattern",
+      "waves",
+      "--palette",
+      "dots",
+    ])
+    .unwrap();
+
+    let stream = args.stream.expect("expected parsed stream dimensions");
+
+    assert_eq!(stream.width, 64);
+    assert_eq!(stream.height, 32);
+    assert!(args.no_status);
+    assert_eq!(args.fps, 30);
+    assert_eq!(args.pattern.as_deref(), Some("waves"));
+    assert_eq!(args.palette.as_deref(), Some("dots"));
+  }
+
+  #[test]
+  fn test_cli_args_use_default_fps_when_not_provided() {
+    let args = CliArgs::try_parse_from(["chroma"]).unwrap();
+
+    assert_eq!(args.fps, 60);
+  }
+
+  #[test]
+  fn test_cli_args_reject_invalid_stream_value() {
+    let error = CliArgs::try_parse_from(["chroma", "--stream", "wide"]).unwrap_err();
+    let error_text = error.to_string();
+
+    assert!(error_text.contains("Expected format"));
+  }
+}

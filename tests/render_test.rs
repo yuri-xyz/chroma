@@ -11,6 +11,7 @@ use chroma::{
   shader::{ShaderPipeline, ShaderUniforms},
 };
 
+#[ignore = "requires GPU hardware and driver availability"]
 #[pollster::test]
 async fn test_shader_produces_non_zero_output() {
   let width = 10;
@@ -47,6 +48,7 @@ async fn test_shader_produces_non_zero_output() {
   assert!(has_non_zero, "Shader produced all zero pixels");
 }
 
+#[ignore = "requires GPU hardware and driver availability"]
 #[pollster::test]
 async fn test_shader_produces_varied_colors() {
   let width = 20;
@@ -102,6 +104,7 @@ async fn test_shader_produces_varied_colors() {
   );
 }
 
+#[ignore = "requires GPU hardware and driver availability"]
 #[pollster::test]
 async fn test_ascii_conversion_produces_varied_characters() {
   let width = 20;

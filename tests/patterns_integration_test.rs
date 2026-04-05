@@ -1,3 +1,5 @@
+mod support;
+
 // Integration tests for enhanced shader patterns
 // Tests parameter validation, serialization, and pattern type consistency
 
@@ -146,15 +148,14 @@ fn test_all_patterns_valid_ranges() {
 
 #[test]
 fn test_pattern_randomization() {
-  let mut params = ShaderParams::default();
-  let _original_pattern = params.pattern_type;
+  for seed in [11_u64, 23, 37, 53, 71] {
+    let mut params = ShaderParams::default();
 
-  params.randomize();
+    params.randomize_with_seed(seed);
 
-  // Pattern should be randomized (within valid set)
-  assert!(PatternType::all().contains(&params.pattern_type));
-  // Frequency should also change with randomization
-  assert!(params.frequency >= 3.0 && params.frequency <= 18.0);
+    assert!(PatternType::all().contains(&params.pattern_type));
+    assert!(params.frequency >= 3.0 && params.frequency <= 18.0);
+  }
 }
 
 #[test]
@@ -168,16 +169,15 @@ fn test_improved_pattern_persistence() {
     ..Default::default()
   };
 
-  let filename = params.save_to_file().expect("Failed to save");
-  let loaded = ShaderParams::load_from_file(&filename).expect("Failed to load");
+  let dir = support::fresh_test_dir("patterns_test_improved_pattern_persistence");
+  let path = params.save_to_file_in(&dir).expect("Failed to save");
+  let loaded = ShaderParams::load_from_file(&path).expect("Failed to load");
 
   assert_eq!(loaded.pattern_type, PatternType::Noise);
   assert_eq!(loaded.octaves, 5);
   assert_eq!(loaded.frequency, 12.0);
   assert_eq!(loaded.amplitude, 0.9);
   assert_eq!(loaded.distort_amplitude, 0.4);
-
-  std::fs::remove_file(&filename).ok();
 }
 
 #[test]
@@ -191,16 +191,15 @@ fn test_waves_pattern_persistence() {
     ..Default::default()
   };
 
-  let filename = params.save_to_file().expect("Failed to save");
-  let loaded = ShaderParams::load_from_file(&filename).expect("Failed to load");
+  let dir = support::fresh_test_dir("patterns_test_waves_pattern_persistence");
+  let path = params.save_to_file_in(&dir).expect("Failed to save");
+  let loaded = ShaderParams::load_from_file(&path).expect("Failed to load");
 
   assert_eq!(loaded.pattern_type, PatternType::Waves);
   assert_eq!(loaded.frequency, 9.0);
   assert_eq!(loaded.amplitude, 0.7);
   assert_eq!(loaded.speed, 0.9);
   assert_eq!(loaded.distort_amplitude, 0.3);
-
-  std::fs::remove_file(&filename).ok();
 }
 
 #[test]
@@ -213,15 +212,14 @@ fn test_plasma_pattern_persistence() {
     ..Default::default()
   };
 
-  let filename = params.save_to_file().expect("Failed to save");
-  let loaded = ShaderParams::load_from_file(&filename).expect("Failed to load");
+  let dir = support::fresh_test_dir("patterns_test_plasma_pattern_persistence");
+  let path = params.save_to_file_in(&dir).expect("Failed to save");
+  let loaded = ShaderParams::load_from_file(&path).expect("Failed to load");
 
   assert_eq!(loaded.pattern_type, PatternType::Plasma);
   assert_eq!(loaded.frequency, 11.0);
   assert_eq!(loaded.distort_amplitude, 0.55);
   assert_eq!(loaded.speed, 1.0);
-
-  std::fs::remove_file(&filename).ok();
 }
 
 #[test]

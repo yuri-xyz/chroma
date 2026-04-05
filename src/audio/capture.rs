@@ -2,6 +2,7 @@
 use cpal::traits::{DeviceTrait, StreamTrait};
 #[cfg(feature = "audio")]
 use cpal::{FromSample, Sample, Stream, StreamConfig};
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 use super::device_selector;
@@ -11,10 +12,50 @@ use std::fs::OpenOptions;
 #[cfg(debug_assertions)]
 use std::io::Write;
 
+const MAX_PENDING_SAMPLES: usize = 8_192;
+
+struct SharedSampleBuffer {
+  samples: VecDeque<f32>,
+  max_len: usize,
+}
+
+impl SharedSampleBuffer {
+  fn with_max_len(max_len: usize) -> Self {
+    Self {
+      samples: VecDeque::with_capacity(max_len),
+      max_len,
+    }
+  }
+
+  fn push_interleaved<T>(&mut self, data: &[T], channels: usize)
+  where
+    T: Sample,
+    f32: FromSample<T>,
+  {
+    for frame in data.chunks(channels) {
+      let mono_sample: f32 = frame
+        .iter()
+        .map(|&sample| sample.to_sample::<f32>())
+        .sum::<f32>()
+        / channels as f32;
+
+      if self.samples.len() == self.max_len {
+        self.samples.pop_front();
+      }
+
+      self.samples.push_back(mono_sample);
+    }
+  }
+
+  fn drain_samples(&mut self) -> Vec<f32> {
+    self.samples.drain(..).collect()
+  }
+}
+
 pub struct AudioCapture {
   #[cfg(feature = "audio")]
   _stream: Option<Stream>,
-  pub buffer: Arc<Mutex<Vec<f32>>>,
+  buffer: Arc<Mutex<SharedSampleBuffer>>,
   pub sample_rate: f32,
 }
 
@@ -110,7 +151,9 @@ impl AudioCapture {
     }
 
     let sample_rate = config.sample_rate() as f32;
-    let buffer = Arc::new(Mutex::new(Vec::with_capacity(4096)));
+    let buffer = Arc::new(Mutex::new(SharedSampleBuffer::with_max_len(
+      MAX_PENDING_SAMPLES,
+    )));
     let buffer_clone = Arc::clone(&buffer);
 
     let stream = match config.sample_format() {
@@ -142,7 +185,7 @@ impl AudioCapture {
   fn build_stream<T>(
     device: &cpal::Device,
     config: &StreamConfig,
-    buffer: Arc<Mutex<Vec<f32>>>,
+    buffer: Arc<Mutex<SharedSampleBuffer>>,
   ) -> anyhow::Result<Stream>
   where
     T: Sample + cpal::SizedSample,
@@ -153,26 +196,7 @@ impl AudioCapture {
     let stream = device.build_input_stream(
       config,
       move |data: &[T], _: &cpal::InputCallbackInfo| {
-        let mut buf = buffer.lock().unwrap();
-        buf.clear();
-
-        // Convert to mono and normalize using cpal's safe conversion
-        for frame in data.chunks(channels) {
-          let mono_sample: f32 = frame
-            .iter()
-            .map(|&sample| sample.to_sample::<f32>())
-            .sum::<f32>()
-            / channels as f32;
-
-          buf.push(mono_sample);
-        }
-
-        // Keep buffer size manageable
-        const MAX_BUFFER_SIZE: usize = 4096;
-        let buf_len = buf.len();
-        if buf_len > MAX_BUFFER_SIZE {
-          buf.drain(0..buf_len - MAX_BUFFER_SIZE);
-        }
+        buffer.lock().unwrap().push_interleaved(data, channels);
       },
       |err| {
         // Log audio stream errors to file (debug only)
@@ -201,12 +225,53 @@ impl AudioCapture {
   #[cfg(not(feature = "audio"))]
   pub fn new(_device_name: Option<&str>) -> anyhow::Result<Self> {
     Ok(Self {
-      buffer: Arc::new(Mutex::new(Vec::new())),
+      buffer: Arc::new(Mutex::new(SharedSampleBuffer::with_max_len(
+        MAX_PENDING_SAMPLES,
+      ))),
       sample_rate: 44100.0,
     })
   }
 
-  pub fn get_samples(&self) -> Vec<f32> {
-    self.buffer.lock().unwrap().clone()
+  pub fn drain_samples(&self) -> Vec<f32> {
+    self.buffer.lock().unwrap().drain_samples()
+  }
+}
+
+#[cfg(all(test, feature = "audio"))]
+mod tests {
+  use super::SharedSampleBuffer;
+
+  #[test]
+  fn test_shared_sample_buffer_accumulates_across_pushes() {
+    let mut buffer = SharedSampleBuffer::with_max_len(8);
+
+    buffer.push_interleaved(&[0.2_f32, 0.4_f32, 0.6_f32, 0.8_f32], 2);
+    buffer.push_interleaved(&[1.0_f32, 0.0_f32, 0.5_f32, 0.5_f32], 2);
+
+    let samples = buffer.drain_samples();
+    let expected = [0.3_f32, 0.7, 0.5, 0.5];
+
+    assert_eq!(samples.len(), expected.len());
+    for (actual, expected) in samples.into_iter().zip(expected) {
+      assert!((actual - expected).abs() < 1e-6);
+    }
+  }
+
+  #[test]
+  fn test_shared_sample_buffer_enforces_bounded_history() {
+    let mut buffer = SharedSampleBuffer::with_max_len(3);
+
+    buffer.push_interleaved(&[0.1_f32, 0.2_f32, 0.3_f32, 0.4_f32], 1);
+
+    assert_eq!(buffer.drain_samples(), vec![0.2, 0.3, 0.4]);
+  }
+
+  #[test]
+  fn test_shared_sample_buffer_drain_clears_pending_samples() {
+    let mut buffer = SharedSampleBuffer::with_max_len(4);
+
+    buffer.push_interleaved(&[0.25_f32, 0.75_f32], 1);
+    assert_eq!(buffer.drain_samples(), vec![0.25, 0.75]);
+    assert!(buffer.drain_samples().is_empty());
   }
 }

@@ -8,7 +8,7 @@
 /// # Returns
 /// RGB tuple (r, g, b) with values 0-255
 pub fn hue_to_pastel_rgb(hue: f32) -> (u8, u8, u8) {
-  let hue_normalized = (hue / std::f32::consts::TAU) % 1.0;
+  let hue_normalized = (hue / std::f32::consts::TAU).rem_euclid(1.0);
   let h = hue_normalized * 6.0;
   let c = 1.0;
   let x = 1.0 - ((h % 2.0) - 1.0).abs();
@@ -133,6 +133,14 @@ mod tests {
     assert!((r1 as i16 - r3 as i16).abs() <= 2, "Hue should wrap at 4π");
     assert!((g1 as i16 - g3 as i16).abs() <= 2, "Hue should wrap at 4π");
     assert!((b1 as i16 - b3 as i16).abs() <= 2, "Hue should wrap at 4π");
+  }
+
+  #[test]
+  fn test_hue_to_pastel_rgb_wraps_negative_hues() {
+    let positive = hue_to_pastel_rgb(std::f32::consts::TAU * 0.75);
+    let negative = hue_to_pastel_rgb(-std::f32::consts::TAU * 0.25);
+
+    assert_eq!(positive, negative);
   }
 
   #[test]
@@ -262,6 +270,15 @@ mod tests {
     assert!((r - 1.0).abs() < 0.01, "Red should be 1.0");
     assert!((g - 1.0).abs() < 0.01, "Green should be 1.0");
     assert!((b - 1.0).abs() < 0.01, "Blue should be 1.0");
+  }
+
+  #[test]
+  fn test_parse_hex_color_3_digit_expands_each_component() {
+    let (r, g, b) = parse_hex_color("1A2").unwrap();
+
+    assert!((r - (0x11 as f32 / 255.0)).abs() < 0.0001);
+    assert!((g - (0xAA as f32 / 255.0)).abs() < 0.0001);
+    assert!((b - (0x22 as f32 / 255.0)).abs() < 0.0001);
   }
 
   #[test]

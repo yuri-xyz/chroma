@@ -1,7 +1,8 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use rand::{rngs::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -122,6 +123,39 @@ impl Default for ShaderParams {
 }
 
 impl ShaderParams {
+  fn adjust_clamped(current: &mut f32, delta: f32, min: f32, max: f32) {
+    *current = (*current + delta).clamp(min, max);
+  }
+
+  fn normalized_hue(hue: f32) -> f32 {
+    let normalized = hue % 360.0;
+
+    if normalized < 0.0 {
+      normalized + 360.0
+    } else {
+      normalized
+    }
+  }
+
+  fn config_hash(&self) -> String {
+    let toml_string = toml::to_string(self).unwrap_or_default();
+    let mut hasher = Sha256::new();
+
+    hasher.update(toml_string.as_bytes());
+
+    let result = hasher.finalize();
+
+    format!("{:x}", result)[..12].to_string()
+  }
+
+  fn config_filename(&self) -> String {
+    format!("config_{}.toml", self.config_hash())
+  }
+
+  fn config_path_in<P: AsRef<Path>>(&self, directory: P) -> PathBuf {
+    directory.as_ref().join(self.config_filename())
+  }
+
   /// Configure for audio-reactive mode with calm initial state
   /// Starts nearly still and dimmed, waiting for audio to bring it to life
   pub fn with_audio_reactive_defaults() -> Self {
@@ -170,11 +204,7 @@ impl ShaderParams {
 
     self.brightness = self.brightness.clamp(0.0, 2.0);
     self.contrast = self.contrast.clamp(0.2, 2.0);
-    self.hue %= 360.0;
-
-    if self.hue < 0.0 {
-      self.hue += 360.0;
-    }
+    self.hue = Self::normalized_hue(self.hue);
 
     self.saturation = self.saturation.clamp(0.0, 2.0);
     self.gamma = self.gamma.clamp(0.5, 2.0);
@@ -198,59 +228,73 @@ impl ShaderParams {
   }
 
   pub fn adjust_frequency(&mut self, delta: f32) {
-    self.frequency = (self.frequency + delta).clamp(3.0, 18.0);
+    Self::adjust_clamped(&mut self.frequency, delta, 3.0, 18.0);
+  }
+
+  pub fn adjust_amplitude(&mut self, delta: f32) {
+    Self::adjust_clamped(&mut self.amplitude, delta, 0.0, 2.0);
+  }
+
+  pub fn adjust_speed(&mut self, delta: f32) {
+    Self::adjust_clamped(&mut self.speed, delta, 0.0, 1.0);
+  }
+
+  pub fn adjust_scale(&mut self, delta: f32) {
+    Self::adjust_clamped(&mut self.scale, delta, 0.1, 5.0);
   }
 
   pub fn adjust_brightness(&mut self, delta: f32) {
-    self.brightness = (self.brightness + delta).clamp(0.0, 2.0);
+    Self::adjust_clamped(&mut self.brightness, delta, 0.0, 2.0);
   }
 
   pub fn adjust_contrast(&mut self, delta: f32) {
-    self.contrast = (self.contrast + delta).clamp(0.2, 2.0);
+    Self::adjust_clamped(&mut self.contrast, delta, 0.2, 2.0);
   }
 
   pub fn adjust_saturation(&mut self, delta: f32) {
-    self.saturation = (self.saturation + delta).clamp(0.0, 2.0);
+    Self::adjust_clamped(&mut self.saturation, delta, 0.0, 2.0);
   }
 
   pub fn adjust_hue(&mut self, delta: f32) {
-    self.hue = (self.hue + delta) % 360.0;
-
-    if self.hue < 0.0 {
-      self.hue += 360.0;
-    }
+    self.hue = Self::normalized_hue(self.hue + delta);
   }
 
   pub fn randomize(&mut self) {
     randomizer::randomize(self);
   }
 
-  fn compute_hash(&self) -> String {
-    let toml_string = toml::to_string(self).unwrap_or_default();
-    let mut hasher = Sha256::new();
+  pub fn randomize_with_seed(&mut self, seed: u64) {
+    let mut rng = StdRng::seed_from_u64(seed);
 
-    hasher.update(toml_string.as_bytes());
-
-    let result = hasher.finalize();
-
-    format!("{:x}", result)[..12].to_string()
+    randomizer::randomize_with_rng(self, &mut rng);
   }
 
   pub fn save_to_file(&self) -> Result<String> {
-    let hash = self.compute_hash();
-    let filename = format!("config_{}.toml", hash);
+    let filename = self.config_filename();
 
-    if Path::new(&filename).exists() {
-      return Ok(filename);
+    self.save_to_file_in(".")?;
+
+    Ok(filename)
+  }
+
+  pub fn save_to_file_in<P: AsRef<Path>>(&self, directory: P) -> Result<PathBuf> {
+    let path = self.config_path_in(&directory);
+
+    if path.exists() {
+      return Ok(path);
     }
 
     let toml_content =
       toml::to_string_pretty(self).context("Failed to serialize configuration to TOML")?;
 
-    fs::write(&filename, toml_content)
-      .context(format!("Failed to write config file: {}", filename))?;
+    fs::create_dir_all(directory.as_ref()).context(format!(
+      "Failed to create config directory: {}",
+      directory.as_ref().display()
+    ))?;
+    fs::write(&path, toml_content)
+      .context(format!("Failed to write config file: {}", path.display()))?;
 
-    Ok(filename)
+    Ok(path)
   }
 
   pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {

@@ -32,6 +32,48 @@ fn test_adjust_frequency_clamps_at_minimum() {
 }
 
 #[test]
+fn test_adjust_amplitude_clamps_within_bounds() {
+  let mut params = ShaderParams::default();
+
+  params.adjust_amplitude(0.4);
+  assert_eq!(params.amplitude, 1.4);
+
+  params.adjust_amplitude(10.0);
+  assert_eq!(params.amplitude, 2.0);
+
+  params.adjust_amplitude(-10.0);
+  assert_eq!(params.amplitude, 0.0);
+}
+
+#[test]
+fn test_adjust_speed_clamps_within_bounds() {
+  let mut params = ShaderParams::default();
+
+  params.adjust_speed(0.3);
+  assert_eq!(params.speed, 0.8);
+
+  params.adjust_speed(10.0);
+  assert_eq!(params.speed, 1.0);
+
+  params.adjust_speed(-10.0);
+  assert_eq!(params.speed, 0.0);
+}
+
+#[test]
+fn test_adjust_scale_clamps_within_bounds() {
+  let mut params = ShaderParams::default();
+
+  params.adjust_scale(0.5);
+  assert_eq!(params.scale, 1.5);
+
+  params.adjust_scale(10.0);
+  assert_eq!(params.scale, 5.0);
+
+  params.adjust_scale(-10.0);
+  assert_eq!(params.scale, 0.1);
+}
+
+#[test]
 fn test_adjust_brightness_within_bounds() {
   let mut params = ShaderParams::default();
 
