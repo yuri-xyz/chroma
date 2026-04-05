@@ -6,6 +6,8 @@ use super::DebugLog;
 use chroma::audio::{AudioAnalyzer, AudioCapture, AudioFeatures};
 #[cfg(feature = "audio")]
 use chroma::constants::{AUDIO_DECAY_RATE, AUDIO_SILENCE_THRESHOLD, AUDIO_SPEED_DECAY_RATE};
+#[cfg(feature = "audio")]
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[cfg(feature = "audio")]
 const SILENT_AMPLITUDE_BASELINE: f32 = 0.4;
@@ -25,6 +27,10 @@ const DROP_BEAT_ZOOM_STRENGTH: f32 = 1.0;
 const REGULAR_BEAT_DISTORTION_STRENGTH: f32 = 0.85;
 #[cfg(feature = "audio")]
 const REGULAR_BEAT_ZOOM_STRENGTH: f32 = 0.7;
+#[cfg(feature = "audio")]
+static EMPTY_SAMPLE_BATCH_COUNT: AtomicUsize = AtomicUsize::new(0);
+#[cfg(feature = "audio")]
+static FEATURE_LOG_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 #[cfg(feature = "audio")]
 fn blend_towards(current: f32, target: f32, retain: f32) -> f32 {
@@ -61,18 +67,51 @@ pub fn update_audio_reactive(
   debug_log: &mut DebugLog,
 ) -> AudioFeatures {
   if !params.audio_enabled {
+    let _ = debug_logln!(debug_log, "AUDIO: audio reactivity disabled");
     return AudioFeatures::default();
   }
+
+  let has_capture = audio_capture.is_some();
+  let has_analyzer = audio_analyzer.is_some();
 
   if let (Some(capture), Some(analyzer)) = (audio_capture, audio_analyzer) {
     let samples = capture.drain_samples();
 
     if samples.is_empty() {
+      let empty_count = EMPTY_SAMPLE_BATCH_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+      if empty_count <= 5 || empty_count % 120 == 0 {
+        let _ = debug_logln!(
+          debug_log,
+          "AUDIO: no samples drained yet (empty_batch_count={})",
+          empty_count
+        );
+      }
       return AudioFeatures::default();
     }
 
+    EMPTY_SAMPLE_BATCH_COUNT.store(0, Ordering::Relaxed);
+
     let features = analyzer.analyze(&samples, delta_time);
     let is_silent = features.overall < AUDIO_SILENCE_THRESHOLD;
+    let feature_log_count = FEATURE_LOG_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+
+    if feature_log_count <= 5 || feature_log_count % 60 == 0 {
+      let peak_sample = samples
+        .iter()
+        .fold(0.0_f32, |max_value, sample| max_value.max(sample.abs()));
+      let _ = debug_logln!(
+        debug_log,
+        "AUDIO: samples={} peak={:.5} features=bass:{:.4} mid:{:.4} treble:{:.4} overall:{:.4} beat:{:.4} drop:{}",
+        samples.len(),
+        peak_sample,
+        features.bass,
+        features.mid,
+        features.treble,
+        features.overall,
+        features.beat_strength,
+        features.is_drop
+      );
+    }
 
     if is_silent {
       apply_silence_decay(params, &features, debug_log);
@@ -82,6 +121,13 @@ pub fn update_audio_reactive(
 
     return features;
   }
+
+  let _ = debug_logln!(
+    debug_log,
+    "AUDIO: capture/analyzer unavailable (capture={}, analyzer={})",
+    has_capture,
+    has_analyzer
+  );
 
   AudioFeatures::default()
 }
@@ -209,27 +255,18 @@ fn apply_audio_reactivity(
 #[cfg(all(test, feature = "audio"))]
 mod tests {
   use super::*;
+  use chroma::debug::DebugLog;
   use chroma::params::ShaderParams;
-  use std::fs::File;
-  use std::io::BufWriter;
   use std::time::{SystemTime, UNIX_EPOCH};
 
   fn test_debug_log() -> DebugLog {
-    #[cfg(debug_assertions)]
-    {
-      let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-      let path = std::env::temp_dir().join(format!("chroma-audio-test-{timestamp}.log"));
+    let timestamp = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let path = std::env::temp_dir().join(format!("chroma-audio-test-{timestamp}.log"));
 
-      BufWriter::new(File::create(path).unwrap())
-    }
-
-    #[cfg(not(debug_assertions))]
-    {
-      BufWriter::new(std::io::sink())
-    }
+    DebugLog::file(path).unwrap_or_else(|_| DebugLog::sink())
   }
 
   #[test]

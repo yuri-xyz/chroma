@@ -1,5 +1,6 @@
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{Device, Host};
+use crate::debug::append_debug_line;
 
 #[cfg(target_os = "linux")]
 const PACTL_BIN: &str = "pactl";
@@ -268,6 +269,27 @@ fn get_best_host() -> Host {
   cpal::default_host()
 }
 
+fn log_host_devices(host: &Host, label: &str) {
+  let input_names = host
+    .input_devices()
+    .map(|devices| devices.filter_map(|device| get_device_name(&device)).collect::<Vec<_>>())
+    .unwrap_or_default();
+  let output_names = host
+    .output_devices()
+    .map(|devices| devices.filter_map(|device| get_device_name(&device)).collect::<Vec<_>>())
+    .unwrap_or_default();
+
+  append_debug_line(
+    "audio",
+    format!(
+      "{label} host {:?}: inputs={:?}, outputs={:?}",
+      host.id(),
+      input_names,
+      output_names
+    ),
+  );
+}
+
 /// Find a specific audio device by name (partial match)
 pub fn find_device_by_name(host: &Host, device_name: &str) -> anyhow::Result<Device> {
   let search_term = device_name.to_lowercase();
@@ -300,6 +322,51 @@ pub fn find_device_by_name(host: &Host, device_name: &str) -> anyhow::Result<Dev
   ))
 }
 
+pub fn find_device_by_name_auto(device_name: &str) -> anyhow::Result<(Host, Device)> {
+  let mut host_ids = Vec::new();
+  let best_host_id = get_best_host().id();
+  let default_host_id = cpal::default_host().id();
+
+  host_ids.push(best_host_id);
+  if default_host_id != best_host_id {
+    host_ids.push(default_host_id);
+  }
+
+  for host_id in cpal::available_hosts() {
+    if !host_ids.contains(&host_id) {
+      host_ids.push(host_id);
+    }
+  }
+
+  append_debug_line(
+    "audio",
+    format!(
+      "Searching for named audio device '{device_name}' across hosts {:?}",
+      host_ids
+    ),
+  );
+
+  for host_id in host_ids {
+    if let Ok(host) = cpal::host_from_id(host_id) {
+      if let Ok(device) = find_device_by_name(&host, device_name) {
+        append_debug_line(
+          "audio",
+          format!(
+            "Matched named audio device '{device_name}' on host {:?}",
+            host.id()
+          ),
+        );
+        return Ok((host, device));
+      }
+    }
+  }
+
+  Err(anyhow::anyhow!(
+    "Audio device '{}' not found on any host. Run with --list-audio-devices to see available devices.",
+    device_name
+  ))
+}
+
 /// Automatically find the best system audio device
 /// Priority: monitor sources > loopback devices > non-microphone inputs
 pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
@@ -312,6 +379,15 @@ pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
     })
     .unwrap_or_default();
 
+  append_debug_line(
+    "audio",
+    format!(
+      "Finding system audio device on host {:?} from inputs {:?}",
+      host.id(),
+      devices.iter().map(|(_, name)| name).collect::<Vec<_>>()
+    ),
+  );
+
   #[cfg(target_os = "linux")]
   if let Some(device) = find_linux_default_monitor_device(&devices) {
     return Ok(device);
@@ -320,22 +396,63 @@ pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
   // Priority 1: Find explicit monitor/loopback source that is actually usable
   for (device, name) in &devices {
     if !is_dummy_device(name) && is_monitor_source(name) && is_device_usable(device) {
+      append_debug_line(
+        "audio",
+        format!("Selected explicit monitor source '{name}' on host {:?}", host.id()),
+      );
       return Ok(device.clone());
     }
   }
 
-  // Priority 2: On macOS 14.2+, try CoreAudio loopback
-  // cpal 0.17+ supports loopback by treating output devices as input sources
-  // We don't check is_device_usable() here because the loopback capability
-  // is verified when building the stream, not when getting the device
+  #[cfg(target_os = "macos")]
+  for (device, name) in &devices {
+    if !is_dummy_device(name) && !is_microphone(name) && is_device_usable(device) {
+      append_debug_line(
+        "audio",
+        format!(
+          "Selected usable non-microphone input '{name}' on host {:?} before loopback fallback",
+          host.id()
+        ),
+      );
+      return Ok(device.clone());
+    }
+  }
+
   #[cfg(target_os = "macos")]
   {
+    if let Some(device) = host.default_input_device() {
+      let name = get_device_name(&device).unwrap_or_else(|| "<unnamed-input>".to_string());
+      if !is_dummy_device(&name) && is_device_usable(&device) {
+        append_debug_line(
+          "audio",
+          format!(
+            "Selected default input device '{name}' on host {:?} before output-loopback fallback",
+            host.id()
+          ),
+        );
+        return Ok(device);
+      }
+    }
+
     if let Some(output_device) = host.default_output_device() {
-      // Return the output device for loopback - cpal will handle the rest
+      let name = get_device_name(&output_device).unwrap_or_else(|| "<unnamed-output>".to_string());
+      append_debug_line(
+        "audio",
+        format!(
+          "Falling back to default output device '{name}' on host {:?} for loopback capture",
+          host.id()
+        ),
+      );
       return Ok(output_device);
     }
 
-    // No output device available
+    append_debug_line(
+      "audio",
+      format!(
+        "No usable macOS input or output loopback device found on host {:?}",
+        host.id()
+      ),
+    );
     Err(anyhow::anyhow!(
       "No audio output device found for system audio loopback."
     ))
@@ -356,6 +473,14 @@ pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
       let is_default_device_dummy =
         get_device_name(&device).is_some_and(|name| is_dummy_device(&name));
       if !is_default_device_dummy && is_device_usable(&device) {
+        append_debug_line(
+          "audio",
+          format!(
+            "Falling back to default input device '{}' on host {:?}",
+            get_device_name(&device).unwrap_or_else(|| "<unnamed-input>".to_string()),
+            host.id()
+          ),
+        );
         return Ok(device);
       }
     }
@@ -365,6 +490,14 @@ pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
 
 /// Try to automatically find system audio across all available hosts
 pub fn find_system_audio_auto() -> anyhow::Result<(Host, Device)> {
+  append_debug_line(
+    "audio",
+    format!(
+      "Auto-detecting system audio across hosts {:?}",
+      cpal::available_hosts()
+    ),
+  );
+
   #[cfg(target_os = "linux")]
   {
     let sink_candidates = get_linux_sink_candidates();
@@ -391,10 +524,18 @@ pub fn find_system_audio_auto() -> anyhow::Result<(Host, Device)> {
   // (e.g., PipeWire monitor on Linux, BlackHole on macOS)
   for host_id in cpal::available_hosts() {
     if let Ok(host) = cpal::host_from_id(host_id) {
+      log_host_devices(&host, "Inspecting");
       if let Ok(devices) = host.input_devices() {
         for device in devices {
           if let Some(name) = get_device_name(&device) {
             if !is_dummy_device(&name) && is_monitor_source(&name) && is_device_usable(&device) {
+              append_debug_line(
+                "audio",
+                format!(
+                  "Selected monitor source '{name}' on host {:?} during cross-host scan",
+                  host.id()
+                ),
+              );
               return Ok((host, device));
             }
           }
@@ -407,7 +548,16 @@ pub fn find_system_audio_auto() -> anyhow::Result<(Host, Device)> {
   // On macOS: uses output device for loopback (cpal 0.17+ on macOS 14.2+)
   // On Linux: uses default input device
   let host = get_best_host();
+  log_host_devices(&host, "Falling back to best");
   let device = find_system_audio_device(&host)?;
+  append_debug_line(
+    "audio",
+    format!(
+      "Selected fallback system audio device '{}' on host {:?}",
+      get_device_name(&device).unwrap_or_else(|| "<unnamed-device>".to_string()),
+      host.id()
+    ),
+  );
   Ok((host, device))
 }
 
@@ -503,8 +653,9 @@ pub fn list_devices(host: &Host) -> anyhow::Result<()> {
   } else if !has_monitor && has_loopback {
     #[cfg(target_os = "macos")]
     {
-      println!("\n✓ System audio will use output device loopback (macOS 14.2+)");
-      println!("  For better compatibility, install BlackHole: https://github.com/ExistentialAudio/BlackHole");
+      println!("\n⚠️  No dedicated loopback input device was found.");
+      println!("  Chroma may try the default output device as a CoreAudio loopback source, but this is silent on some macOS/output-device combinations.");
+      println!("  For reliable system audio capture, install BlackHole: https://github.com/ExistentialAudio/BlackHole");
     }
   }
 

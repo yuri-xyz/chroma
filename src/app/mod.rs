@@ -1,15 +1,7 @@
 macro_rules! debug_logln {
   ($writer:expr, $($arg:tt)*) => {{
-    #[cfg(debug_assertions)]
-    {
-      use std::io::Write as _;
-      writeln!($writer, $($arg)*)
-    }
-    #[cfg(not(debug_assertions))]
-    {
-      let _ = &$writer;
-      std::io::Result::Ok(())
-    }
+    use std::io::Write as _;
+    writeln!($writer, $($arg)*)
   }};
 }
 
@@ -25,20 +17,13 @@ use chroma::ascii::{AsciiConverter, AsciiPalette};
 use chroma::audio::{AudioAnalyzer, AudioCapture, AudioFeatures};
 #[cfg(feature = "audio")]
 use chroma::constants::AUDIO_SILENCE_THRESHOLD;
+use chroma::debug::DebugLog;
 use chroma::params::ShaderParams;
 use chroma::render::RenderedCell;
 use chroma::shader::{ShaderPipeline, ShaderUniforms};
 use crossterm::terminal;
-#[cfg(debug_assertions)]
-use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::time::Instant;
-
-#[cfg(debug_assertions)]
-pub(crate) type DebugLog = BufWriter<File>;
-
-#[cfg(not(debug_assertions))]
-pub(crate) type DebugLog = BufWriter<std::io::Sink>;
 
 fn shader_dimensions(
   terminal_width: u16,
@@ -117,14 +102,7 @@ impl App {
     custom_shader: Option<String>,
     target_fps: u32,
   ) -> Result<Self> {
-    #[cfg(debug_assertions)]
-    let mut debug_log = {
-      let debug_file = File::create("debug.log")?;
-      BufWriter::new(debug_file)
-    };
-
-    #[cfg(not(debug_assertions))]
-    let mut debug_log = BufWriter::new(std::io::sink());
+    let mut debug_log = DebugLog::create_default()?;
 
     let stream_mode = stream_dimensions.is_some();
 

@@ -189,27 +189,18 @@ fn handle_key_press(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use chroma::debug::DebugLog;
   use chroma::params::{ColorMode, PaletteType, PatternType};
-  use std::fs::File;
-  use std::io::BufWriter;
   use std::time::{SystemTime, UNIX_EPOCH};
 
   fn test_debug_log() -> DebugLog {
-    #[cfg(debug_assertions)]
-    {
-      let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-      let path = std::env::temp_dir().join(format!("chroma-input-test-{timestamp}.log"));
+    let timestamp = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let path = std::env::temp_dir().join(format!("chroma-input-test-{timestamp}.log"));
 
-      BufWriter::new(File::create(path).unwrap())
-    }
-
-    #[cfg(not(debug_assertions))]
-    {
-      BufWriter::new(std::io::sink())
-    }
+    DebugLog::file(path).unwrap_or_else(|_| DebugLog::sink())
   }
 
   fn converter_output(converter: &AsciiConverter) -> Vec<Vec<(char, crossterm::style::Color)>> {

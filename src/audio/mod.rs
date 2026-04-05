@@ -4,6 +4,7 @@ pub mod device_selector;
 
 pub use analyzer::{AudioAnalyzer, ANALYSIS_HOP_SIZE, ANALYSIS_WINDOW_SIZE};
 pub use capture::AudioCapture;
+pub use device_selector::find_device_by_name_auto;
 
 #[derive(Debug, Clone, Copy)]
 pub struct AudioFeatures {

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chroma::debug::append_debug_line;
 use chroma::params::ShaderParams;
 use flume::{Receiver, Sender};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -35,7 +36,7 @@ impl ConfigWatcher {
         match event.kind {
           EventKind::Modify(_) | EventKind::Create(_) => {
             if let Err(e) = Self::handle_config_change(&config_path, &sender) {
-              eprintln!("Config reload error: {}", e);
+              append_debug_line("config", format!("Config reload error: {}", e));
             }
           }
           _ => {}

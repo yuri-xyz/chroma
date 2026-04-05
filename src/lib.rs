@@ -1,5 +1,6 @@
 pub mod ascii;
 pub mod constants;
+pub mod debug;
 pub mod params;
 pub mod presets;
 pub mod render;
