@@ -16,10 +16,10 @@ bytemuck = { version = "1.14", features = ["derive"] }
 # Terminal/UI
 crossterm = "0.28"
 
-# Audio (optional feature)
+# Audio
 # NOTE: cpal 0.17+ required for macOS loopback audio support (macOS 14.6+)
-cpal = { version = "0.17.3", optional = true }
-rustfft = { version = "6.2", optional = true }
+cpal = "0.17.3"
+rustfft = "6.2"
 
 # Utilities
 anyhow = "1.0"
@@ -35,10 +35,6 @@ notify = "6.1"
 [dev-dependencies]
 criterion = "0.5"
 pollster = { version = "0.3", features = ["macro"] }
-
-[features]
-default = []
-audio = ["cpal", "rustfft"]
 
 [[bin]]
 name = "chroma"

@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-#![cfg(feature = "audio")]
-
 use chroma::audio::AudioFeatures;
 
 use crate::support::audio_fixtures::{AnalyzerFrame, FixtureSegment, ANALYSIS_WINDOW};

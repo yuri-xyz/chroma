@@ -13,9 +13,7 @@ mod status_bar;
 
 use anyhow::Result;
 use chroma::ascii::{AsciiConverter, AsciiPalette};
-#[cfg(feature = "audio")]
 use chroma::audio::{AudioAnalyzer, AudioCapture, AudioFeatures};
-#[cfg(feature = "audio")]
 use chroma::constants::AUDIO_SILENCE_THRESHOLD;
 use chroma::debug::DebugLog;
 use chroma::params::ShaderParams;
@@ -62,6 +60,7 @@ fn prepare_reloaded_params(
   mut new_params: ShaderParams,
 ) -> ShaderParams {
   new_params.time = current_params.time;
+  new_params.audio_enabled = true;
   new_params.set_resolution(
     current_params.resolution_width,
     current_params.resolution_height,
@@ -83,11 +82,8 @@ pub struct App {
   config_watcher: Option<config_watcher::ConfigWatcher>,
   custom_shader: Option<String>,
   target_fps: u32,
-  #[cfg(feature = "audio")]
   audio_capture: Option<AudioCapture>,
-  #[cfg(feature = "audio")]
   audio_analyzer: Option<AudioAnalyzer>,
-  #[cfg(feature = "audio")]
   latest_audio_features: AudioFeatures,
 }
 
@@ -98,7 +94,7 @@ impl App {
     show_status_bar: bool,
     stream_dimensions: Option<crate::cli::StreamDimensions>,
     config_path: Option<String>,
-    #[cfg(feature = "audio")] audio_device: Option<String>,
+    audio_device: Option<String>,
     custom_shader: Option<String>,
     target_fps: u32,
   ) -> Result<Self> {
@@ -133,16 +129,8 @@ impl App {
       shader_width, shader_height
     )?;
 
-    let mut params = loaded_config.unwrap_or_else(|| {
-      #[cfg(feature = "audio")]
-      {
-        ShaderParams::with_audio_reactive_defaults()
-      }
-      #[cfg(not(feature = "audio"))]
-      {
-        ShaderParams::default()
-      }
-    });
+    let mut params = loaded_config.unwrap_or_else(ShaderParams::with_audio_reactive_defaults);
+    params.audio_enabled = true;
 
     params.set_resolution(shader_width, shader_height);
 
@@ -163,7 +151,6 @@ impl App {
 
     let converter = create_converter(&params);
 
-    #[cfg(feature = "audio")]
     let (audio_capture, audio_analyzer) =
       Self::init_audio(&mut debug_log, audio_device.as_deref())?;
 
@@ -182,17 +169,13 @@ impl App {
       config_watcher,
       custom_shader,
       target_fps,
-      #[cfg(feature = "audio")]
       audio_capture,
-      #[cfg(feature = "audio")]
       audio_analyzer,
-      #[cfg(feature = "audio")]
       latest_audio_features: AudioFeatures::default(),
     })
   }
 
   /// Initialize audio capture and analyzer
-  #[cfg(feature = "audio")]
   fn init_audio(
     debug_log: &mut DebugLog,
     device_name: Option<&str>,
@@ -244,17 +227,14 @@ impl App {
 
     self.params.update_time(delta_time);
 
-    #[cfg(feature = "audio")]
-    {
-      let features = audio::update_audio_reactive(
-        &mut self.params,
-        &self.audio_capture,
-        &mut self.audio_analyzer,
-        delta_time,
-        &mut self.debug_log,
-      );
-      self.latest_audio_features = features;
-    }
+    let features = audio::update_audio_reactive(
+      &mut self.params,
+      &self.audio_capture,
+      &mut self.audio_analyzer,
+      delta_time,
+      &mut self.debug_log,
+    );
+    self.latest_audio_features = features;
 
     self.check_and_apply_config_reload();
 
@@ -334,15 +314,7 @@ impl App {
 
   /// Check if audio is currently active
   fn check_audio_activity(&self) -> bool {
-    #[cfg(feature = "audio")]
-    {
-      self.params.audio_enabled && self.latest_audio_features.overall >= AUDIO_SILENCE_THRESHOLD
-    }
-
-    #[cfg(not(feature = "audio"))]
-    {
-      false
-    }
+    self.latest_audio_features.overall >= AUDIO_SILENCE_THRESHOLD
   }
 
   /// Build status bar cells
@@ -539,7 +511,7 @@ mod tests {
     assert_eq!(prepared.resolution_width, 100);
     assert_eq!(prepared.resolution_height, 30);
     assert_eq!(prepared.terminal_bg_r, 0.5);
-    assert!(!prepared.audio_enabled);
+    assert!(prepared.audio_enabled);
     assert_eq!(prepared.beat_sensitivity, 2.5);
   }
 }

@@ -94,7 +94,14 @@ fn test_stream_string_uses_double_newline_delimiter() {
 #[test]
 fn test_stream_string_resets_foreground_style_at_row_boundaries() {
   let ascii_frame = vec![
-    vec![('A', Color::Rgb { r: 250, g: 200, b: 150 })],
+    vec![(
+      'A',
+      Color::Rgb {
+        r: 250,
+        g: 200,
+        b: 150,
+      },
+    )],
     vec![('B', Color::White)],
   ];
   let frame = RenderedFrame::from_ascii_frame(&ascii_frame, 1, 2, None, None);
@@ -145,7 +152,11 @@ fn test_out_of_bounds_position_queries_return_none() {
 #[test]
 fn test_status_bar_position_queries_respect_wide_characters() {
   let ascii_frame = vec![vec![('A', Color::White)]];
-  let status_bar = vec![RenderedCell::new('界', Some((0, 0, 0)), Some((255, 255, 255)))];
+  let status_bar = vec![RenderedCell::new(
+    '界',
+    Some((0, 0, 0)),
+    Some((255, 255, 255)),
+  )];
   let frame = RenderedFrame::from_ascii_frame(&ascii_frame, 1, 1, Some(status_bar), None);
 
   assert_eq!(frame.status_cell(0).map(|cell| cell.character), Some('界'));

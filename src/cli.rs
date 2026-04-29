@@ -59,12 +59,10 @@ pub struct CliArgs {
   pub config: Option<String>,
 
   /// Audio device name for capture. Use --list-audio-devices to see available devices
-  #[cfg(feature = "audio")]
   #[arg(short = 'a', long, value_name = "DEVICE")]
   pub audio_device: Option<String>,
 
   /// List all available audio input devices and exit
-  #[cfg(feature = "audio")]
   #[arg(long)]
   pub list_audio_devices: bool,
 
@@ -144,37 +142,26 @@ pub struct CliArgs {
   pub palette: Option<String>,
 
   // Audio parameters
-  #[cfg(feature = "audio")]
-  /// Enable or disable audio reactivity. Defaults to true when built with audio feature
-  #[arg(short = 'e', long, value_name = "BOOL")]
-  pub audio_enabled: Option<bool>,
-
-  #[cfg(feature = "audio")]
   /// How much bass frequencies affect amplitude. Range: 0.0-1.0
   #[arg(short = 'B', long, value_name = "FLOAT")]
   pub bass_influence: Option<f32>,
 
-  #[cfg(feature = "audio")]
   /// How much mid frequencies affect pattern frequency. Range: 0.0-1.0
   #[arg(short = 'M', long, value_name = "FLOAT")]
   pub mid_influence: Option<f32>,
 
-  #[cfg(feature = "audio")]
   /// How much treble frequencies affect animation speed. Range: 0.0-1.0
   #[arg(short = 'T', long, value_name = "FLOAT")]
   pub treble_influence: Option<f32>,
 
-  #[cfg(feature = "audio")]
   /// Beat detection sensitivity. Higher = more sensitive to subtle beats. Range: 0.1-3.0, Default: 1.0
   #[arg(long, value_name = "FLOAT")]
   pub beat_sensitivity: Option<f32>,
 
-  #[cfg(feature = "audio")]
   /// Beat-triggered distortion effect strength. Range: 0.0-2.0
   #[arg(short = 'D', long, value_name = "FLOAT")]
   pub beat_distortion: Option<f32>,
 
-  #[cfg(feature = "audio")]
   /// Beat-triggered zoom pulse effect strength. Range: 0.0-2.0
   #[arg(short = 'z', long, value_name = "FLOAT")]
   pub beat_zoom: Option<f32>,

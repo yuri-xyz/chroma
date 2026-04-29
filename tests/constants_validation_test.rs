@@ -12,7 +12,6 @@ const _: () = {
   );
 };
 
-#[cfg(feature = "audio")]
 const _: () = {
   assert!(
     AUDIO_SILENCE_THRESHOLD >= 0.0 && AUDIO_SILENCE_THRESHOLD <= 1.0,

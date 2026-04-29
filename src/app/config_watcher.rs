@@ -140,7 +140,9 @@ mod tests {
 
     ConfigWatcher::handle_config_change(&path, &sender).unwrap();
 
-    let received = receiver.try_recv().expect("expected existing config to remain");
+    let received = receiver
+      .try_recv()
+      .expect("expected existing config to remain");
     assert_eq!(received.frequency, ShaderParams::default().frequency);
 
     let _ = fs::remove_file(path);

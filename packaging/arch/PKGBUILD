@@ -36,7 +36,7 @@ pkgver() {
 
 build() {
   cd "${srcdir}/${_srcname}" || exit 1
-  cargo build --locked --release --features audio
+  cargo build --locked --release
 }
 
 package() {

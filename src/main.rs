@@ -17,8 +17,6 @@ use cli::CliArgs;
 fn main() -> Result<()> {
   let cli_args = CliArgs::parse();
 
-  // Handle --list-audio-devices flag
-  #[cfg(feature = "audio")]
   if cli_args.list_audio_devices {
     use chroma::audio::AudioCapture;
     return AudioCapture::list_devices();
@@ -62,41 +60,22 @@ fn main() -> Result<()> {
     cli_args.fps
   };
 
-  #[cfg(feature = "audio")]
-  {
-    run_application(
-      loaded_config,
-      show_status_bar,
-      stream_dimensions,
-      config_path,
-      cli_args.audio_device,
-      custom_shader,
-      target_fps,
-    )
-  }
-
-  #[cfg(not(feature = "audio"))]
-  {
-    run_application(
-      loaded_config,
-      show_status_bar,
-      stream_dimensions,
-      config_path,
-      custom_shader,
-      target_fps,
-    )
-  }
+  run_application(
+    loaded_config,
+    show_status_bar,
+    stream_dimensions,
+    config_path,
+    cli_args.audio_device,
+    custom_shader,
+    target_fps,
+  )
 }
 
 /// Load configuration from file if specified, then apply CLI overrides
 /// Priority order (lowest to highest): randomized -> preset -> config file -> CLI args
 fn load_config_with_overrides(cli_args: &CliArgs) -> Result<Option<ShaderParams>> {
-  // Step 1: Start with defaults (or audio defaults)
-  #[cfg(feature = "audio")]
+  // Step 1: Start with audio-reactive defaults
   let mut params = ShaderParams::with_audio_reactive_defaults();
-
-  #[cfg(not(feature = "audio"))]
-  let mut params = ShaderParams::default();
 
   // Step 2: Apply randomization if requested (lowest priority)
   if cli_args.random {
@@ -181,29 +160,23 @@ fn apply_cli_overrides(params: &mut ShaderParams, cli: &CliArgs) -> Result<()> {
   }
 
   // Audio parameters
-  #[cfg(feature = "audio")]
-  {
-    if let Some(v) = cli.audio_enabled {
-      params.audio_enabled = v;
-    }
-    if let Some(v) = cli.bass_influence {
-      params.bass_influence = v;
-    }
-    if let Some(v) = cli.mid_influence {
-      params.mid_influence = v;
-    }
-    if let Some(v) = cli.treble_influence {
-      params.treble_influence = v;
-    }
-    if let Some(v) = cli.beat_sensitivity {
-      params.beat_sensitivity = v;
-    }
-    if let Some(v) = cli.beat_distortion {
-      params.beat_distortion_strength = v;
-    }
-    if let Some(v) = cli.beat_zoom {
-      params.beat_zoom_strength = v;
-    }
+  if let Some(v) = cli.bass_influence {
+    params.bass_influence = v;
+  }
+  if let Some(v) = cli.mid_influence {
+    params.mid_influence = v;
+  }
+  if let Some(v) = cli.treble_influence {
+    params.treble_influence = v;
+  }
+  if let Some(v) = cli.beat_sensitivity {
+    params.beat_sensitivity = v;
+  }
+  if let Some(v) = cli.beat_distortion {
+    params.beat_distortion_strength = v;
+  }
+  if let Some(v) = cli.beat_zoom {
+    params.beat_zoom_strength = v;
   }
 
   // Distortion
@@ -272,7 +245,6 @@ fn load_custom_shader(shader_path: &str) -> Result<String> {
 }
 
 /// Initialize terminal, run app, and cleanup
-#[cfg(feature = "audio")]
 fn run_application(
   loaded_config: Option<ShaderParams>,
   show_status_bar: bool,
@@ -294,42 +266,6 @@ fn run_application(
       stream_dimensions,
       config_path,
       audio_device,
-      custom_shader,
-      target_fps,
-    )
-    .await?;
-    app.run()
-  });
-
-  // Skip terminal cleanup in stream mode
-  if stream_dimensions.is_none() {
-    terminal::cleanup()?;
-  }
-
-  result
-}
-
-/// Initialize terminal, run app, and cleanup
-#[cfg(not(feature = "audio"))]
-fn run_application(
-  loaded_config: Option<ShaderParams>,
-  show_status_bar: bool,
-  stream_dimensions: Option<cli::StreamDimensions>,
-  config_path: Option<String>,
-  custom_shader: Option<String>,
-  target_fps: u32,
-) -> Result<()> {
-  // Skip terminal setup in stream mode
-  if stream_dimensions.is_none() {
-    terminal::setup()?;
-  }
-
-  let result = pollster::block_on(async {
-    let mut app = App::new(
-      loaded_config,
-      show_status_bar,
-      stream_dimensions,
-      config_path,
       custom_shader,
       target_fps,
     )

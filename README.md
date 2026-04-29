@@ -31,6 +31,23 @@
 
 ## 🔗 Install
 
+### Nix
+
+```bash
+# Run Chroma
+nix run github:yuri-xyz/chroma
+
+# Install the CLI into your profile
+nix profile install github:yuri-xyz/chroma
+
+# Develop locally with Rust, Vulkan, and audio dependencies
+nix develop
+```
+
+Chroma always builds with audio support. Vulkan still requires a working host GPU driver/ICD.
+
+### Cargo
+
 ```bash
 git clone https://github.com/yuri-xyz/chroma.git
 cd chroma
@@ -38,7 +55,7 @@ cd chroma
 # Make sure you have the `alsa-lib` & `pipewire` packages installed,
 # the exact package names may vary depending on your distro.
 
-cargo install --path . --features audio
+cargo install --path .
 ```
 
 ## ℹ️ Usage
@@ -98,8 +115,7 @@ If you're feeling brave, you can even create your own custom shader patterns and
   - vulkan-icd-loader
   - A Vulkan driver: one of `vulkan-intel`, `vulkan-radeon`, or `nvidia-utils`
   - Terminal with ANSI color support
-- Optional (audio feature)
-  - pipewire (recommended) or alsa-lib
+  - pipewire (recommended) or alsa-lib for audio capture
 - Build
   - rust, cargo, git
 

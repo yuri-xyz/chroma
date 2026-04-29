@@ -142,12 +142,6 @@ This document describes all available shader parameters, their ranges, and defau
 
 ## Audio Parameters
 
-### audio_enabled
-
-- **Type**: bool
-- **Default**: false
-- **Description**: Enable audio reactivity (requires `audio` feature).
-
 ### bass_influence
 
 - **Range**: 0.0 → 1.0

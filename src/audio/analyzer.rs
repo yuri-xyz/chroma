@@ -1,12 +1,9 @@
 use std::collections::VecDeque;
-#[cfg(feature = "audio")]
 use std::ops::Range;
-#[cfg(feature = "audio")]
 use std::sync::Arc;
 
 use super::AudioFeatures;
 
-#[cfg(feature = "audio")]
 use rustfft::{num_complex::Complex, Fft, FftPlanner};
 
 pub const ANALYSIS_WINDOW_SIZE: usize = 2_048;
@@ -87,17 +84,11 @@ pub struct AudioAnalyzer {
   hop_size: usize,
   sample_buffer: Vec<f32>,
   sample_buffer_start: usize,
-  #[cfg(feature = "audio")]
   fft: Arc<dyn Fft<f32>>,
-  #[cfg(feature = "audio")]
   fft_buffer: Vec<Complex<f32>>,
-  #[cfg(feature = "audio")]
   window_coefficients: Vec<f32>,
-  #[cfg(feature = "audio")]
   bass_bin_range: Range<usize>,
-  #[cfg(feature = "audio")]
   mid_bin_range: Range<usize>,
-  #[cfg(feature = "audio")]
   treble_bin_range: Range<usize>,
   previous_bass: f32,
   bass_history: RollingHistory,
@@ -124,11 +115,8 @@ impl AudioAnalyzer {
       "hop size must not exceed window size"
     );
 
-    #[cfg(feature = "audio")]
     let mut fft_planner = FftPlanner::new();
-    #[cfg(feature = "audio")]
     let fft = fft_planner.plan_fft_forward(window_size);
-    #[cfg(feature = "audio")]
     let freq_resolution = sample_rate / window_size as f32;
 
     Self {
@@ -137,17 +125,11 @@ impl AudioAnalyzer {
       hop_size,
       sample_buffer: Vec::with_capacity(window_size * 2),
       sample_buffer_start: 0,
-      #[cfg(feature = "audio")]
       fft,
-      #[cfg(feature = "audio")]
       fft_buffer: vec![Complex::new(0.0, 0.0); window_size],
-      #[cfg(feature = "audio")]
       window_coefficients: Self::build_hann_window(window_size),
-      #[cfg(feature = "audio")]
       bass_bin_range: Self::band_bin_range(20.0, 250.0, freq_resolution, window_size),
-      #[cfg(feature = "audio")]
       mid_bin_range: Self::band_bin_range(250.0, 2_000.0, freq_resolution, window_size),
-      #[cfg(feature = "audio")]
       treble_bin_range: Self::band_bin_range(2_000.0, 8_000.0, freq_resolution, window_size),
       previous_bass: 0.0,
       bass_history: RollingHistory::with_capacity(BASS_HISTORY_SIZE),
@@ -169,25 +151,16 @@ impl AudioAnalyzer {
 
     self.sample_buffer.extend_from_slice(samples);
 
-    #[cfg(feature = "audio")]
-    {
-      while self.available_sample_count() >= self.window_size {
-        self.populate_fft_buffer_from_samples();
-        self.latest_features = self.analyze_window();
-        self.processed_windows += 1;
-        self.advance_sample_buffer();
-      }
-
-      self.latest_features
+    while self.available_sample_count() >= self.window_size {
+      self.populate_fft_buffer_from_samples();
+      self.latest_features = self.analyze_window();
+      self.processed_windows += 1;
+      self.advance_sample_buffer();
     }
 
-    #[cfg(not(feature = "audio"))]
-    {
-      self.latest_features
-    }
+    self.latest_features
   }
 
-  #[cfg(feature = "audio")]
   fn populate_fft_buffer_from_samples(&mut self) {
     let window =
       &self.sample_buffer[self.sample_buffer_start..self.sample_buffer_start + self.window_size];
@@ -226,7 +199,6 @@ impl AudioAnalyzer {
     self.sample_buffer_start = 0;
   }
 
-  #[cfg(feature = "audio")]
   fn write_window_slice(
     fft_bins: &mut [Complex<f32>],
     samples: &[f32],
@@ -240,7 +212,6 @@ impl AudioAnalyzer {
     }
   }
 
-  #[cfg(feature = "audio")]
   fn analyze_window(&mut self) -> AudioFeatures {
     self.fft.process(&mut self.fft_buffer);
 
@@ -282,7 +253,6 @@ impl AudioAnalyzer {
     }
   }
 
-  #[cfg(feature = "audio")]
   fn detect_beat(
     &mut self,
     bass_raw: f32,
@@ -308,7 +278,6 @@ impl AudioAnalyzer {
     (onset_strength * 0.85 + self.beat_pulse * 0.35).min(1.0)
   }
 
-  #[cfg(feature = "audio")]
   fn detect_drop(
     &mut self,
     bass_raw: f32,
@@ -353,7 +322,6 @@ impl AudioAnalyzer {
     drop_detected
   }
 
-  #[cfg(feature = "audio")]
   fn get_band_energy(fft_buffer: &[Complex<f32>], bin_range: &Range<usize>) -> f32 {
     if bin_range.start >= bin_range.end || bin_range.start >= fft_buffer.len() / 2 {
       return 0.0;
@@ -370,7 +338,6 @@ impl AudioAnalyzer {
     rms / (1.0 + rms)
   }
 
-  #[cfg(feature = "audio")]
   fn build_hann_window(window_size: usize) -> Vec<f32> {
     (0..window_size)
       .map(|index| {
@@ -379,7 +346,6 @@ impl AudioAnalyzer {
       .collect()
   }
 
-  #[cfg(feature = "audio")]
   fn band_bin_range(
     freq_min: f32,
     freq_max: f32,
@@ -392,7 +358,6 @@ impl AudioAnalyzer {
     bin_min..bin_max
   }
 
-  #[cfg(feature = "audio")]
   fn apply_envelope(current_peak: f32, new_value: f32, attack_rate: f32, release_rate: f32) -> f32 {
     if new_value > current_peak {
       current_peak * attack_rate + new_value * (1.0 - attack_rate)
@@ -401,7 +366,6 @@ impl AudioAnalyzer {
     }
   }
 
-  #[cfg(feature = "audio")]
   fn apply_dynamics(&self, raw_value: f32, peak: f32) -> f32 {
     if peak < 0.01 {
       return raw_value;
@@ -418,7 +382,6 @@ impl AudioAnalyzer {
     (expanded * peak * transient_boost).min(1.0)
   }
 
-  #[cfg(feature = "audio")]
   fn calculate_energy_variance(&self) -> f32 {
     if self.energy_history.len() < 10 {
       return 0.0;
@@ -583,17 +546,19 @@ mod tests {
     assert_eq!(analyzer.available_sample_count(), 8);
   }
 
-  #[cfg(feature = "audio")]
   #[test]
   fn test_get_band_energy_invalid_range() {
     let buffer = vec![rustfft::num_complex::Complex::new(0.0, 0.0); 512];
+    let invalid_range = std::ops::Range {
+      start: 100,
+      end: 50,
+    };
 
-    let energy = AudioAnalyzer::get_band_energy(&buffer, &(100..50));
+    let energy = AudioAnalyzer::get_band_energy(&buffer, &invalid_range);
 
     assert_eq!(energy, 0.0);
   }
 
-  #[cfg(feature = "audio")]
   #[test]
   fn test_get_band_energy_normalization() {
     let mut buffer = vec![rustfft::num_complex::Complex::new(0.0, 0.0); 512];

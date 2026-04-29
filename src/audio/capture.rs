@@ -1,8 +1,6 @@
-#[cfg(feature = "audio")]
-use cpal::traits::{DeviceTrait, StreamTrait};
-#[cfg(feature = "audio")]
-use cpal::{FromSample, Sample, Stream, StreamConfig};
 use crate::debug::append_debug_line;
+use cpal::traits::{DeviceTrait, StreamTrait};
+use cpal::{FromSample, Sample, Stream, StreamConfig};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
@@ -79,9 +77,8 @@ impl SharedSampleBuffer {
       self.emitted_silence_warning = false;
     }
 
-    let should_log = self.callback_count <= 3
-      || max_abs_sample > 0.01
-      || self.callback_count % 240 == 0;
+    let should_log =
+      self.callback_count <= 3 || max_abs_sample > 0.01 || self.callback_count % 240 == 0;
 
     should_log.then_some(CallbackLogSummary {
       callback_count: self.callback_count,
@@ -107,7 +104,9 @@ impl SharedSampleBuffer {
   }
 
   fn take_silence_warning(&mut self) -> bool {
-    if self.all_zero_callback_streak >= SILENT_CALLBACK_WARNING_THRESHOLD && !self.emitted_silence_warning {
+    if self.all_zero_callback_streak >= SILENT_CALLBACK_WARNING_THRESHOLD
+      && !self.emitted_silence_warning
+    {
       self.emitted_silence_warning = true;
       return true;
     }
@@ -117,17 +116,14 @@ impl SharedSampleBuffer {
 }
 
 pub struct AudioCapture {
-  #[cfg(feature = "audio")]
   _stream: Option<Stream>,
   buffer: Arc<Mutex<SharedSampleBuffer>>,
   pub sample_rate: f32,
-  #[cfg(feature = "audio")]
   using_output_config_fallback: bool,
 }
 
 impl AudioCapture {
   /// List all available audio devices across all hosts
-  #[cfg(feature = "audio")]
   pub fn list_devices() -> anyhow::Result<()> {
     // Try to use the best host, fall back to default
     let host = match device_selector::find_system_audio_auto() {
@@ -139,7 +135,6 @@ impl AudioCapture {
   }
 
   /// Create audio capture with optional device name
-  #[cfg(feature = "audio")]
   pub fn new(device_name: Option<&str>) -> anyhow::Result<Self> {
     append_debug_line("audio", "=== Audio Capture Initialization ===");
 
@@ -263,7 +258,6 @@ impl AudioCapture {
     })
   }
 
-  #[cfg(feature = "audio")]
   fn build_stream<T>(
     device: &cpal::Device,
     config: &StreamConfig,
@@ -284,8 +278,7 @@ impl AudioCapture {
       "audio",
       format!(
         "Building input stream for '{device_name}': channels={}, sample_rate={}",
-        channels,
-        config.sample_rate
+        channels, config.sample_rate
       ),
     );
     let callback_device_name = device_name.clone();
@@ -317,18 +310,6 @@ impl AudioCapture {
     )?;
 
     Ok(stream)
-  }
-
-  #[cfg(not(feature = "audio"))]
-  pub fn new(_device_name: Option<&str>) -> anyhow::Result<Self> {
-    Ok(Self {
-      buffer: Arc::new(Mutex::new(SharedSampleBuffer::with_max_len(
-        MAX_PENDING_SAMPLES,
-      ))),
-      sample_rate: 44100.0,
-      #[cfg(feature = "audio")]
-      using_output_config_fallback: false,
-    })
   }
 
   pub fn drain_samples(&self) -> Vec<f32> {
@@ -379,7 +360,7 @@ impl AudioCapture {
   }
 }
 
-#[cfg(all(test, feature = "audio"))]
+#[cfg(test)]
 mod tests {
   use super::SharedSampleBuffer;
 

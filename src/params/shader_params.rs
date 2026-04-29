@@ -103,10 +103,7 @@ impl Default for ShaderParams {
       color_mode: ColorMode::Chromatic,
       pattern_type: PatternType::Plasma,
 
-      #[cfg(feature = "audio")]
       audio_enabled: true,
-      #[cfg(not(feature = "audio"))]
-      audio_enabled: false,
       bass_influence: 0.5,
       mid_influence: 0.3,
       treble_influence: 0.2,
@@ -184,14 +181,15 @@ impl ShaderParams {
   }
 
   pub fn apply_audio_data(&mut self, bass: f32, mid: f32, treble: f32) {
-    if self.audio_enabled {
-      self.amplitude = 1.0 + bass * self.bass_influence;
-      self.color_shift = mid * self.mid_influence;
-      self.frequency = 1.0 + treble * self.treble_influence;
-    }
+    self.audio_enabled = true;
+    self.amplitude = 1.0 + bass * self.bass_influence;
+    self.color_shift = mid * self.mid_influence;
+    self.frequency = 1.0 + treble * self.treble_influence;
   }
 
   pub fn clamp_all(&mut self) {
+    self.audio_enabled = true;
+
     self.frequency = self.frequency.clamp(3.0, 18.0);
     self.amplitude = self.amplitude.clamp(0.0, 2.0);
     self.speed = self.speed.clamp(0.0, 1.0);

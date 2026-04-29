@@ -60,17 +60,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libasound2-dev
 
-      - name: Run tests (default features)
+      - name: Run tests
         run: cargo test --verbose
 
-      - name: Run tests (all features)
-        run: cargo test --all-features --verbose
-
-      - name: Build project (default features)
+      - name: Build project
         run: cargo build --verbose
-
-      - name: Build project (all features)
-        run: cargo build --all-features --verbose
 
   fmt:
     name: Rustfmt
@@ -128,8 +122,5 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libasound2-dev
 
-      - name: Run clippy (default features)
+      - name: Run clippy
         run: cargo clippy --all-targets
-
-      - name: Run clippy (all features)
-        run: cargo clippy --all-targets --all-features

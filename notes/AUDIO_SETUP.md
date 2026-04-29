@@ -22,19 +22,15 @@ sudo apt install pkg-config libalsa-ocaml-dev
 sudo dnf install pkg-config alsa-lib-devel
 ```
 
-## Building with Audio
+## Building
 
 After installing dependencies:
 
 ```bash
-cargo build --release --features audio
-```
-
-Or to build without audio (default now):
-
-```bash
 cargo build --release
 ```
+
+Chroma always builds with audio support.
 
 ## How Audio Reactivity Works
 

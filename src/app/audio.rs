@@ -1,53 +1,34 @@
 // Audio-reactive update logic
 
-#[cfg(feature = "audio")]
 use super::DebugLog;
-#[cfg(feature = "audio")]
 use chroma::audio::{AudioAnalyzer, AudioCapture, AudioFeatures};
-#[cfg(feature = "audio")]
 use chroma::constants::{AUDIO_DECAY_RATE, AUDIO_SILENCE_THRESHOLD, AUDIO_SPEED_DECAY_RATE};
-#[cfg(feature = "audio")]
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-#[cfg(feature = "audio")]
 const SILENT_AMPLITUDE_BASELINE: f32 = 0.4;
-#[cfg(feature = "audio")]
 const SILENT_FREQUENCY_BASELINE: f32 = 6.0;
-#[cfg(feature = "audio")]
 const SILENT_BRIGHTNESS_BASELINE: f32 = 0.6;
-#[cfg(feature = "audio")]
 const SILENT_CONTRAST_BASELINE: f32 = 0.8;
-#[cfg(feature = "audio")]
 const REGULAR_BEAT_THRESHOLD_BASE: f32 = 0.18;
-#[cfg(feature = "audio")]
 const DROP_BEAT_DISTORTION_STRENGTH: f32 = 1.2;
-#[cfg(feature = "audio")]
 const DROP_BEAT_ZOOM_STRENGTH: f32 = 1.0;
-#[cfg(feature = "audio")]
 const REGULAR_BEAT_DISTORTION_STRENGTH: f32 = 0.85;
-#[cfg(feature = "audio")]
 const REGULAR_BEAT_ZOOM_STRENGTH: f32 = 0.7;
-#[cfg(feature = "audio")]
 static EMPTY_SAMPLE_BATCH_COUNT: AtomicUsize = AtomicUsize::new(0);
-#[cfg(feature = "audio")]
 static FEATURE_LOG_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-#[cfg(feature = "audio")]
 fn blend_towards(current: f32, target: f32, retain: f32) -> f32 {
   current * retain + target * (1.0 - retain)
 }
 
-#[cfg(feature = "audio")]
 fn weighted_energy(features: &AudioFeatures) -> f32 {
   (features.bass * 0.1 + features.mid * 0.3 + features.treble * 0.6).max(0.05)
 }
 
-#[cfg(feature = "audio")]
 fn regular_beat_threshold(params: &chroma::params::ShaderParams) -> f32 {
   REGULAR_BEAT_THRESHOLD_BASE / params.beat_sensitivity
 }
 
-#[cfg(feature = "audio")]
 fn trigger_beat_visuals(
   params: &mut chroma::params::ShaderParams,
   distortion_strength: f32,
@@ -58,7 +39,6 @@ fn trigger_beat_visuals(
   params.beat_zoom_strength = zoom_strength;
 }
 /// Update shader parameters based on audio input
-#[cfg(feature = "audio")]
 pub fn update_audio_reactive(
   params: &mut chroma::params::ShaderParams,
   audio_capture: &Option<AudioCapture>,
@@ -66,10 +46,7 @@ pub fn update_audio_reactive(
   delta_time: f32,
   debug_log: &mut DebugLog,
 ) -> AudioFeatures {
-  if !params.audio_enabled {
-    let _ = debug_logln!(debug_log, "AUDIO: audio reactivity disabled");
-    return AudioFeatures::default();
-  }
+  params.audio_enabled = true;
 
   let has_capture = audio_capture.is_some();
   let has_analyzer = audio_analyzer.is_some();
@@ -133,7 +110,6 @@ pub fn update_audio_reactive(
 }
 
 /// Apply decay to parameters when audio is silent
-#[cfg(feature = "audio")]
 fn apply_silence_decay(
   params: &mut chroma::params::ShaderParams,
   features: &chroma::audio::AudioFeatures,
@@ -168,7 +144,6 @@ fn apply_silence_decay(
 }
 
 /// Apply audio features to shader parameters
-#[cfg(feature = "audio")]
 fn apply_audio_reactivity(
   params: &mut chroma::params::ShaderParams,
   features: &chroma::audio::AudioFeatures,
@@ -252,7 +227,7 @@ fn apply_audio_reactivity(
     .min(1.2);
 }
 
-#[cfg(all(test, feature = "audio"))]
+#[cfg(test)]
 mod tests {
   use super::*;
   use chroma::debug::DebugLog;
@@ -297,7 +272,7 @@ mod tests {
   }
 
   #[test]
-  fn test_update_audio_reactive_returns_default_when_audio_is_disabled() {
+  fn test_update_audio_reactive_forces_audio_enabled() {
     let mut params = ShaderParams {
       audio_enabled: false,
       amplitude: 1.3,
@@ -307,7 +282,13 @@ mod tests {
     let mut analyzer = None;
     let mut debug_log = test_debug_log();
 
-    let features = update_audio_reactive(&mut params, &None, &mut analyzer, 1.0 / 30.0, &mut debug_log);
+    let features = update_audio_reactive(
+      &mut params,
+      &None,
+      &mut analyzer,
+      1.0 / 30.0,
+      &mut debug_log,
+    );
 
     assert_eq!(features.bass, 0.0);
     assert_eq!(features.mid, 0.0);
@@ -316,6 +297,7 @@ mod tests {
     assert_eq!(features.beat_strength, 0.0);
     assert!(!features.is_drop);
     assert_eq!(params.amplitude, original.amplitude);
+    assert!(params.audio_enabled);
   }
 
   #[test]
@@ -329,7 +311,13 @@ mod tests {
     let mut analyzer = None;
     let mut debug_log = test_debug_log();
 
-    let features = update_audio_reactive(&mut params, &None, &mut analyzer, 1.0 / 30.0, &mut debug_log);
+    let features = update_audio_reactive(
+      &mut params,
+      &None,
+      &mut analyzer,
+      1.0 / 30.0,
+      &mut debug_log,
+    );
 
     assert_eq!(features.bass, 0.0);
     assert_eq!(features.overall, 0.0);

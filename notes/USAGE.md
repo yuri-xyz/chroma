@@ -5,9 +5,6 @@
 ```bash
 # Build and run
 cargo run --release
-
-# Run with audio support (once implemented)
-cargo run --release --features audio
 ```
 
 ## Controls
@@ -139,14 +136,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 3. Add any new uniforms to `ShaderParams` and `ShaderUniforms`
 4. Rebuild and run!
 
-## Audio Visualization (Coming Soon)
-
-Once the audio feature is implemented:
-
-```bash
-# Enable audio input
-cargo run --release --features audio
-```
+## Audio Visualization
 
 The application will:
 

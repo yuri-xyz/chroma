@@ -17,7 +17,7 @@ The hash is a 12-character SHA-256 hash of the configuration, ensuring unique fi
 
 ```bash
 # Run the app
-cargo run --release --features audio
+cargo run --release
 
 # Adjust settings using keyboard controls
 # Press 'S' to save
@@ -31,10 +31,10 @@ To load a saved configuration, use the `--config` or `-c` command-line argument:
 
 ```bash
 # Load a specific configuration
-cargo run --release --features audio -- --config config_a3f8c2d9e1b5.toml
+cargo run --release -- --config config_a3f8c2d9e1b5.toml
 
 # Or using the short form
-cargo run --release --features audio -- -c config_a3f8c2d9e1b5.toml
+cargo run --release -- -c config_a3f8c2d9e1b5.toml
 ```
 
 If the config file fails to load, the application will fall back to the default configuration and print a warning.
@@ -71,13 +71,13 @@ treble_influence = 0.2
 To view all command-line options:
 
 ```bash
-cargo run --release --features audio -- --help
+cargo run --release -- --help
 ```
 
 Output:
 
 ```
-Terminal-based shader visualizer with optional audio reactivity
+Terminal-based shader visualizer with audio reactivity
 
 Usage: term-shaders [OPTIONS]
 

@@ -107,17 +107,11 @@ mod tests {
         first_pattern.name()
       )
     );
-    assert!(lines.iter().any(|line| {
-      *line
-        == format!(
-          "  {:<15} (display: {})",
-          fluid.full_name(),
-          fluid.name()
-        )
-    }));
-    assert!(output.ends_with(
-      "\nUse with: --pattern <PATTERN>\nIn-app: Press 'T' to cycle through patterns\n"
-    ));
+    assert!(lines
+      .iter()
+      .any(|line| { *line == format!("  {:<15} (display: {})", fluid.full_name(), fluid.name()) }));
+    assert!(output
+      .ends_with("\nUse with: --pattern <PATTERN>\nIn-app: Press 'T' to cycle through patterns\n"));
   }
 
   #[test]
@@ -175,8 +169,7 @@ mod tests {
           boxdraw.name()
         )
     }));
-    assert!(output.ends_with(
-      "\nUse with: --palette <PALETTE>\nIn-app: Press 'P' to cycle through palettes\n"
-    ));
+    assert!(output
+      .ends_with("\nUse with: --palette <PALETTE>\nIn-app: Press 'P' to cycle through palettes\n"));
   }
 }

@@ -1,5 +1,5 @@
 {
-  description = "Term Shaders - Nix flake (packages + dev shell)";
+  description = "Chroma - GPU-accelerated ASCII art audio visualizer for the terminal";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -7,91 +7,141 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
-  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs { inherit system overlays; };
-
-        # Recent Rust (matches Rust 2024 / >=1.82 requirement)
-        rustToolchain = pkgs.rust-bin.stable.latest.default;
-        rustPlatform = pkgs.makeRustPlatform {
-          cargo = rustToolchain;
-          rustc = rustToolchain;
-        };
-
-        commonNativeBuildInputs = with pkgs; [
-          pkg-config
-        ];
-
-        commonBuildInputs = with pkgs; [
-          vulkan-loader
-          alsa-lib
-          pipewire
-        ];
-
-        src = ./.;
-      in
-      rec {
-        packages = {
-          # Default (visuals only)
-          term-shaders = rustPlatform.buildRustPackage {
-            pname = "term-shaders";
-            version = "unstable-${self.shortRev or "dirty"}";
-            inherit src;
-
-            # Use Cargo.lock; Nix will ask to update cargoSha256 on first build
-            cargoLock = { lockFile = ./Cargo.lock; };
-            cargoSha256 = pkgs.lib.fakeSha256;
-
-            nativeBuildInputs = commonNativeBuildInputs;
-            buildInputs = commonBuildInputs;
-
-            # Integration tests may require a display/audio; disable in CI by default
-            doCheck = false;
-
-            meta = with pkgs.lib; {
-              description = "Terminal shader visualizer rendering GPU-computed ASCII art";
-              homepage = "https://github.com/yuri-xyz/chroma";
-              license = licenses.agpl3Plus;
-              mainProgram = "term-shaders";
-              platforms = platforms.linux;
-            };
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      rust-overlay,
+    }:
+    flake-utils.lib.eachSystem
+      [
+        "x86_64-linux"
+        "aarch64-linux"
+      ]
+      (
+        system:
+        let
+          overlays = [ (import rust-overlay) ];
+          pkgs = import nixpkgs {
+            inherit system overlays;
           };
 
-          # Audio-enabled variant
-          term-shaders-audio = packages.term-shaders.overrideAttrs (_: {
-            pname = "term-shaders-audio";
-            cargoBuildFlags = [ "--features" "audio" ];
-            cargoTestFlags = [ "--features" "audio" ];
-          });
-        };
+          inherit (pkgs) lib;
 
-        defaultPackage = packages.term-shaders;
+          rustToolchain = pkgs.rust-bin.stable.latest.default;
+          rustPlatform = pkgs.makeRustPlatform {
+            cargo = rustToolchain;
+            rustc = rustToolchain;
+          };
 
-        apps.default = {
-          type = "app";
-          program = "${packages.term-shaders}/bin/term-shaders";
-        };
+          src = lib.cleanSourceWith {
+            src = ./.;
+            filter =
+              path: type:
+              let
+                baseName = baseNameOf path;
+              in
+              !(
+                type == "directory"
+                && lib.elem baseName [
+                  "target"
+                  ".direnv"
+                  ".devenv"
+                ]
+              );
+          };
 
-        devShells.default = pkgs.mkShell {
-          packages = [
-            rustToolchain
-            pkgs.cargo
-            pkgs.rust-analyzer
-            pkgs.pkg-config
+          runtimeLibraryPath = lib.makeLibraryPath [
             pkgs.vulkan-loader
-            pkgs.vulkan-tools
             pkgs.alsa-lib
-            pkgs.pipewire
           ];
 
-          # Helpful at runtime for wgpu
-          shellHook = ''
-            export WGPU_BACKEND=vulkan
-            echo "Dev shell ready. Build with: cargo build --release [--features audio]"
-          '';
-        };
-      }
-    );
+          cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+
+          chroma =
+            rustPlatform.buildRustPackage {
+              pname = "chroma";
+              inherit src;
+              version = cargoToml.package.version;
+
+              cargoLock.lockFile = ./Cargo.lock;
+
+              nativeBuildInputs = [
+                pkgs.makeWrapper
+                pkgs.pkg-config
+              ];
+
+              buildInputs = [
+                pkgs.vulkan-loader
+                pkgs.alsa-lib
+              ];
+
+              # The integration suite exercises terminal/GPU/audio-adjacent behavior
+              # that is better validated outside the pure Nix build sandbox.
+              doCheck = false;
+
+              postInstall = ''
+                wrapProgram "$out/bin/chroma" \
+                  --prefix LD_LIBRARY_PATH : "${runtimeLibraryPath}"
+              '';
+
+              meta = {
+                description = "Rust-based ASCII art shader audio visualizer for the terminal";
+                homepage = "https://github.com/yuri-xyz/chroma";
+                license = lib.licenses.mit;
+                mainProgram = "chroma";
+                platforms = lib.platforms.linux;
+              };
+            };
+        in
+        {
+          packages = {
+            inherit chroma;
+            default = chroma;
+          };
+
+          apps = {
+            chroma =
+              (flake-utils.lib.mkApp {
+                drv = chroma;
+              })
+              // {
+                meta.description = "Run Chroma with audio support";
+              };
+            default =
+              (flake-utils.lib.mkApp {
+                drv = chroma;
+              })
+              // {
+                meta.description = "Run Chroma with audio support";
+              };
+          };
+
+          devShells.default = pkgs.mkShell {
+            packages = [
+              rustToolchain
+              pkgs.cargo
+              pkgs.rust-analyzer
+              pkgs.clippy
+              pkgs.rustfmt
+              pkgs.pkg-config
+              pkgs.vulkan-loader
+              pkgs.vulkan-tools
+              pkgs.alsa-lib
+              pkgs.pipewire
+            ];
+
+            LD_LIBRARY_PATH = runtimeLibraryPath;
+            WGPU_BACKEND = "vulkan";
+
+            shellHook = ''
+              echo "Chroma dev shell"
+              echo "  cargo run"
+              echo "  nix run ."
+              echo "  nix build"
+            '';
+          };
+        }
+      );
 }

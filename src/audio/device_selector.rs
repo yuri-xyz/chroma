@@ -1,6 +1,6 @@
+use crate::debug::append_debug_line;
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{Device, Host};
-use crate::debug::append_debug_line;
 
 #[cfg(target_os = "linux")]
 const PACTL_BIN: &str = "pactl";
@@ -272,11 +272,19 @@ fn get_best_host() -> Host {
 fn log_host_devices(host: &Host, label: &str) {
   let input_names = host
     .input_devices()
-    .map(|devices| devices.filter_map(|device| get_device_name(&device)).collect::<Vec<_>>())
+    .map(|devices| {
+      devices
+        .filter_map(|device| get_device_name(&device))
+        .collect::<Vec<_>>()
+    })
     .unwrap_or_default();
   let output_names = host
     .output_devices()
-    .map(|devices| devices.filter_map(|device| get_device_name(&device)).collect::<Vec<_>>())
+    .map(|devices| {
+      devices
+        .filter_map(|device| get_device_name(&device))
+        .collect::<Vec<_>>()
+    })
     .unwrap_or_default();
 
   append_debug_line(
@@ -398,7 +406,10 @@ pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
     if !is_dummy_device(name) && is_monitor_source(name) && is_device_usable(device) {
       append_debug_line(
         "audio",
-        format!("Selected explicit monitor source '{name}' on host {:?}", host.id()),
+        format!(
+          "Selected explicit monitor source '{name}' on host {:?}",
+          host.id()
+        ),
       );
       return Ok(device.clone());
     }

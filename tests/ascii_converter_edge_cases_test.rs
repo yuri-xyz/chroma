@@ -170,9 +170,7 @@ fn test_convert_frame_uses_expected_byte_brightness_breakpoints() {
 fn test_convert_frame_uses_exact_integer_luma_for_primary_colors() {
   let converter = AsciiConverter::new(AsciiPalette::standard(), true);
   let palette = AsciiPalette::standard();
-  let pixels: Vec<u8> = vec![
-    255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255,
-  ];
+  let pixels: Vec<u8> = vec![255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255];
   let result = converter.convert_frame(&pixels, 3, 1);
 
   assert_eq!(result[0][0].0, palette.get_character_for_brightness(76));

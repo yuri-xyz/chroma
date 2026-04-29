@@ -1,6 +1,4 @@
-#[cfg(feature = "audio")]
 pub mod audio_fixtures;
-#[cfg(feature = "audio")]
 pub mod audio_trace;
 
 use std::path::PathBuf;

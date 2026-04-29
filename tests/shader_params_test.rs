@@ -130,7 +130,7 @@ fn test_apply_audio_data() {
 }
 
 #[test]
-fn test_apply_audio_data_disabled() {
+fn test_apply_audio_data_forces_audio_enabled() {
   let mut params = ShaderParams {
     audio_enabled: false,
     amplitude: 1.0,
@@ -141,10 +141,10 @@ fn test_apply_audio_data_disabled() {
 
   params.apply_audio_data(0.8, 0.6, 0.4);
 
-  // Should not change when audio disabled
-  assert_eq!(params.amplitude, 1.0);
-  assert_eq!(params.color_shift, 0.0);
-  assert_eq!(params.frequency, 10.0);
+  assert_eq!(params.amplitude, 1.0 + 0.8 * 0.5);
+  assert_eq!(params.color_shift, 0.6 * 0.3);
+  assert_eq!(params.frequency, 1.0 + 0.4 * 0.2);
+  assert!(params.audio_enabled);
 }
 
 #[test]

@@ -227,7 +227,7 @@ fn test_apply_audio_data_when_enabled() {
 }
 
 #[test]
-fn test_apply_audio_data_when_disabled() {
+fn test_apply_audio_data_forces_audio_enabled() {
   let mut params = ShaderParams {
     audio_enabled: false,
     ..Default::default()
@@ -239,9 +239,13 @@ fn test_apply_audio_data_when_disabled() {
 
   params.apply_audio_data(0.8, 0.6, 0.4);
 
-  assert_eq!(params.amplitude, original_amplitude);
-  assert_eq!(params.color_shift, original_color_shift);
-  assert_eq!(params.frequency, original_frequency);
+  assert_eq!(params.amplitude, 1.0 + 0.8 * 0.5);
+  assert_eq!(params.color_shift, 0.6 * 0.3);
+  assert_eq!(params.frequency, 1.0 + 0.4 * 0.2);
+  assert_ne!(params.amplitude, original_amplitude);
+  assert_ne!(params.color_shift, original_color_shift);
+  assert_ne!(params.frequency, original_frequency);
+  assert!(params.audio_enabled);
 }
 
 #[test]
@@ -284,7 +288,4 @@ fn test_with_audio_reactive_defaults_differs_from_default() {
   assert_ne!(default_params.contrast, audio_params.contrast);
   assert_ne!(default_params.amplitude, audio_params.amplitude);
   assert_ne!(default_params.frequency, audio_params.frequency);
-
-  #[cfg(not(feature = "audio"))]
-  assert_ne!(default_params.audio_enabled, audio_params.audio_enabled);
 }

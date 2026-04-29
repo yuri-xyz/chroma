@@ -1,5 +1,3 @@
-#![cfg(feature = "audio")]
-
 mod support;
 
 use support::audio_fixtures::{

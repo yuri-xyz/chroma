@@ -35,12 +35,10 @@ pub fn handle_input(
 
 fn adjust_if_manual(
   params: &mut ShaderParams,
-  delta: f32,
-  adjust: impl FnOnce(&mut ShaderParams, f32),
+  _delta: f32,
+  _adjust: impl FnOnce(&mut ShaderParams, f32),
 ) {
-  if !params.audio_enabled {
-    adjust(params, delta);
-  }
+  params.audio_enabled = true;
 }
 
 fn sync_palette(converter: &mut AsciiConverter, palette: chroma::params::PaletteType) {
@@ -62,23 +60,6 @@ fn cycle_effect(params: &mut ShaderParams, debug_log: &mut DebugLog) -> Result<(
     debug_log,
     "EFFECT: Switched to effect type {}",
     params.effect_type
-  )?;
-
-  Ok(())
-}
-
-#[cfg(feature = "audio")]
-fn toggle_audio(params: &mut ShaderParams, debug_log: &mut DebugLog) -> Result<()> {
-  params.audio_enabled = !params.audio_enabled;
-
-  debug_logln!(
-    debug_log,
-    "AUDIO: Audio reactivity {}",
-    if params.audio_enabled {
-      "enabled"
-    } else {
-      "disabled"
-    }
   )?;
 
   Ok(())
@@ -167,14 +148,6 @@ fn handle_key_press(
       cycle_effect(params, debug_log)?;
     }
 
-    // Audio toggle
-    KeyCode::Char('a') | KeyCode::Char('A') => {
-      #[cfg(feature = "audio")]
-      {
-        toggle_audio(params, debug_log)?;
-      }
-    }
-
     // Save configuration
     KeyCode::Char('s') | KeyCode::Char('S') => save_configuration(params, debug_log)?,
 
@@ -259,7 +232,7 @@ mod tests {
   }
 
   #[test]
-  fn test_arrow_keys_adjust_params_when_audio_is_disabled() {
+  fn test_arrow_keys_keep_audio_reactive_params_locked() {
     let mut params = ShaderParams::default();
     params.audio_enabled = false;
     params.frequency = 10.0;
@@ -285,8 +258,9 @@ mod tests {
       &mut debug_log,
     );
 
-    assert_eq!(params.frequency, 10.1);
-    assert_eq!(params.speed, 0.6);
+    assert_eq!(params.frequency, 10.0);
+    assert_eq!(params.speed, 0.5);
+    assert!(params.audio_enabled);
     assert!(running);
   }
 
@@ -322,10 +296,10 @@ mod tests {
   }
 
   #[test]
-  fn test_amplitude_keys_clamp_at_bounds_when_audio_is_disabled() {
+  fn test_amplitude_keys_are_ignored_for_audio_reactive_params() {
     let mut params = ShaderParams::default();
     params.audio_enabled = false;
-    params.amplitude = 2.0;
+    params.amplitude = 1.0;
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();
@@ -338,9 +312,9 @@ mod tests {
       &mut running,
       &mut debug_log,
     );
-    assert_eq!(params.amplitude, 2.0);
+    assert_eq!(params.amplitude, 1.0);
+    assert!(params.audio_enabled);
 
-    params.amplitude = 0.0;
     invoke_key(
       KeyCode::Char('-'),
       KeyModifiers::NONE,
@@ -349,11 +323,11 @@ mod tests {
       &mut running,
       &mut debug_log,
     );
-    assert_eq!(params.amplitude, 0.0);
+    assert_eq!(params.amplitude, 1.0);
   }
 
   #[test]
-  fn test_amplitude_alias_keys_adjust_like_primary_keys() {
+  fn test_amplitude_alias_keys_are_ignored_for_audio_reactive_params() {
     let mut params = ShaderParams::default();
     params.audio_enabled = false;
     params.amplitude = 1.0;
@@ -369,7 +343,8 @@ mod tests {
       &mut running,
       &mut debug_log,
     );
-    assert_eq!(params.amplitude, 1.1);
+    assert_eq!(params.amplitude, 1.0);
+    assert!(params.audio_enabled);
 
     invoke_key(
       KeyCode::Char('_'),

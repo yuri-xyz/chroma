@@ -1,5 +1,3 @@
-#![cfg(feature = "audio")]
-
 use std::f32::consts::PI;
 
 use chroma::audio::{AudioAnalyzer, AudioFeatures, ANALYSIS_WINDOW_SIZE};
