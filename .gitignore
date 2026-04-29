@@ -1,5 +1,6 @@
 # Rust
 /target/
+.direnv/
 **/*.rs.bk
 *.pdb
 
