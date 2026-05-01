@@ -128,6 +128,11 @@ define_named_enum!(
       full: "pyramid",
       display: "Pyramid",
       aliases: ["pyr", "obelisk"]
+    },
+    Infinity => {
+      full: "infinity",
+      display: "Infinity",
+      aliases: ["loop", "infinite", "lemniscate"]
     }
   },
   error_label: "pattern type"

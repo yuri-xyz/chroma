@@ -8,27 +8,32 @@ struct PyramidFaceHit {
     depth: f32,
 };
 
-fn pyramid_hash(value: f32) -> f32 {
-    return fract(sin(value * 127.1 + 311.7) * 43758.5453);
+fn pyramid_drift(time: f32) -> vec4<f32> {
+    return vec4<f32>(
+        0.5 + 0.5 * sin(time * 0.17 + 1.3),
+        0.5 + 0.5 * sin(time * 0.11 + 3.7),
+        0.5 + 0.5 * sin(time * 0.13 + 5.1),
+        0.5 + 0.5 * sin(time * 0.07 + 8.4)
+    );
 }
 
-fn pyramid_random_segment(time: f32) -> vec4<f32> {
-    let segment = floor(time / 7.0);
-    let blend = smoothstep(0.0, 1.0, fract(time / 7.0));
-    let current = vec4<f32>(
-        pyramid_hash(segment + 1.0),
-        pyramid_hash(segment + 2.0),
-        pyramid_hash(segment + 3.0),
-        pyramid_hash(segment + 4.0)
-    );
-    let next = vec4<f32>(
-        pyramid_hash(segment + 5.0),
-        pyramid_hash(segment + 6.0),
-        pyramid_hash(segment + 7.0),
-        pyramid_hash(segment + 8.0)
-    );
+fn pyramid_rotation_angles(time: f32, drift: vec4<f32>) -> vec3<f32> {
+    let spin = time * (0.28 + drift.w * 0.14);
+    let wander = vec3<f32>(
+        sin(time * 0.23 + drift.x * 6.2831853),
+        sin(time * 0.19 + drift.y * 6.2831853),
+        sin(time * 0.29 + drift.z * 6.2831853)
+    ) * 0.62;
 
-    return mix(current, next, blend);
+    return vec3<f32>(
+        0.58 + spin * 0.47 + wander.x,
+        0.20 + spin * 0.73 + wander.y,
+        -0.22 + spin * 0.31 + wander.z
+    );
+}
+
+fn pyramid_center_for_rotation() -> vec3<f32> {
+    return vec3<f32>(0.0, 0.11, 0.0);
 }
 
 fn pyramid_rotate_x(point: vec3<f32>, angle: f32) -> vec3<f32> {
@@ -119,20 +124,15 @@ fn pyramid_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     var p = (uv - center) * 2.15;
     p.x *= uniforms.resolution.x / uniforms.resolution.y;
 
-    let randoms = pyramid_random_segment(time);
-    let direction = normalize(vec3<f32>(
-        randoms.x * 2.0 - 1.0,
-        randoms.y * 2.0 - 1.0,
-        randoms.z * 2.0 - 1.0
-    ));
-    let spin = time * (0.28 + randoms.w * 0.18);
-    let base_angles = vec3<f32>(0.58, 0.2, -0.22) + direction * spin;
+    let randoms = pyramid_drift(time);
+    let base_angles = pyramid_rotation_angles(time, randoms);
 
-    let apex = pyramid_rotate(vec3<f32>(0.0, 0.58, 0.0), base_angles);
-    let b0 = pyramid_rotate(vec3<f32>(-0.52, -0.36, -0.52), base_angles);
-    let b1 = pyramid_rotate(vec3<f32>(0.52, -0.36, -0.52), base_angles);
-    let b2 = pyramid_rotate(vec3<f32>(0.52, -0.36, 0.52), base_angles);
-    let b3 = pyramid_rotate(vec3<f32>(-0.52, -0.36, 0.52), base_angles);
+    let rotation_center = pyramid_center_for_rotation();
+    let apex = pyramid_rotate(vec3<f32>(0.0, 0.58, 0.0) - rotation_center, base_angles);
+    let b0 = pyramid_rotate(vec3<f32>(-0.52, -0.36, -0.52) - rotation_center, base_angles);
+    let b1 = pyramid_rotate(vec3<f32>(0.52, -0.36, -0.52) - rotation_center, base_angles);
+    let b2 = pyramid_rotate(vec3<f32>(0.52, -0.36, 0.52) - rotation_center, base_angles);
+    let b3 = pyramid_rotate(vec3<f32>(-0.52, -0.36, 0.52) - rotation_center, base_angles);
 
     let ring = pyramid_ring(p, time, randoms);
     var best_value = ring.x;

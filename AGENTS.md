@@ -61,6 +61,7 @@ Running `cargo test` outside the dev shell may fail to link Linux PulseAudio lib
 - Preserve terminal rendering performance. Avoid per-cell allocations, excessive string formatting, blocking I/O, or unguarded logging inside frame rendering.
 - Keep parameter changes synchronized across Rust params, CLI/config handling, `ShaderUniforms`, WGSL `Uniforms`, docs, and tests.
 - Keep pattern enum ordering synchronized with WGSL dispatch IDs. If `PatternType` changes, inspect `src/shader_common/main.wgsl` and tests that assert numeric IDs.
+- Register new patterns and randomly selectable visual/effect modes in the randomization pools in `src/params/randomizer.rs`, so `--random` and the `R` key can discover them. Add or update tests that fail when a new enum variant is missing from randomization.
 - Keep the CLI list commands (`--list-patterns`, `--list-color-modes`, `--list-palettes`, `--list-audio-devices`) accurate when enums or audio discovery behavior changes.
 - Use structured filesystem APIs such as `Path` and `PathBuf`; do not hardcode platform path separators.
 - Use `Result` and contextual errors for recoverable failures. Avoid `unwrap()` in runtime/library code unless failure is genuinely impossible.

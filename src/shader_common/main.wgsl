@@ -49,13 +49,15 @@ fn compute_pattern(uv: vec2<f32>, time: f32, pattern_type: u32) -> vec2<f32> {
         return world_pattern(uv, time);
     } else if pattern_type == 23u {
         return fluid_pattern(uv, time);
-    } else {
+    } else if pattern_type == 24u {
         return pyramid_pattern(uv, time);
+    } else {
+        return infinity_pattern(uv, time);
     }
 }
 
 fn pattern_position_for_scale(position: vec2<f32>, scale: f32, pattern_type: u32) -> vec2<f32> {
-    if pattern_type == 16u || pattern_type == 22u || pattern_type == 24u {
+    if pattern_type == 16u || pattern_type == 22u || pattern_type == 24u || pattern_type == 25u {
         return (position - vec2<f32>(0.5, 0.5)) * scale + vec2<f32>(0.5, 0.5);
     }
 
@@ -79,7 +81,7 @@ fn plasma_effect(position: vec2<f32>, time: f32) -> vec3<f32> {
     let combined = pattern_result.x;
     let gradient = pattern_result.y;
 
-    if uniforms.pattern_type == 24u && gradient < -900.0 {
+    if (uniforms.pattern_type == 24u || uniforms.pattern_type == 25u) && gradient < -900.0 {
         return vec3<f32>(0.0);
     }
     

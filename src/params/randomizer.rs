@@ -35,6 +35,7 @@ const PATTERN_WEIGHTS: &[(PatternType, u32)] = &[
   (PatternType::World, 2),
   (PatternType::Fluid, 2),
   (PatternType::Pyramid, 2),
+  (PatternType::Infinity, 2),
   // Simpler patterns get lower weight
   (PatternType::Noise, 1),
 ];
@@ -123,4 +124,22 @@ pub fn randomize_with_rng(params: &mut ShaderParams, rng: &mut impl Rng) {
   params.mid_influence = rng.random_range(0.2..=0.6);
   params.treble_influence = rng.random_range(0.1..=0.5);
   params.beat_sensitivity = rng.random_range(0.5..=2.0);
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn pattern_weights_include_every_pattern_type() {
+    for pattern in PatternType::all() {
+      assert!(
+        PATTERN_WEIGHTS
+          .iter()
+          .any(|(weighted_pattern, _)| weighted_pattern == pattern),
+        "missing randomizer weight for pattern {:?}",
+        pattern
+      );
+    }
+  }
 }

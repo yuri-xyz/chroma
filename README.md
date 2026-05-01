@@ -12,14 +12,14 @@
 - 🎨 **GPU-accelerated shaders** using wgpu (compute shaders)
 - 🖼️ **ASCII art rendering** with ANSI color support
 - ⚙️ **Highly configurable parameters** via config file
-- 💾 **Save/Load configurations** with automatic deduping via hashing
+- 💾 **Save and load configurations** with automatic deduplication via hashing
 - 🔄 **Live config reloading** for real-time parameter adjustment
 - 🎵 **Audio visualization** driven by system audio input
 - 📊 **FFT-based audio analysis** for reactive visual effects
 
 ## ✨ Demos & screenshots
 
-🔊 Make sure you turn on sound on the videos!
+🔊 Make sure sound is enabled for the videos.
 
 <img width="2474" height="1248" alt="chroma-themes" src="https://github.com/user-attachments/assets/0f43781d-4276-4d5f-8247-a932df43372e" />
 
@@ -97,7 +97,7 @@ Chroma is designed to be highly configurable and CLI-friendly, so it feels natur
 chroma -c examples/0.toml
 ```
 
-**Live reloading**: Edit your config file while chroma is running and see changes applied instantly! This makes it easy to tweak parameters and visualize your adjustments in real time.
+**Live reloading**: Edit your config file while Chroma is running and see changes applied instantly. This makes it easy to tweak parameters and visualize your adjustments in real time.
 
 **CLI parameters**: Most parameters can be set via command-line arguments. Run `chroma --help` to see all available options.
 
@@ -107,7 +107,7 @@ chroma -c examples/0.toml
 > [!TIP]
 > Use `--random` or `-r` to randomize any parameters that haven't been explicitly set by your config file or CLI args. Great for adding variety to each run!
 
-If you're feeling brave, you can even create your own custom shader patterns and load them like this: `chroma --custom-shader my_shader.wgsl`. Take a look at [`examples/custom_shader.wgsl`](./examples/custom_shader.wgsl) as a beginner template.
+You can also create custom shader patterns and load them with `chroma --custom-shader my_shader.wgsl`. See [`examples/custom_shader.wgsl`](./examples/custom_shader.wgsl) for a beginner template.
 
 ## 📦 Dependencies
 
@@ -122,21 +122,12 @@ If you're feeling brave, you can even create your own custom shader patterns and
 
 ## 🏗️ Contributing
 
-All contributions welcome! If you have some cool ideas, found some bugs, or would like to improve the project anyhow, feel free to create an issue and then a corresponding PR :)
+Contributions are welcome. If you have ideas, find bugs, or want to improve the project, feel free to create an issue and a corresponding PR.
 
-Here's some tips to making good contributions:
+How it works:
 
-- ✅ Create a corresponding issue with a reasonable explanation.
-- ✅ Keep PRs small and focused. This makes it much easier & faster to review!
-- ✅ Avoid making changes that are exclusive to certain situations, we want to keep the app focused and minimalist.
-- ✅ Follow existing code conventions, style, and file structure.
-- ✅ Always write tests for new features!
-- ✅ Heavy AI-driven, vibe-coded contributions are welcome! (so long as they are good & clean ❤️)
-
-And here's how it works for my nerdy friends:
-
-1.  Shader files are compiled by `wgpu` and rendered as ASCII output with ANSI colors in the terminal.
-2.  Hook up to system audio with PulseAudio/PipeWire on Linux, falling back to `cpal` where needed.
-3.  Use [fast Fourier transforms](https://en.wikipedia.org/wiki/Fast_Fourier_transform) from the `rustfft` crate to make the visuals react to what's playing. For example, by extracting bass (20-250 Hz), mid (250-2000 Hz), and treble (2000-8000 Hz) bands.
+1. Shader files are compiled by `wgpu` and rendered as ASCII output with ANSI colors in the terminal.
+2. Chroma connects to system audio with PulseAudio/PipeWire on Linux, falling back to `cpal` where needed.
+3. It uses [fast Fourier transforms](https://en.wikipedia.org/wiki/Fast_Fourier_transform) from the `rustfft` crate to make the visuals react to what is playing, extracting bass (20-250 Hz), mid (250-2000 Hz), and treble (2000-8000 Hz) bands.
 
 See [CONTRIBUTING](./CONTRIBUTING.md) for a more in-depth guide.

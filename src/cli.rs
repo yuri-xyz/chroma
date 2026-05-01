@@ -130,7 +130,7 @@ pub struct CliArgs {
   #[arg(short = 'H', long, value_name = "DEGREES")]
   pub hue: Option<f32>,
 
-  /// Pattern type: plasma, waves, ripples, vortex, noise, geometric, voronoi, truchet, hexagonal, interference, fractal, glitch, spiral, rings, grid, diamonds, sphere, octgrams, warped, kaleidoscope, tunnel, metaballs, world, fluid, pyramid
+  /// Pattern type: plasma, waves, ripples, vortex, noise, geometric, voronoi, truchet, hexagonal, interference, fractal, glitch, spiral, rings, grid, diamonds, sphere, octgrams, warped, kaleidoscope, tunnel, metaballs, world, fluid, pyramid, infinity
   #[arg(short = 'p', long, value_name = "PATTERN")]
   pub pattern: Option<String>,
 

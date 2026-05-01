@@ -37,6 +37,7 @@ fn main() {
     "src/shader_patterns/world.wgsl",
     "src/shader_patterns/fluid.wgsl",
     "src/shader_patterns/pyramid.wgsl",
+    "src/shader_patterns/infinity.wgsl",
     // Effects and main entry point
     "src/shader_common/effects.wgsl",
     "src/shader_common/beat_distortion.wgsl",
