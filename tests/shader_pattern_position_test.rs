@@ -89,7 +89,8 @@ fn test_infinity_pattern_uses_centered_continuous_3d_motion() {
   assert!(infinity_shader.contains("fn infinity_motion_time"));
   assert!(infinity_shader.contains("fn infinity_curve"));
   assert!(infinity_shader.contains("fn infinity_rotate"));
-  assert!(infinity_shader.contains("uniforms.speed"));
+  assert!(infinity_shader.contains("return time;"));
+  assert!(!infinity_shader.contains("return time * uniforms.speed"));
   assert!(infinity_shader.contains("uniforms.gamma"));
   assert!(infinity_shader.contains("uniforms.vignette_softness"));
   assert!(infinity_shader.contains("uniforms.glyph_sharpness"));
@@ -112,6 +113,12 @@ fn test_world_pattern_has_optional_seeded_rings() {
   assert!(world_shader.contains("fn world_ring_seed"));
   assert!(world_shader.contains("fn world_ring"));
   assert!(world_shader.contains("if seed.x < 0.5"));
+  assert!(world_shader.contains("uniforms.gamma"));
+  assert!(world_shader.contains("uniforms.vignette_softness"));
+  assert!(world_shader.contains("uniforms.glyph_sharpness"));
+  assert!(!world_shader.contains("uniforms.color_shift * 13.17"));
+  assert!(!world_shader.contains("uniforms.frequency * 2.31"));
+  assert!(!world_shader.contains("uniforms.amplitude * 5.73"));
   assert!(world_shader.contains("let spin_direction = select(-1.0, 1.0, seed.y > 0.5);"));
   assert!(world_shader.contains("if radius > globe_radius"));
   assert!(world_shader.contains("if ring_result.x > 0.01"));

@@ -70,9 +70,7 @@ fn infinity_beat_glow(time: f32) -> f32 {
 }
 
 fn infinity_motion_time(time: f32) -> f32 {
-    let base_speed = max(uniforms.speed, 0.04);
-
-    return time * base_speed;
+    return time;
 }
 
 fn infinity_curve(t: f32, drift: vec4<f32>) -> vec3<f32> {

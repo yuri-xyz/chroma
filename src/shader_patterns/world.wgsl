@@ -6,11 +6,11 @@ fn world_hash(value: f32) -> f32 {
 }
 
 fn world_ring_seed() -> vec4<f32> {
-    let seed = uniforms.color_shift * 13.17 +
-        uniforms.frequency * 2.31 +
-        uniforms.amplitude * 5.73 +
-        uniforms.noise_scale * 913.0 +
-        uniforms.z_rate * 271.0;
+    let seed = uniforms.noise_scale * 913.0 +
+        uniforms.z_rate * 271.0 +
+        uniforms.gamma * 31.17 +
+        uniforms.vignette_softness * 43.29 +
+        uniforms.glyph_sharpness * 59.71;
 
     return vec4<f32>(
         world_hash(seed + 1.0),
