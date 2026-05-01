@@ -9,10 +9,17 @@ use unicode_width::UnicodeWidthChar;
 const MUSIC_SYMBOL_DELAY_SECONDS: f32 = 2.0;
 const MUSIC_SYMBOL_MIN_SPARE_COLS: usize = 10;
 const MUSIC_SYMBOL_SPACING_COLS: i32 = 5;
-const MUSIC_SYMBOL_SPEED_COLS_PER_SECOND: f32 = 8.0;
+const MUSIC_SYMBOL_SPEED_COLS_PER_SECOND: f32 = 16.0;
 const MUSIC_SYMBOL_MAX_TEXT_CLEARANCE_COLS: usize = 15;
 const MUSIC_SYMBOL_TEXT_FADE_COLS: f32 = 5.0;
-const MUSIC_SYMBOLS: [char; 3] = ['♪', '♫', '♬'];
+const MUSIC_SYMBOLS: [char; 32] = [
+  '♪', '♫', '♬', '♩', '♭', '♯', '☺', '☻', '☼', '★', '☆', '✦', '✧', '✺', '❋', '◆', '◇', '●', '○',
+  '◌', '◍', '◎', '◈', '✹', '✷', '✶', '✵', '✴', '✳', '✲', '✱', '✻',
+];
+
+pub fn music_symbol_delay_seconds() -> f32 {
+  MUSIC_SYMBOL_DELAY_SECONDS
+}
 
 /// Build status bar text with current parameters
 pub fn build_status_text(params: &ShaderParams, effect_type: u32) -> String {
@@ -31,23 +38,47 @@ pub fn build_status_text(params: &ShaderParams, effect_type: u32) -> String {
 pub fn format_status_bar(
   status_text: &str,
   available_cols: usize,
-  has_sound: bool,
+  audio_gradient_active: bool,
   time: f32,
-  audio_active_elapsed: f32,
+  audio_flow_elapsed: f32,
+  audio_production_elapsed: f32,
 ) -> Vec<RenderedCell> {
   let fitted_status = fit_status_text(status_text, available_cols);
   let status_width = display_width(status_text);
 
-  if has_sound {
-    apply_audio_gradient(
-      &fitted_status,
-      time,
-      status_width.min(available_cols),
-      audio_active_elapsed,
-    )
+  let mut cells = if audio_gradient_active {
+    apply_audio_gradient(&fitted_status, time)
   } else {
     styled_text_cells(&fitted_status, Some((0, 0, 0)), Some((255, 255, 255)))
+  };
+
+  apply_music_symbol_flow(
+    &mut cells,
+    status_width.min(available_cols),
+    audio_flow_elapsed,
+    audio_production_elapsed,
+  );
+
+  cells
+}
+
+pub fn music_symbol_drain_seconds(status_text: &str, available_cols: usize) -> f32 {
+  let status_width = display_width(status_text).min(available_cols);
+  if status_width >= available_cols {
+    return 0.0;
   }
+
+  let spare_cols = available_cols - status_width;
+  if spare_cols < MUSIC_SYMBOL_MIN_SPARE_COLS {
+    return 0.0;
+  }
+
+  let movement_cols = spare_cols.saturating_sub(music_symbol_text_clearance(spare_cols));
+  if movement_cols < MUSIC_SYMBOL_MIN_SPARE_COLS {
+    return 0.0;
+  }
+
+  (movement_cols as f32 + 1.0) / MUSIC_SYMBOL_SPEED_COLS_PER_SECOND
 }
 
 fn fit_status_text(status: &str, available_cols: usize) -> String {
@@ -91,32 +122,27 @@ fn truncate_status(status: &str, available_cols: usize) -> String {
 }
 
 /// Apply animated gradient to status bar when audio is active
-fn apply_audio_gradient(
-  status: &str,
-  time: f32,
-  status_width: usize,
-  audio_active_elapsed: f32,
-) -> Vec<RenderedCell> {
+fn apply_audio_gradient(status: &str, time: f32) -> Vec<RenderedCell> {
   let gradient_offset = (time * 2.0) % std::f32::consts::TAU;
 
-  let mut cells = map_text_cells(status, |char_pos, ch| {
+  map_text_cells(status, |char_pos, ch| {
     let hue = (gradient_offset + (char_pos as f32 * 0.1)) % std::f32::consts::TAU;
     let (r, g, b) = hue_to_pastel_rgb(hue);
 
     RenderedCell::new(ch, Some((0, 0, 0)), Some((r, g, b)))
-  });
-
-  apply_music_symbol_flow(&mut cells, status_width, audio_active_elapsed);
-
-  cells
+  })
 }
 
 fn apply_music_symbol_flow(
   cells: &mut [RenderedCell],
   status_width: usize,
-  audio_active_elapsed: f32,
+  audio_flow_elapsed: f32,
+  audio_production_elapsed: f32,
 ) {
-  if audio_active_elapsed < MUSIC_SYMBOL_DELAY_SECONDS || status_width >= cells.len() {
+  if audio_flow_elapsed < MUSIC_SYMBOL_DELAY_SECONDS
+    || audio_production_elapsed < MUSIC_SYMBOL_DELAY_SECONDS
+    || status_width >= cells.len()
+  {
     return;
   }
 
@@ -131,9 +157,11 @@ fn apply_music_symbol_flow(
     return;
   }
 
-  let flow_time = audio_active_elapsed - MUSIC_SYMBOL_DELAY_SECONDS;
+  let flow_time = audio_flow_elapsed - MUSIC_SYMBOL_DELAY_SECONDS;
+  let production_time = audio_production_elapsed - MUSIC_SYMBOL_DELAY_SECONDS;
   let current_step = (flow_time * MUSIC_SYMBOL_SPEED_COLS_PER_SECOND).floor() as i32;
-  let latest_slot = current_step / MUSIC_SYMBOL_SPACING_COLS;
+  let production_step = (production_time * MUSIC_SYMBOL_SPEED_COLS_PER_SECOND).floor() as i32;
+  let latest_slot = production_step / MUSIC_SYMBOL_SPACING_COLS;
   let earliest_visible_slot =
     ((current_step - movement_cols as i32).div_euclid(MUSIC_SYMBOL_SPACING_COLS) + 1).max(0);
 
@@ -263,7 +291,7 @@ mod tests {
 
   #[test]
   fn test_format_status_bar_pads_to_available_width() {
-    let cells = format_status_bar("Hi", 5, false, 0.0, 0.0);
+    let cells = format_status_bar("Hi", 5, false, 0.0, 0.0, 0.0);
     let rendered = cells.iter().map(|cell| cell.character).collect::<String>();
 
     assert_eq!(cells.len(), 5);
@@ -277,7 +305,7 @@ mod tests {
 
   #[test]
   fn test_format_status_bar_truncates_when_needed() {
-    let cells = format_status_bar("Hello world", 6, false, 0.0, 0.0);
+    let cells = format_status_bar("Hello world", 6, false, 0.0, 0.0, 0.0);
     let rendered = cells.iter().map(|cell| cell.character).collect::<String>();
 
     assert_eq!(rendered, "Hel...");
@@ -285,7 +313,7 @@ mod tests {
 
   #[test]
   fn test_format_status_bar_respects_tiny_widths() {
-    let cells = format_status_bar("Hello world", 2, false, 0.0, 0.0);
+    let cells = format_status_bar("Hello world", 2, false, 0.0, 0.0, 0.0);
     let rendered = cells.iter().map(|cell| cell.character).collect::<String>();
 
     assert_eq!(rendered, "..");
@@ -293,7 +321,7 @@ mod tests {
 
   #[test]
   fn test_format_status_bar_pads_wide_characters_to_visual_width() {
-    let cells = format_status_bar("界", 3, false, 0.0, 0.0);
+    let cells = format_status_bar("界", 3, false, 0.0, 0.0, 0.0);
     let rendered = cells.iter().map(|cell| cell.character).collect::<String>();
     let display_width: usize = cells.iter().map(|cell| cell.display_width).sum();
 
@@ -303,7 +331,7 @@ mod tests {
 
   #[test]
   fn test_format_status_bar_truncates_wide_characters_without_overflow() {
-    let cells = format_status_bar("界界界", 5, false, 0.0, 0.0);
+    let cells = format_status_bar("界界界", 5, false, 0.0, 0.0, 0.0);
     let rendered = cells.iter().map(|cell| cell.character).collect::<String>();
     let display_width: usize = cells.iter().map(|cell| cell.display_width).sum();
 
@@ -313,7 +341,7 @@ mod tests {
 
   #[test]
   fn test_audio_status_bar_applies_per_cell_background_gradient() {
-    let cells = format_status_bar("AB", 2, true, 0.0, 0.0);
+    let cells = format_status_bar("AB", 2, true, 0.0, 0.0, 0.0);
 
     assert_eq!(cells.len(), 2);
     assert_eq!(cells[0].character, 'A');
@@ -326,7 +354,14 @@ mod tests {
 
   #[test]
   fn test_audio_status_bar_waits_before_music_symbols() {
-    let cells = format_status_bar("AB", 20, true, 0.0, MUSIC_SYMBOL_DELAY_SECONDS - 0.1);
+    let cells = format_status_bar(
+      "AB",
+      20,
+      true,
+      0.0,
+      MUSIC_SYMBOL_DELAY_SECONDS - 0.1,
+      MUSIC_SYMBOL_DELAY_SECONDS - 0.1,
+    );
     let rendered = cells.iter().map(|cell| cell.character).collect::<String>();
 
     assert_eq!(rendered, "AB                  ");
@@ -340,6 +375,7 @@ mod tests {
       true,
       0.0,
       MUSIC_SYMBOL_DELAY_SECONDS + 2.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 2.0,
     );
     let rendered = cells.iter().map(|cell| cell.character).collect::<String>();
 
@@ -348,7 +384,14 @@ mod tests {
 
   #[test]
   fn test_audio_status_bar_flows_music_symbols_in_spare_space() {
-    let cells = format_status_bar("AB", 20, true, 0.0, MUSIC_SYMBOL_DELAY_SECONDS + 1.0);
+    let cells = format_status_bar(
+      "AB",
+      20,
+      true,
+      0.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 1.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 1.0,
+    );
     let rendered = cells.iter().map(|cell| cell.character).collect::<String>();
     let status_prefix = rendered.chars().take(2).collect::<String>();
     let music_symbol_count = cells
@@ -363,7 +406,14 @@ mod tests {
 
   #[test]
   fn test_audio_status_bar_starts_music_symbols_one_at_a_time() {
-    let cells = format_status_bar("AB", 40, true, 0.0, MUSIC_SYMBOL_DELAY_SECONDS + 0.3);
+    let cells = format_status_bar(
+      "AB",
+      40,
+      true,
+      0.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 0.3,
+      MUSIC_SYMBOL_DELAY_SECONDS + 0.3,
+    );
     let music_symbol_count = cells
       .iter()
       .skip(2)
@@ -375,12 +425,20 @@ mod tests {
 
   #[test]
   fn test_audio_status_bar_moves_visible_symbols_in_lockstep() {
-    let cells_before = format_status_bar("AB", 60, true, 0.0, MUSIC_SYMBOL_DELAY_SECONDS + 4.0);
+    let cells_before = format_status_bar(
+      "AB",
+      60,
+      true,
+      0.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 4.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 4.0,
+    );
     let cells_after = format_status_bar(
       "AB",
       60,
       true,
       0.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 4.0 + (1.0 / MUSIC_SYMBOL_SPEED_COLS_PER_SECOND),
       MUSIC_SYMBOL_DELAY_SECONDS + 4.0 + (1.0 / MUSIC_SYMBOL_SPEED_COLS_PER_SECOND),
     );
     let positions_before = music_symbol_positions(&cells_before);
@@ -395,8 +453,72 @@ mod tests {
   }
 
   #[test]
+  fn test_audio_status_bar_drain_stops_producing_new_symbols() {
+    let production_elapsed = MUSIC_SYMBOL_DELAY_SECONDS + 4.0;
+    let cells_at_stop =
+      format_status_bar("AB", 80, true, 0.0, production_elapsed, production_elapsed);
+    let cells_after_stop = format_status_bar(
+      "AB",
+      80,
+      true,
+      0.0,
+      production_elapsed + (1.0 / MUSIC_SYMBOL_SPEED_COLS_PER_SECOND),
+      production_elapsed,
+    );
+    let positions_at_stop = music_symbol_positions(&cells_at_stop);
+    let positions_after_stop = music_symbol_positions(&cells_after_stop);
+
+    assert_eq!(positions_at_stop.len(), positions_after_stop.len());
+    assert!(!positions_at_stop.is_empty());
+    assert!(positions_at_stop
+      .iter()
+      .zip(positions_after_stop.iter())
+      .all(|(before, after)| *after + 1 == *before));
+  }
+
+  #[test]
+  fn test_audio_status_bar_drain_uses_inactive_bar_colors() {
+    let production_elapsed = MUSIC_SYMBOL_DELAY_SECONDS + 4.0;
+    let cells = format_status_bar(
+      "AB",
+      80,
+      false,
+      0.0,
+      production_elapsed + (1.0 / MUSIC_SYMBOL_SPEED_COLS_PER_SECOND),
+      production_elapsed,
+    );
+
+    assert_eq!(cells[0].foreground, Some((0, 0, 0)));
+    assert_eq!(cells[0].background, Some((255, 255, 255)));
+    assert!(!music_symbol_positions(&cells).is_empty());
+  }
+
+  #[test]
+  fn test_audio_status_bar_drain_clears_symbols_after_cycle_completes() {
+    let production_elapsed = MUSIC_SYMBOL_DELAY_SECONDS + 4.0;
+    let drain_seconds = music_symbol_drain_seconds("AB", 80);
+    let cells = format_status_bar(
+      "AB",
+      80,
+      true,
+      0.0,
+      production_elapsed + drain_seconds + 0.5,
+      production_elapsed,
+    );
+
+    assert!(music_symbol_positions(&cells).is_empty());
+  }
+
+  #[test]
   fn test_audio_status_bar_keeps_music_symbols_clear_of_text() {
-    let cells = format_status_bar("AB", 30, true, 0.0, MUSIC_SYMBOL_DELAY_SECONDS + 1.0);
+    let cells = format_status_bar(
+      "AB",
+      30,
+      true,
+      0.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 1.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 1.0,
+    );
     let expected_clearance = music_symbol_text_clearance(28);
     let post_text_gap = cells
       .iter()
