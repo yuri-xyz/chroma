@@ -10,7 +10,7 @@ mod list_commands;
 mod terminal;
 
 use app::App;
-use chroma::{constants::DEFAULT_FPS, params::ShaderParams};
+use chroma::{constants::DEFAULT_FPS, params::ShaderParams, render::StreamFormat};
 use cli::CliArgs;
 
 fn main() -> Result<()> {
@@ -39,6 +39,7 @@ fn main() -> Result<()> {
   let loaded_config = load_config_with_overrides(&cli_args)?;
   let show_status_bar = !cli_args.no_status;
   let stream_dimensions = cli_args.stream;
+  let stream_format = cli_args.stream_format;
   let config_path = cli_args.config.clone();
 
   // Load custom shader if provided
@@ -63,6 +64,7 @@ fn main() -> Result<()> {
     loaded_config,
     show_status_bar,
     stream_dimensions,
+    stream_format,
     config_path,
     cli_args.audio_device,
     custom_shader,
@@ -247,6 +249,7 @@ fn run_application(
   loaded_config: Option<ShaderParams>,
   show_status_bar: bool,
   stream_dimensions: Option<cli::StreamDimensions>,
+  stream_format: StreamFormat,
   config_path: Option<String>,
   audio_device: Option<String>,
   custom_shader: Option<String>,
@@ -262,6 +265,7 @@ fn run_application(
       loaded_config,
       show_status_bar,
       stream_dimensions,
+      stream_format,
       config_path,
       audio_device,
       custom_shader,

@@ -5,6 +5,10 @@ use unicode_width::UnicodeWidthChar;
 
 use crate::{constants::MIN_BRIGHTNESS_THRESHOLD, utils::color::calculate_brightness};
 
+mod stream;
+
+pub use stream::StreamFormat;
+
 pub type RgbColor = (u8, u8, u8);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,9 +49,9 @@ pub struct RenderedFrame {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct StyleState {
-  foreground: Option<RgbColor>,
-  background: Option<RgbColor>,
+pub(super) struct StyleState {
+  pub(super) foreground: Option<RgbColor>,
+  pub(super) background: Option<RgbColor>,
 }
 
 impl RenderedFrame {
@@ -178,37 +182,8 @@ impl RenderedFrame {
     buffer
   }
 
-  pub fn to_stream_string(&self) -> String {
-    let mut buffer = String::with_capacity(self.height * self.width * 25);
-    let mut style_state = StyleState {
-      foreground: None,
-      background: None,
-    };
-
-    for row in &self.rows {
-      push_cells(
-        &mut buffer,
-        row,
-        &mut style_state,
-        StyleState {
-          foreground: None,
-          background: None,
-        },
-      );
-      reset_to_base_style(
-        &mut buffer,
-        &mut style_state,
-        StyleState {
-          foreground: None,
-          background: None,
-        },
-      );
-      buffer.push('\n');
-    }
-
-    buffer.push('\n');
-
-    buffer
+  pub fn to_stream_string(&self, format: StreamFormat, frame_index: u64) -> String {
+    stream::to_framed_stream_string(self, format, frame_index)
   }
 
   fn status_bar_width(&self) -> usize {
@@ -286,7 +261,7 @@ fn display_width(row: &[RenderedCell]) -> usize {
   row.iter().map(|cell| cell.display_width).sum()
 }
 
-fn push_cells(
+pub(super) fn push_cells(
   buffer: &mut String,
   cells: &[RenderedCell],
   style_state: &mut StyleState,
@@ -331,7 +306,11 @@ fn write_style_transition(
   }
 }
 
-fn reset_to_base_style(buffer: &mut String, style_state: &mut StyleState, base_style: StyleState) {
+pub(super) fn reset_to_base_style(
+  buffer: &mut String,
+  style_state: &mut StyleState,
+  base_style: StyleState,
+) {
   write_style_transition(
     buffer,
     style_state,

@@ -72,7 +72,12 @@ chroma -c config_a3f8c2d9e1b5.toml
 
 # View help for all arguments and settings
 chroma --help
+
+# Emit framed output for embedding in other terminal apps
+chroma --stream 80x24 --stream-format ansi
 ```
+
+Stream mode writes length-prefixed frames to stdout and skips terminal setup, the status bar, and interactive input. The default `ansi` stream format preserves colored terminal text; `--stream-format cells` emits tab-separated cell records for consumers that want to parse characters and RGB colors directly.
 
 ## 🕹️ Controls
 

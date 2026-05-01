@@ -1,6 +1,6 @@
 use chroma::{
   ascii::{AsciiConverter, AsciiPalette},
-  render::{RenderedCell, RenderedFrame},
+  render::{RenderedCell, RenderedFrame, StreamFormat},
 };
 use crossterm::style::Color;
 
@@ -86,11 +86,14 @@ fn test_terminal_string_preserves_status_bar_and_cell_styles() {
 }
 
 #[test]
-fn test_stream_string_uses_double_newline_delimiter() {
+fn test_stream_string_uses_length_prefixed_frame_header() {
   let ascii_frame = vec![vec![('A', Color::White), ('B', Color::White)]];
   let frame = RenderedFrame::from_ascii_frame(&ascii_frame, 2, 1, None, None);
 
-  assert_eq!(frame.to_stream_string(), "AB\n\n");
+  assert_eq!(
+    frame.to_stream_string(StreamFormat::Ansi, 2),
+    "CHROMA_FRAME v=1 frame=2 width=2 height=1 format=ansi encoding=utf-8 bytes=3\nAB\n"
+  );
 }
 
 #[test]
@@ -107,10 +110,15 @@ fn test_stream_string_resets_foreground_style_at_row_boundaries() {
     vec![('B', Color::White)],
   ];
   let frame = RenderedFrame::from_ascii_frame(&ascii_frame, 1, 2, None, None);
+  let payload = "\x1b[38;2;250;200;150mA\x1b[39m\nB\n";
 
   assert_eq!(
-    frame.to_stream_string(),
-    "\x1b[38;2;250;200;150mA\x1b[39m\nB\n\n"
+    frame.to_stream_string(StreamFormat::Ansi, 3),
+    format!(
+      "CHROMA_FRAME v=1 frame=3 width=1 height=2 format=ansi encoding=utf-8 bytes={}\n{}",
+      payload.len(),
+      payload
+    )
   );
 }
 

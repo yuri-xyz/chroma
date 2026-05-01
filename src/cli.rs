@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use chroma::render::StreamFormat;
 use clap::Parser;
 
 /// Dimensions for stream mode (width x height in terminal cells)
@@ -87,6 +88,10 @@ pub struct CliArgs {
   /// Disables terminal setup, status bar, and interactive features. Outputs full frames to stdout.
   #[arg(long, value_name = "WIDTHxHEIGHT")]
   pub stream: Option<StreamDimensions>,
+
+  /// Stream output format. ansi preserves colored terminal text; cells emits tab-separated cell records.
+  #[arg(long, value_name = "FORMAT", default_value = "ansi")]
+  pub stream_format: StreamFormat,
 
   /// Start with randomized parameters (lowest priority, overridden by config and args)
   #[arg(short = 'r', long)]
@@ -236,6 +241,8 @@ mod tests {
       "--no-status",
       "--fps",
       "30",
+      "--stream-format",
+      "cells",
       "--pattern",
       "waves",
       "--palette",
@@ -247,6 +254,7 @@ mod tests {
 
     assert_eq!(stream.width, 64);
     assert_eq!(stream.height, 32);
+    assert_eq!(args.stream_format, StreamFormat::Cells);
     assert!(args.no_status);
     assert_eq!(args.fps, 30);
     assert_eq!(args.pattern.as_deref(), Some("waves"));
@@ -261,10 +269,25 @@ mod tests {
   }
 
   #[test]
+  fn test_cli_args_use_ansi_stream_format_by_default() {
+    let args = CliArgs::try_parse_from(["chroma", "--stream", "64x32"]).unwrap();
+
+    assert_eq!(args.stream_format, StreamFormat::Ansi);
+  }
+
+  #[test]
   fn test_cli_args_reject_invalid_stream_value() {
     let error = CliArgs::try_parse_from(["chroma", "--stream", "wide"]).unwrap_err();
     let error_text = error.to_string();
 
     assert!(error_text.contains("Expected format"));
+  }
+
+  #[test]
+  fn test_cli_args_reject_invalid_stream_format() {
+    let error = CliArgs::try_parse_from(["chroma", "--stream-format", "json"]).unwrap_err();
+    let error_text = error.to_string();
+
+    assert!(error_text.contains("Expected one of"));
   }
 }

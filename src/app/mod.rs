@@ -20,7 +20,7 @@ use chroma::{
   constants::AUDIO_SILENCE_THRESHOLD,
   debug::{frame_logging_enabled, DebugLog},
   params::ShaderParams,
-  render::RenderedCell,
+  render::{RenderedCell, StreamFormat},
   shader::{ShaderPipeline, ShaderUniforms},
 };
 use crossterm::terminal;
@@ -99,6 +99,8 @@ pub struct App {
   running: bool,
   show_status_bar: bool,
   stream_mode: bool,
+  stream_format: StreamFormat,
+  stream_frame_index: u64,
   last_frame_time: Instant,
   debug_log: DebugLog,
   last_terminal_size: (u16, u16),
@@ -120,6 +122,7 @@ impl App {
     loaded_config: Option<ShaderParams>,
     show_status_bar: bool,
     stream_dimensions: Option<crate::cli::StreamDimensions>,
+    stream_format: StreamFormat,
     config_path: Option<String>,
     audio_device: Option<String>,
     custom_shader: Option<String>,
@@ -190,6 +193,8 @@ impl App {
       running: true,
       show_status_bar,
       stream_mode,
+      stream_format,
+      stream_frame_index: 0,
       last_frame_time: Instant::now(),
       debug_log,
       last_terminal_size: (terminal_width, terminal_height),
@@ -313,12 +318,20 @@ impl App {
 
     // Stream mode: use simplified rendering
     if self.stream_mode {
-      rendering::render_stream_frame(
+      let stream_status = rendering::render_stream_frame(
         &self.pipeline,
         &self.converter,
         &uniforms,
+        self.stream_format,
+        self.stream_frame_index,
         &mut self.debug_log,
       )?;
+
+      if stream_status == rendering::StreamRenderStatus::ConsumerClosed {
+        self.running = false;
+      } else {
+        self.stream_frame_index = self.stream_frame_index.saturating_add(1);
+      }
 
       self.debug_log.flush()?;
       return Ok(());

@@ -101,6 +101,22 @@ Full range of ASCII characters for maximum detail
    - Kitty
    - WezTerm
 
+## Stream Mode
+
+Use `--stream WIDTHxHEIGHT` to emit fixed-size frames to stdout for embedding in another terminal application:
+
+```bash
+chroma --stream 80x24
+```
+
+Stream mode skips terminal setup, the status bar, and interactive input. Each frame starts with a header:
+
+```text
+CHROMA_FRAME v=1 frame=<index> width=<w> height=<h> format=<format> encoding=utf-8 bytes=<payload_bytes>
+```
+
+The header is followed by exactly `bytes` UTF-8 payload bytes. `--stream-format ansi` is the default and preserves ANSI-colored rows. `--stream-format cells` emits one tab-separated record per cell: `x`, `y`, display width, Unicode code point, foreground RGB hex or `-`, and background RGB hex or `-`.
+
 ## Creating Custom Shaders
 
 ### WGSL Shader Format
