@@ -383,6 +383,23 @@ mod tests {
   }
 
   #[test]
+  fn test_audio_status_bar_omits_music_symbols_when_controls_leave_too_little_room() {
+    let status = "Controls";
+    let available_cols = display_width(status) + MUSIC_SYMBOL_MIN_SPARE_COLS - 1;
+    let cells = format_status_bar(
+      status,
+      available_cols,
+      true,
+      0.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 2.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 2.0,
+    );
+
+    assert!(music_symbol_positions(&cells).is_empty());
+    assert_eq!(music_symbol_drain_seconds(status, available_cols), 0.0);
+  }
+
+  #[test]
   fn test_audio_status_bar_flows_music_symbols_in_spare_space() {
     let cells = format_status_bar(
       "AB",
@@ -529,6 +546,35 @@ mod tests {
 
     assert_eq!(expected_clearance, MUSIC_SYMBOL_MAX_TEXT_CLEARANCE_COLS);
     assert_eq!(post_text_gap, " ".repeat(expected_clearance));
+  }
+
+  #[test]
+  fn test_audio_status_bar_uses_partial_corridor_when_width_is_limited() {
+    let status = "AB";
+    let partial_clearance_cols = 6;
+    let available_cols =
+      display_width(status) + MUSIC_SYMBOL_MIN_SPARE_COLS + partial_clearance_cols;
+    let expected_clearance = music_symbol_text_clearance(available_cols - display_width(status));
+    let cells = format_status_bar(
+      status,
+      available_cols,
+      true,
+      0.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 1.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 1.0,
+    );
+    let post_text_gap = cells
+      .iter()
+      .skip(display_width(status))
+      .take(expected_clearance)
+      .map(|cell| cell.character)
+      .collect::<String>();
+
+    assert_eq!(expected_clearance, partial_clearance_cols);
+    assert!(expected_clearance < MUSIC_SYMBOL_MAX_TEXT_CLEARANCE_COLS);
+    assert_eq!(post_text_gap, " ".repeat(expected_clearance));
+    assert!(!music_symbol_positions(&cells).is_empty());
+    assert!(music_symbol_drain_seconds(status, available_cols) > 0.0);
   }
 
   fn music_symbol_positions(cells: &[RenderedCell]) -> Vec<usize> {
