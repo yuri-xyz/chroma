@@ -58,6 +58,7 @@ Running `cargo test` outside the dev shell may fail to link Linux PulseAudio lib
 
 - Keep changes scoped to the behavior being fixed. Avoid unrelated refactors, formatting churn, or doc rewrites unless they directly support the change.
 - Prefer existing local patterns over new abstractions. This project values direct, simple code in hot paths.
+- Keep every source code file at or below 700 lines of code. Removing empty lines or useful comments does not count as satisfying this rule; split files into idiomatic modules for organization before they grow past that limit.
 - Preserve terminal rendering performance. Avoid per-cell allocations, excessive string formatting, blocking I/O, or unguarded logging inside frame rendering.
 - Keep parameter changes synchronized across Rust params, CLI/config handling, `ShaderUniforms`, WGSL `Uniforms`, docs, and tests.
 - Keep pattern enum ordering synchronized with WGSL dispatch IDs. If `PatternType` changes, inspect `src/shader_common/main.wgsl` and tests that assert numeric IDs.
