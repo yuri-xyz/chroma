@@ -3,34 +3,46 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
-    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
     {
-      self,
       nixpkgs,
-      flake-utils,
       rust-overlay,
+      ...
     }:
-    flake-utils.lib.eachSystem
-      [
+    let
+      supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
-      ]
-      (
+      ];
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+
+      perSystem =
         system:
         let
-          overlays = [ (import rust-overlay) ];
           pkgs = import nixpkgs {
-            inherit system overlays;
+            inherit system;
+            overlays = [ rust-overlay.overlays.default ];
           };
 
           inherit (pkgs) lib;
 
-          rustToolchain = pkgs.rust-bin.stable.latest.default;
-          devRustToolchain = pkgs.rust-bin.nightly.latest.default.override {
+          # Keep these pins explicit. The package build uses stable Rust while
+          # the dev shell uses nightly rustfmt for rustfmt.toml's unstable
+          # import-grouping options.
+          packageRustVersion = "1.95.0";
+          devNightlyDate = "2026-04-29";
+
+          rustToolchain = pkgs.rust-bin.stable.${packageRustVersion}.default;
+          clippyToolchain = pkgs.rust-bin.stable.${packageRustVersion}.default.override {
+            extensions = [ "clippy" ];
+          };
+          devRustToolchain = pkgs.rust-bin.nightly.${devNightlyDate}.default.override {
             extensions = [
               "rust-src"
               "rustfmt"
@@ -41,15 +53,21 @@
             cargo = rustToolchain;
             rustc = rustToolchain;
           };
+          clippyRustPlatform = pkgs.makeRustPlatform {
+            cargo = clippyToolchain;
+            rustc = clippyToolchain;
+          };
 
           src = lib.cleanSourceWith {
+            name = "chroma-source";
             src = ./.;
             filter =
               path: type:
               let
                 baseName = baseNameOf path;
               in
-              !(
+              lib.cleanSourceFilter path type
+              && !(
                 type == "directory"
                 && lib.elem baseName [
                   "target"
@@ -59,34 +77,35 @@
               );
           };
 
-          runtimeLibraryPath = lib.makeLibraryPath [
+          cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+          version = cargoToml.package.version;
+
+          runtimeLibraries = [
             pkgs.vulkan-loader
             pkgs.alsa-lib
             pkgs.libpulseaudio
           ];
+          runtimeLibraryPath = lib.makeLibraryPath runtimeLibraries;
 
-          cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+          commonNativeBuildInputs = [
+            pkgs.pkg-config
+          ];
 
           chroma = rustPlatform.buildRustPackage {
             pname = "chroma";
-            inherit src;
-            version = cargoToml.package.version;
+            inherit src version;
 
             cargoLock.lockFile = ./Cargo.lock;
 
-            nativeBuildInputs = [
+            strictDeps = true;
+            nativeBuildInputs = commonNativeBuildInputs ++ [
               pkgs.makeWrapper
-              pkgs.pkg-config
             ];
+            buildInputs = runtimeLibraries;
 
-            buildInputs = [
-              pkgs.vulkan-loader
-              pkgs.alsa-lib
-              pkgs.libpulseaudio
-            ];
-
-            # The integration suite exercises terminal/GPU/audio-adjacent behavior
-            # that is better validated outside the pure Nix build sandbox.
+            # The default package build stays focused on producing the binary.
+            # The flake checks below expose fmt, tests, clippy, and workflow
+            # linting explicitly for CI and local validation.
             doCheck = false;
 
             postInstall = ''
@@ -102,35 +121,80 @@
               platforms = lib.platforms.linux;
             };
           };
+
+          mkApp = drv: {
+            type = "app";
+            program = lib.getExe drv;
+            meta.description = "Run Chroma with audio support";
+          };
+
+          mkCargoCheck =
+            checkRustPlatform: name: command:
+            checkRustPlatform.buildRustPackage {
+              pname = "chroma-${name}";
+              inherit src version;
+
+              cargoLock.lockFile = ./Cargo.lock;
+
+              strictDeps = true;
+              nativeBuildInputs = commonNativeBuildInputs;
+              buildInputs = runtimeLibraries;
+
+              buildPhase = ''
+                runHook preBuild
+                ${command}
+                runHook postBuild
+              '';
+              doCheck = false;
+              installPhase = ''
+                runHook preInstall
+                touch "$out"
+                runHook postInstall
+              '';
+            };
         in
-        {
+        rec {
           packages = {
             inherit chroma;
             default = chroma;
           };
 
           apps = {
-            chroma =
-              (flake-utils.lib.mkApp {
-                drv = chroma;
-              })
-              // {
-                meta.description = "Run Chroma with audio support";
-              };
-            default =
-              (flake-utils.lib.mkApp {
-                drv = chroma;
-              })
-              // {
-                meta.description = "Run Chroma with audio support";
-              };
+            chroma = mkApp chroma;
+            default = apps.chroma;
           };
+
+          checks = {
+            package = chroma;
+            test = mkCargoCheck rustPlatform "test" "cargo test --all-targets --offline --frozen";
+            clippy =
+              mkCargoCheck clippyRustPlatform "clippy"
+                "cargo clippy --all-targets --offline --frozen -- -D warnings";
+            fmt = pkgs.runCommand "chroma-fmt-check" { nativeBuildInputs = [ devRustToolchain ]; } ''
+              cd ${src}
+              cargo fmt --all -- --check
+              touch "$out"
+            '';
+            actionlint =
+              pkgs.runCommand "chroma-actionlint-check" { nativeBuildInputs = [ pkgs.actionlint ]; }
+                ''
+                  actionlint -color ${src}/.github/workflows/*.yml
+                  touch "$out"
+                '';
+            nixfmt = pkgs.runCommand "chroma-nixfmt-check" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
+              nixfmt --check ${./flake.nix}
+              touch "$out"
+            '';
+          };
+
+          formatter = pkgs.nixfmt;
 
           devShells.default = pkgs.mkShell {
             packages = [
               devRustToolchain
               pkgs.rust-analyzer
               pkgs.actionlint
+              pkgs.nixfmt
               pkgs.pkg-config
               pkgs.vulkan-loader
               pkgs.vulkan-tools
@@ -145,11 +209,20 @@
             shellHook = ''
               echo "Chroma dev shell"
               echo "  cargo run"
-              echo "  nix run ."
-              echo "  nix build"
-              echo "  actionlint"
+              echo "  cargo fmt --all -- --check"
+              echo "  cargo test"
+              echo "  cargo clippy --all-targets -- -D warnings"
+              echo "  actionlint -color"
+              echo "  nix flake check"
             '';
           };
-        }
-      );
+        };
+    in
+    {
+      packages = forAllSystems (system: (perSystem system).packages);
+      apps = forAllSystems (system: (perSystem system).apps);
+      checks = forAllSystems (system: (perSystem system).checks);
+      formatter = forAllSystems (system: (perSystem system).formatter);
+      devShells = forAllSystems (system: (perSystem system).devShells);
+    };
 }

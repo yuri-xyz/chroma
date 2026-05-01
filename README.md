@@ -45,6 +45,7 @@ nix develop
 ```
 
 Chroma always builds with audio support. Vulkan still requires a working host GPU driver/ICD.
+See [NIX.md](./notes/NIX.md) for the flake outputs, pinned Rust toolchains, and validation checks.
 
 ### Cargo
 

@@ -39,7 +39,8 @@ User-facing terminal output is acceptable only for commands that exit before ren
 Prefer the Nix dev shell because it supplies the native audio libraries and the nightly rustfmt required by this repo's rustfmt options:
 
 ```bash
-nix --extra-experimental-features 'nix-command flakes' develop -c cargo fmt --check
+nix --extra-experimental-features 'nix-command flakes' flake check
+nix --extra-experimental-features 'nix-command flakes' develop -c cargo fmt --all -- --check
 nix --extra-experimental-features 'nix-command flakes' develop -c cargo test
 nix --extra-experimental-features 'nix-command flakes' develop -c cargo clippy --all-targets -- -D warnings
 nix --extra-experimental-features 'nix-command flakes' develop -c actionlint -color
@@ -107,7 +108,7 @@ Prefer exact command names and current defaults over broad claims. Avoid long ar
 - One logical change per PR when possible
 - Tests or focused verification for new behavior and regressions
 - Docs updated when user-visible behavior changes
-- `cargo fmt --check`, `cargo test`, `cargo clippy --all-targets -- -D warnings`, and `actionlint` passing before review
+- `cargo fmt --all -- --check`, `cargo test`, `cargo clippy --all-targets -- -D warnings`, and `actionlint` passing before review
 - No generated artifacts, local build outputs, logs, or cache directories in commits
 
 ## Commit Hygiene

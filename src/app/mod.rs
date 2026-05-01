@@ -116,18 +116,31 @@ pub struct App {
   status_bar_audio_production_elapsed: f32,
 }
 
+pub struct AppOptions {
+  pub(crate) loaded_config: Option<ShaderParams>,
+  pub(crate) show_status_bar: bool,
+  pub(crate) stream_dimensions: Option<crate::cli::StreamDimensions>,
+  pub(crate) stream_format: StreamFormat,
+  pub(crate) config_path: Option<String>,
+  pub(crate) audio_device: Option<String>,
+  pub(crate) custom_shader: Option<String>,
+  pub(crate) target_fps: u32,
+}
+
 impl App {
   /// Create a new application instance
-  pub async fn new(
-    loaded_config: Option<ShaderParams>,
-    show_status_bar: bool,
-    stream_dimensions: Option<crate::cli::StreamDimensions>,
-    stream_format: StreamFormat,
-    config_path: Option<String>,
-    audio_device: Option<String>,
-    custom_shader: Option<String>,
-    target_fps: u32,
-  ) -> Result<Self> {
+  pub async fn new(options: AppOptions) -> Result<Self> {
+    let AppOptions {
+      loaded_config,
+      show_status_bar,
+      stream_dimensions,
+      stream_format,
+      config_path,
+      audio_device,
+      custom_shader,
+      target_fps,
+    } = options;
+
     let mut debug_log = DebugLog::create_default()?;
 
     let stream_mode = stream_dimensions.is_some();

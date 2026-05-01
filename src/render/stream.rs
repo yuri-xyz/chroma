@@ -5,16 +5,11 @@ use super::{push_cells, reset_to_base_style, RenderedCell, RenderedFrame, RgbCol
 const STREAM_PROTOCOL_MAGIC: &str = "CHROMA_FRAME";
 const STREAM_PROTOCOL_VERSION: u8 = 1;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum StreamFormat {
+  #[default]
   Ansi,
   Cells,
-}
-
-impl Default for StreamFormat {
-  fn default() -> Self {
-    Self::Ansi
-  }
 }
 
 impl fmt::Display for StreamFormat {

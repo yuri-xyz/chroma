@@ -9,8 +9,8 @@ mod cli;
 mod list_commands;
 mod terminal;
 
-use app::App;
-use chroma::{constants::DEFAULT_FPS, params::ShaderParams, render::StreamFormat};
+use app::{App, AppOptions};
+use chroma::{constants::DEFAULT_FPS, params::ShaderParams};
 use cli::CliArgs;
 
 fn main() -> Result<()> {
@@ -37,10 +37,6 @@ fn main() -> Result<()> {
   }
 
   let loaded_config = load_config_with_overrides(&cli_args)?;
-  let show_status_bar = !cli_args.no_status;
-  let stream_dimensions = cli_args.stream;
-  let stream_format = cli_args.stream_format;
-  let config_path = cli_args.config.clone();
 
   // Load custom shader if provided
   let custom_shader = if let Some(ref shader_path) = cli_args.custom_shader {
@@ -60,16 +56,18 @@ fn main() -> Result<()> {
     cli_args.fps
   };
 
-  run_application(
+  let app_options = AppOptions {
     loaded_config,
-    show_status_bar,
-    stream_dimensions,
-    stream_format,
-    config_path,
-    cli_args.audio_device,
+    show_status_bar: !cli_args.no_status,
+    stream_dimensions: cli_args.stream,
+    stream_format: cli_args.stream_format,
+    config_path: cli_args.config.clone(),
+    audio_device: cli_args.audio_device,
     custom_shader,
     target_fps,
-  )
+  };
+
+  run_application(app_options)
 }
 
 /// Load configuration from file if specified, then apply CLI overrides
@@ -245,38 +243,21 @@ fn load_custom_shader(shader_path: &str) -> Result<String> {
 }
 
 /// Initialize terminal, run app, and cleanup
-fn run_application(
-  loaded_config: Option<ShaderParams>,
-  show_status_bar: bool,
-  stream_dimensions: Option<cli::StreamDimensions>,
-  stream_format: StreamFormat,
-  config_path: Option<String>,
-  audio_device: Option<String>,
-  custom_shader: Option<String>,
-  target_fps: u32,
-) -> Result<()> {
+fn run_application(app_options: AppOptions) -> Result<()> {
+  let stream_mode = app_options.stream_dimensions.is_some();
+
   // Skip terminal setup in stream mode
-  if stream_dimensions.is_none() {
+  if !stream_mode {
     terminal::setup()?;
   }
 
   let result = pollster::block_on(async {
-    let mut app = App::new(
-      loaded_config,
-      show_status_bar,
-      stream_dimensions,
-      stream_format,
-      config_path,
-      audio_device,
-      custom_shader,
-      target_fps,
-    )
-    .await?;
+    let mut app = App::new(app_options).await?;
     app.run()
   });
 
   // Skip terminal cleanup in stream mode
-  if stream_dimensions.is_none() {
+  if !stream_mode {
     terminal::cleanup()?;
   }
 

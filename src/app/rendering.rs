@@ -271,7 +271,7 @@ mod tests {
 
   impl IoWrite for FailingWriter {
     fn write(&mut self, _buffer: &[u8]) -> io::Result<usize> {
-      Err(io::Error::new(io::ErrorKind::Other, "disk full"))
+      Err(io::Error::other("disk full"))
     }
 
     fn flush(&mut self) -> io::Result<()> {
