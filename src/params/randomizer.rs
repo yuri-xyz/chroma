@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 use super::{PaletteType, PatternType, ShaderParams};
 
@@ -34,6 +34,7 @@ const PATTERN_WEIGHTS: &[(PatternType, u32)] = &[
   (PatternType::Metaballs, 2),
   (PatternType::World, 2),
   (PatternType::Fluid, 2),
+  (PatternType::Pyramid, 2),
   // Simpler patterns get lower weight
   (PatternType::Noise, 1),
 ];
@@ -56,7 +57,7 @@ fn select_weighted<T: Copy>(weights: &[(T, u32)], rng: &mut impl Rng) -> T {
   debug_assert!(!weights.is_empty(), "weights slice must not be empty");
 
   let total: u32 = weights.iter().map(|(_, w)| w).sum();
-  let mut choice = rng.gen_range(0..total);
+  let mut choice = rng.random_range(0..total);
 
   for (item, weight) in weights {
     if choice < *weight {
@@ -71,7 +72,7 @@ fn select_weighted<T: Copy>(weights: &[(T, u32)], rng: &mut impl Rng) -> T {
 
 /// Randomize shader parameters with weighted selection for patterns and palettes
 pub fn randomize(params: &mut ShaderParams) {
-  let mut rng = rand::thread_rng();
+  let mut rng = rand::rng();
 
   randomize_with_rng(params, &mut rng);
 }
@@ -80,46 +81,46 @@ pub fn randomize_with_rng(params: &mut ShaderParams, rng: &mut impl Rng) {
   params.pattern_type = select_weighted(PATTERN_WEIGHTS, rng);
   params.palette = select_weighted(PALETTE_WEIGHTS, rng);
 
-  params.effect_type = rng.gen_range(2..=6);
+  params.effect_type = rng.random_range(2..=6);
 
-  params.frequency = rng.gen_range(3.0..=18.0);
-  params.amplitude = rng.gen_range(0.5..=2.0);
-  params.speed = rng.gen_range(0.1..=1.0);
-  params.scale = rng.gen_range(0.5..=3.0);
-  params.color_shift = rng.gen_range(0.0..=std::f32::consts::TAU);
-  params.octaves = rng.gen_range(2..=6);
+  params.frequency = rng.random_range(3.0..=18.0);
+  params.amplitude = rng.random_range(0.5..=2.0);
+  params.speed = rng.random_range(0.1..=1.0);
+  params.scale = rng.random_range(0.5..=3.0);
+  params.color_shift = rng.random_range(0.0..=std::f32::consts::TAU);
+  params.octaves = rng.random_range(2..=6);
 
-  params.noise_strength = rng.gen_range(0.0..=0.3);
-  params.distort_amplitude = rng.gen_range(0.0..=1.5);
-  params.noise_scale = rng.gen_range(0.001..=0.008);
-  params.z_rate = rng.gen_range(0.01..=0.05);
+  params.noise_strength = rng.random_range(0.0..=0.3);
+  params.distort_amplitude = rng.random_range(0.0..=1.5);
+  params.noise_scale = rng.random_range(0.001..=0.008);
+  params.z_rate = rng.random_range(0.01..=0.05);
 
-  params.brightness = rng.gen_range(0.8..=1.8);
-  params.contrast = rng.gen_range(0.5..=1.8);
-  params.saturation = rng.gen_range(0.6..=1.5);
-  params.gamma = rng.gen_range(0.8..=1.3);
+  params.brightness = rng.random_range(0.8..=1.8);
+  params.contrast = rng.random_range(0.5..=1.8);
+  params.saturation = rng.random_range(0.6..=1.5);
+  params.gamma = rng.random_range(0.8..=1.3);
 
-  params.vignette = if rng.gen_bool(VIGNETTE_PROBABILITY) {
-    rng.gen_range(0.1..=0.5)
+  params.vignette = if rng.random_bool(VIGNETTE_PROBABILITY) {
+    rng.random_range(0.1..=0.5)
   } else {
     0.0
   };
 
-  params.vignette_softness = rng.gen_range(0.3..=0.8);
-  params.glyph_sharpness = rng.gen_range(0.7..=1.5);
+  params.vignette_softness = rng.random_range(0.3..=0.8);
+  params.glyph_sharpness = rng.random_range(0.7..=1.5);
 
-  if rng.gen_bool(BACKGROUND_TINT_PROBABILITY) {
-    params.background_tint_r = rng.gen_range(0.0..=0.3);
-    params.background_tint_g = rng.gen_range(0.0..=0.3);
-    params.background_tint_b = rng.gen_range(0.0..=0.3);
+  if rng.random_bool(BACKGROUND_TINT_PROBABILITY) {
+    params.background_tint_r = rng.random_range(0.0..=0.3);
+    params.background_tint_g = rng.random_range(0.0..=0.3);
+    params.background_tint_b = rng.random_range(0.0..=0.3);
   } else {
     params.background_tint_r = 0.0;
     params.background_tint_g = 0.0;
     params.background_tint_b = 0.0;
   }
 
-  params.bass_influence = rng.gen_range(0.3..=0.8);
-  params.mid_influence = rng.gen_range(0.2..=0.6);
-  params.treble_influence = rng.gen_range(0.1..=0.5);
-  params.beat_sensitivity = rng.gen_range(0.5..=2.0);
+  params.bass_influence = rng.random_range(0.3..=0.8);
+  params.mid_influence = rng.random_range(0.2..=0.6);
+  params.treble_influence = rng.random_range(0.1..=0.5);
+  params.beat_sensitivity = rng.random_range(0.5..=2.0);
 }

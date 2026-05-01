@@ -23,10 +23,9 @@ impl ShaderPipeline {
     custom_shader: Option<String>,
     debug_log: &mut W,
   ) -> Result<Self> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-      backends: wgpu::Backends::PRIMARY,
-      ..Default::default()
-    });
+    let mut instance_descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
+    instance_descriptor.backends = wgpu::Backends::PRIMARY;
+    let instance = wgpu::Instance::new(instance_descriptor);
 
     let adapter = instance
       .request_adapter(&wgpu::RequestAdapterOptions {
@@ -35,18 +34,16 @@ impl ShaderPipeline {
         force_fallback_adapter: false,
       })
       .await
-      .ok_or_else(|| anyhow::anyhow!("Failed to find adapter"))?;
+      .map_err(|_| anyhow::anyhow!("Failed to find adapter"))?;
 
     let (device, queue) = adapter
-      .request_device(
-        &wgpu::DeviceDescriptor {
-          label: Some("Shader Device"),
-          required_features: wgpu::Features::empty(),
-          required_limits: wgpu::Limits::default(),
-          memory_hints: wgpu::MemoryHints::default(),
-        },
-        None,
-      )
+      .request_device(&wgpu::DeviceDescriptor {
+        label: Some("Shader Device"),
+        required_features: wgpu::Features::empty(),
+        required_limits: wgpu::Limits::default(),
+        memory_hints: wgpu::MemoryHints::default(),
+        ..Default::default()
+      })
       .await?;
 
     // Load shader source - either custom or the compiled one from build.rs
@@ -135,8 +132,8 @@ impl ShaderPipeline {
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("Pipeline Layout"),
-      bind_group_layouts: &[&bind_group_layout],
-      push_constant_ranges: &[],
+      bind_group_layouts: &[Some(&bind_group_layout)],
+      immediate_size: 0,
     });
 
     writeln!(debug_log, "DEBUG: Creating compute pipeline...")?;
@@ -144,7 +141,7 @@ impl ShaderPipeline {
       label: Some("Compute Pipeline"),
       layout: Some(&pipeline_layout),
       module: &shader_module,
-      entry_point: "main",
+      entry_point: Some("main"),
       compilation_options: Default::default(),
       cache: None,
     });
@@ -206,7 +203,7 @@ impl ShaderPipeline {
       sender.send(result).ok();
     });
 
-    self.device.poll(wgpu::Maintain::Wait);
+    self.device.poll(wgpu::PollType::wait_indefinitely())?;
 
     receiver.recv()??;
 

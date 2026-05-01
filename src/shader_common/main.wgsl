@@ -47,13 +47,15 @@ fn compute_pattern(uv: vec2<f32>, time: f32, pattern_type: u32) -> vec2<f32> {
         return metaballs_pattern(uv, time);
     } else if pattern_type == 22u {
         return world_pattern(uv, time);
-    } else {
+    } else if pattern_type == 23u {
         return fluid_pattern(uv, time);
+    } else {
+        return pyramid_pattern(uv, time);
     }
 }
 
 fn pattern_position_for_scale(position: vec2<f32>, scale: f32, pattern_type: u32) -> vec2<f32> {
-    if pattern_type == 16u || pattern_type == 22u {
+    if pattern_type == 16u || pattern_type == 22u || pattern_type == 24u {
         return (position - vec2<f32>(0.5, 0.5)) * scale + vec2<f32>(0.5, 0.5);
     }
 
@@ -76,6 +78,10 @@ fn plasma_effect(position: vec2<f32>, time: f32) -> vec3<f32> {
     let pattern_result = compute_pattern(uv, time, uniforms.pattern_type);
     let combined = pattern_result.x;
     let gradient = pattern_result.y;
+
+    if uniforms.pattern_type == 24u && gradient < -900.0 {
+        return vec3<f32>(0.0);
+    }
     
     var color = apply_color_mode(combined, gradient, uniforms.color_mode);
     

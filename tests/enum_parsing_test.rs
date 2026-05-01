@@ -15,6 +15,7 @@ fn test_pattern_type_parses_aliases_and_round_trips_full_names() {
     ("meta", PatternType::Metaballs),
     ("earth", PatternType::World),
     ("water", PatternType::Fluid),
+    ("pyr", PatternType::Pyramid),
   ];
 
   for (alias, expected) in aliases {

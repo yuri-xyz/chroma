@@ -123,6 +123,11 @@ define_named_enum!(
       full: "fluid",
       display: "Fluid",
       aliases: ["water", "caustics"]
+    },
+    Pyramid => {
+      full: "pyramid",
+      display: "Pyramid",
+      aliases: ["pyr", "obelisk"]
     }
   },
   error_label: "pattern type"

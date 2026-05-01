@@ -29,7 +29,7 @@ mod p7;
 mod p8;
 mod p9;
 
-use rand::Rng;
+use rand::RngExt;
 #[cfg(test)]
 use rand::SeedableRng;
 
@@ -72,7 +72,7 @@ pub fn get_preset(index: u32) -> ShaderParams {
 
 /// Get a random preset.
 pub fn get_random_preset() -> ShaderParams {
-  let index = rand::thread_rng().gen_range(0..PRESETS.len());
+  let index = rand::rng().random_range(0..PRESETS.len());
 
   PRESETS[index]()
 }
@@ -80,7 +80,7 @@ pub fn get_random_preset() -> ShaderParams {
 #[cfg(test)]
 fn get_random_preset_with_seed(seed: u64) -> ShaderParams {
   let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-  let index = rng.gen_range(0..PRESETS.len());
+  let index = rng.random_range(0..PRESETS.len());
 
   PRESETS[index]()
 }

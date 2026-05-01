@@ -60,7 +60,7 @@ Save the current configuration to a file in the working directory.
 
 - `T` - Next pattern
 - `Y` - Previous pattern
-- Effect: Cycle through different visual patterns (Plasma, Waves, Ripples, Vortex, Noise, Geometric, Voronoi, Truchet, Hexagonal, Interference, Fractal, Glitch, Spiral, Rings, Grid, Diamonds, Sphere, WarpedFbm)
+- Effect: Cycle through different visual patterns (Plasma, Waves, Ripples, Vortex, Noise, Geometric, Voronoi, Truchet, Hexagonal, Interference, Fractal, Glitch, Spiral, Rings, Grid, Diamonds, Sphere, Octgrams, WarpedFbm, Kaleidoscope, Tunnel, Metaballs, World, Fluid, Pyramid)
 
 ### Color Mode
 

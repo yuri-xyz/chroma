@@ -143,8 +143,13 @@ impl ShaderParams {
     hasher.update(toml_string.as_bytes());
 
     let result = hasher.finalize();
+    let bytes: &[u8] = result.as_ref();
 
-    format!("{:x}", result)[..12].to_string()
+    bytes
+      .iter()
+      .take(6)
+      .map(|byte| format!("{byte:02x}"))
+      .collect()
   }
 
   fn config_filename(&self) -> String {

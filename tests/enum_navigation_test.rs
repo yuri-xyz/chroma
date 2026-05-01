@@ -26,6 +26,7 @@ fn test_pattern_type_to_u32_all_variants() {
   assert_eq!(PatternType::Metaballs.to_u32(), 21);
   assert_eq!(PatternType::World.to_u32(), 22);
   assert_eq!(PatternType::Fluid.to_u32(), 23);
+  assert_eq!(PatternType::Pyramid.to_u32(), 24);
 }
 
 #[test]
@@ -54,6 +55,7 @@ fn test_pattern_type_name_all_variants() {
   assert_eq!(PatternType::Metaballs.name(), "Metaball");
   assert_eq!(PatternType::World.name(), "World");
   assert_eq!(PatternType::Fluid.name(), "Fluid");
+  assert_eq!(PatternType::Pyramid.name(), "Pyramid");
 }
 
 #[test]
@@ -61,13 +63,13 @@ fn test_pattern_type_next_cycles_through_all() {
   let mut current = PatternType::Plasma;
   let start = current;
 
-  for _ in 0..23 {
+  for _ in 0..24 {
     current = current.next();
     assert_ne!(current, start, "Should not cycle back too early");
   }
 
   current = current.next();
-  assert_eq!(current, start, "Should cycle back to start after 24 steps");
+  assert_eq!(current, start, "Should cycle back to start after 25 steps");
 }
 
 #[test]
@@ -75,13 +77,13 @@ fn test_pattern_type_previous_cycles_through_all() {
   let mut current = PatternType::Plasma;
   let start = current;
 
-  for _ in 0..23 {
+  for _ in 0..24 {
     current = current.previous();
     assert_ne!(current, start, "Should not cycle back too early");
   }
 
   current = current.previous();
-  assert_eq!(current, start, "Should cycle back to start after 24 steps");
+  assert_eq!(current, start, "Should cycle back to start after 25 steps");
 }
 
 #[test]
