@@ -52,7 +52,7 @@ Chroma always builds with audio support. Vulkan still requires a working host GP
 git clone https://github.com/yuri-xyz/chroma.git
 cd chroma
 
-# Make sure you have the `alsa-lib` & `pipewire` packages installed,
+# Make sure you have ALSA, libpulse, and PipeWire/PulseAudio packages installed,
 # the exact package names may vary depending on your distro.
 
 cargo install --path .
@@ -115,7 +115,8 @@ If you're feeling brave, you can even create your own custom shader patterns and
   - vulkan-icd-loader
   - A Vulkan driver: one of `vulkan-intel`, `vulkan-radeon`, or `nvidia-utils`
   - Terminal with ANSI color support
-  - pipewire (recommended) or alsa-lib for audio capture
+  - PipeWire/PulseAudio with libpulse for Linux system-audio capture
+  - alsa-lib for CPAL fallback capture
 - Build
   - rust, cargo, git
 
@@ -135,7 +136,7 @@ Here's some tips to making good contributions:
 And here's how it works for my nerdy friends:
 
 1.  Shader files are compiled by `wgpu` and rendered as ASCII output with ANSI colors in the terminal.
-2.  Hook up to system audio with the `cpal` crate.
+2.  Hook up to system audio with PulseAudio/PipeWire on Linux, falling back to `cpal` where needed.
 3.  Use [fast Fourier transforms](https://en.wikipedia.org/wiki/Fast_Fourier_transform) from the `rustfft` crate to make the visuals react to what's playing. For example, by extracting bass (20-250 Hz), mid (250-2000 Hz), and treble (2000-8000 Hz) bands.
 
 See [CONTRIBUTING](./CONTRIBUTING.md) for a more in-depth guide.

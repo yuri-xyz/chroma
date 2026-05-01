@@ -7,15 +7,15 @@ Thanks for your interest in contributing! This guide covers best practices for w
 1. Fork the repository and clone your fork
 2. Create a feature branch: `git checkout -b feature/my-feature`
 3. Make your changes following the guidelines below
-4. Run tests and formatting: `cargo test && cargo fmt && cargo clippy`
+4. Run tests and checks: `cargo test`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, and `actionlint`
 5. Submit a pull request
 
 ## Rust Best Practices
 
 ### Code Style
 
-- Run `cargo fmt` before committing
-- Run `cargo clippy` and address warnings
+- Run `cargo fmt` before committing. The Nix dev shell uses nightly rustfmt because this repository enables nightly-only rustfmt options.
+- Run `cargo clippy --all-targets -- -D warnings` and address warnings
 - Follow the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
 
 ### Error Handling
@@ -169,8 +169,10 @@ mod tests {
 
 ```bash
 cargo test                        # Run all tests
-cargo test --features audio       # Include audio feature tests
 cargo test -- --nocapture         # Show println! output
+cargo fmt --check                 # Check formatting
+cargo clippy --all-targets -- -D warnings
+actionlint                        # Lint GitHub Actions workflows
 ```
 
 ## Pull Request Guidelines

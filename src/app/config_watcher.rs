@@ -1,10 +1,12 @@
+use std::{
+  path::{Path, PathBuf},
+  sync::Arc,
+};
+
 use anyhow::Result;
-use chroma::debug::append_debug_line;
-use chroma::params::ShaderParams;
-use flume::{Receiver, Sender};
+use chroma::{debug::append_debug_line, params::ShaderParams};
+use flume::{Receiver, Sender, TrySendError};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 pub struct ConfigWatcher {
   _watcher: RecommendedWatcher,
@@ -16,7 +18,7 @@ impl ConfigWatcher {
     let config_path = config_path.as_ref().to_path_buf();
     let (sender, receiver) = flume::bounded(1);
 
-    let watcher = Self::create_watcher(config_path, sender)?;
+    let watcher = Self::create_watcher(config_path, sender, receiver.clone())?;
 
     Ok(Self {
       _watcher: watcher,
@@ -27,19 +29,17 @@ impl ConfigWatcher {
   fn create_watcher(
     config_path: PathBuf,
     sender: Sender<ShaderParams>,
+    receiver: Receiver<ShaderParams>,
   ) -> Result<RecommendedWatcher> {
-    let watch_path = config_path.clone();
+    let watch_path = Self::watch_path_for(&config_path);
     let config_path = Arc::new(config_path);
 
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<Event>| {
       if let Ok(event) = res {
-        match event.kind {
-          EventKind::Modify(_) | EventKind::Create(_) => {
-            if let Err(e) = Self::handle_config_change(&config_path, &sender) {
-              append_debug_line("config", format!("Config reload error: {}", e));
-            }
+        if Self::event_affects_config(&event, &config_path) {
+          if let Err(e) = Self::handle_config_change(&config_path, &sender, &receiver) {
+            append_debug_line("config", format!("Config reload error: {}", e));
           }
-          _ => {}
         }
       }
     })?;
@@ -49,10 +49,49 @@ impl ConfigWatcher {
     Ok(watcher)
   }
 
-  fn handle_config_change(config_path: &Path, sender: &Sender<ShaderParams>) -> Result<()> {
+  fn watch_path_for(config_path: &Path) -> PathBuf {
+    config_path
+      .parent()
+      .filter(|parent| !parent.as_os_str().is_empty())
+      .unwrap_or_else(|| Path::new("."))
+      .to_path_buf()
+  }
+
+  fn event_affects_config(event: &Event, config_path: &Path) -> bool {
+    if !matches!(
+      event.kind,
+      EventKind::Any | EventKind::Modify(_) | EventKind::Create(_)
+    ) {
+      return false;
+    }
+
+    event.paths.is_empty()
+      || event
+        .paths
+        .iter()
+        .any(|event_path| Self::path_matches_config(event_path, config_path))
+  }
+
+  fn path_matches_config(event_path: &Path, config_path: &Path) -> bool {
+    event_path == config_path
+      || event_path.file_name().is_some() && event_path.file_name() == config_path.file_name()
+  }
+
+  fn handle_config_change(
+    config_path: &Path,
+    sender: &Sender<ShaderParams>,
+    receiver: &Receiver<ShaderParams>,
+  ) -> Result<()> {
     match ShaderParams::load_from_file(config_path) {
       Ok(params) => {
-        let _ = sender.try_send(params);
+        match sender.try_send(params) {
+          Ok(()) => {}
+          Err(TrySendError::Full(params)) => {
+            let _ = receiver.try_recv();
+            let _ = sender.try_send(params);
+          }
+          Err(TrySendError::Disconnected(_)) => {}
+        }
         Ok(())
       }
       Err(_) => Ok(()),
@@ -66,9 +105,12 @@ impl ConfigWatcher {
 
 #[cfg(test)]
 mod tests {
+  use std::{
+    fs,
+    time::{SystemTime, UNIX_EPOCH},
+  };
+
   use super::*;
-  use std::fs;
-  use std::time::{SystemTime, UNIX_EPOCH};
 
   fn unique_test_path(name: &str) -> PathBuf {
     let timestamp = SystemTime::now()
@@ -92,7 +134,7 @@ mod tests {
 
     fs::write(&path, config_text).unwrap();
 
-    ConfigWatcher::handle_config_change(&path, &sender).unwrap();
+    ConfigWatcher::handle_config_change(&path, &sender, &receiver).unwrap();
 
     let received = receiver.try_recv().expect("expected config to be sent");
     assert_eq!(received.frequency, expected.frequency);
@@ -108,7 +150,7 @@ mod tests {
 
     fs::write(&path, "not = [valid").unwrap();
 
-    ConfigWatcher::handle_config_change(&path, &sender).unwrap();
+    ConfigWatcher::handle_config_change(&path, &sender, &receiver).unwrap();
 
     assert!(receiver.try_recv().is_err());
 
@@ -120,13 +162,13 @@ mod tests {
     let path = unique_test_path("missing-config");
     let (sender, receiver) = flume::bounded(1);
 
-    ConfigWatcher::handle_config_change(&path, &sender).unwrap();
+    ConfigWatcher::handle_config_change(&path, &sender, &receiver).unwrap();
 
     assert!(receiver.try_recv().is_err());
   }
 
   #[test]
-  fn test_handle_config_change_does_not_error_when_channel_is_full() {
+  fn test_handle_config_change_replaces_pending_config_when_channel_is_full() {
     let path = unique_test_path("full-channel-config");
     let params = ShaderParams {
       frequency: 9.5,
@@ -138,13 +180,63 @@ mod tests {
     fs::write(&path, config_text).unwrap();
     sender.try_send(ShaderParams::default()).unwrap();
 
-    ConfigWatcher::handle_config_change(&path, &sender).unwrap();
+    ConfigWatcher::handle_config_change(&path, &sender, &receiver).unwrap();
 
     let received = receiver
       .try_recv()
-      .expect("expected existing config to remain");
-    assert_eq!(received.frequency, ShaderParams::default().frequency);
+      .expect("expected newest config to replace pending config");
+    assert_eq!(received.frequency, params.frequency);
 
     let _ = fs::remove_file(path);
+  }
+
+  #[test]
+  fn test_watch_path_for_uses_parent_directory() {
+    assert_eq!(
+      ConfigWatcher::watch_path_for(Path::new("configs/chroma.toml")),
+      PathBuf::from("configs")
+    );
+    assert_eq!(
+      ConfigWatcher::watch_path_for(Path::new("chroma.toml")),
+      PathBuf::from(".")
+    );
+  }
+
+  #[test]
+  fn test_event_affects_config_matches_config_file_events() {
+    let config_path = PathBuf::from("/tmp/chroma/config.toml");
+    let event = Event::new(EventKind::Create(notify::event::CreateKind::File))
+      .add_path(PathBuf::from("/tmp/chroma/config.toml"));
+
+    assert!(ConfigWatcher::event_affects_config(&event, &config_path));
+  }
+
+  #[test]
+  fn test_event_affects_config_matches_save_by_rename_target() {
+    let config_path = PathBuf::from("/tmp/chroma/config.toml");
+    let event = Event::new(EventKind::Modify(notify::event::ModifyKind::Name(
+      notify::event::RenameMode::Both,
+    )))
+    .add_path(PathBuf::from("/tmp/chroma/.config.toml.swp"))
+    .add_path(PathBuf::from("/tmp/chroma/config.toml"));
+
+    assert!(ConfigWatcher::event_affects_config(&event, &config_path));
+  }
+
+  #[test]
+  fn test_event_affects_config_ignores_other_files() {
+    let config_path = PathBuf::from("/tmp/chroma/config.toml");
+    let event = Event::new(EventKind::Create(notify::event::CreateKind::File))
+      .add_path(PathBuf::from("/tmp/chroma/other.toml"));
+
+    assert!(!ConfigWatcher::event_affects_config(&event, &config_path));
+  }
+
+  #[test]
+  fn test_event_affects_config_accepts_pathless_mutation_events() {
+    let config_path = PathBuf::from("/tmp/chroma/config.toml");
+    let event = Event::new(EventKind::Modify(notify::event::ModifyKind::Any));
+
+    assert!(ConfigWatcher::event_affects_config(&event, &config_path));
   }
 }

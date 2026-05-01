@@ -1,10 +1,9 @@
-use std::env;
-use std::fs;
-use std::path::Path;
+use std::{env, fs, path::Path};
 
 fn main() {
   let out_dir = env::var("OUT_DIR").unwrap();
   let dest_path = Path::new(&out_dir).join("compiled_shader.wgsl");
+  println!("cargo:rerun-if-env-changed=CHROMA_BUILD_VERBOSE");
 
   // Define shader modules in the order they should be concatenated
   let shader_modules = vec![
@@ -62,5 +61,7 @@ fn main() {
 
   fs::write(&dest_path, combined_shader).expect("Failed to write combined shader file");
 
-  println!("cargo:warning=Compiled shader written to {:?}", dest_path);
+  if env::var_os("CHROMA_BUILD_VERBOSE").is_some() {
+    eprintln!("Compiled shader written to {}", dest_path.display());
+  }
 }

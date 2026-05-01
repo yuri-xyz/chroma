@@ -80,8 +80,9 @@ pub fn list_palettes() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use chroma::params::{ColorMode, PaletteType, PatternType};
+
+  use super::*;
 
   fn entry_lines(output: &str) -> Vec<&str> {
     output

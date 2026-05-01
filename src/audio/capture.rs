@@ -1,10 +1,17 @@
-use crate::debug::append_debug_line;
-use cpal::traits::{DeviceTrait, StreamTrait};
-use cpal::{FromSample, Sample, Stream, StreamConfig};
-use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use std::{
+  collections::VecDeque,
+  sync::{Arc, Mutex},
+};
+
+use cpal::{
+  traits::{DeviceTrait, StreamTrait},
+  FromSample, Sample, Stream, StreamConfig,
+};
 
 use super::device_selector;
+#[cfg(target_os = "linux")]
+use super::pulse_capture;
+use crate::debug::append_debug_line;
 
 const MAX_PENDING_SAMPLES: usize = 8_192;
 const EMPTY_DRAIN_LOG_INTERVAL: u64 = 120;
@@ -12,14 +19,14 @@ const POPULATED_DRAIN_LOG_INTERVAL: u64 = 60;
 const SILENT_CALLBACK_WARNING_THRESHOLD: u64 = 180;
 
 #[derive(Debug, Clone, Copy)]
-struct CallbackLogSummary {
-  callback_count: u64,
-  frame_count: usize,
-  max_abs_sample: f32,
-  buffered_samples: usize,
+pub(super) struct CallbackLogSummary {
+  pub(super) callback_count: u64,
+  pub(super) frame_count: usize,
+  pub(super) max_abs_sample: f32,
+  pub(super) buffered_samples: usize,
 }
 
-struct SharedSampleBuffer {
+pub(super) struct SharedSampleBuffer {
   samples: VecDeque<f32>,
   max_len: usize,
   callback_count: u64,
@@ -31,7 +38,7 @@ struct SharedSampleBuffer {
 }
 
 impl SharedSampleBuffer {
-  fn with_max_len(max_len: usize) -> Self {
+  pub(super) fn with_max_len(max_len: usize) -> Self {
     Self {
       samples: VecDeque::with_capacity(max_len),
       max_len,
@@ -44,7 +51,11 @@ impl SharedSampleBuffer {
     }
   }
 
-  fn push_interleaved<T>(&mut self, data: &[T], channels: usize) -> Option<CallbackLogSummary>
+  pub(super) fn push_interleaved<T>(
+    &mut self,
+    data: &[T],
+    channels: usize,
+  ) -> Option<CallbackLogSummary>
   where
     T: Sample,
     f32: FromSample<T>,
@@ -77,8 +88,9 @@ impl SharedSampleBuffer {
       self.emitted_silence_warning = false;
     }
 
-    let should_log =
-      self.callback_count <= 3 || max_abs_sample > 0.01 || self.callback_count % 240 == 0;
+    let should_log = self.callback_count <= 3
+      || (max_abs_sample > 0.01 && self.callback_count.is_multiple_of(60))
+      || self.callback_count.is_multiple_of(240);
 
     should_log.then_some(CallbackLogSummary {
       callback_count: self.callback_count,
@@ -117,6 +129,8 @@ impl SharedSampleBuffer {
 
 pub struct AudioCapture {
   _stream: Option<Stream>,
+  #[cfg(target_os = "linux")]
+  _pulse_capture: Option<pulse_capture::PulseCapture>,
   buffer: Arc<Mutex<SharedSampleBuffer>>,
   pub sample_rate: f32,
   using_output_config_fallback: bool,
@@ -131,12 +145,26 @@ impl AudioCapture {
       Err(_) => cpal::default_host(),
     };
 
-    device_selector::list_devices(&host)
+    device_selector::list_devices(&host)?;
+
+    #[cfg(target_os = "linux")]
+    pulse_capture::print_pulse_sources();
+
+    Ok(())
   }
 
   /// Create audio capture with optional device name
   pub fn new(device_name: Option<&str>) -> anyhow::Result<Self> {
     append_debug_line("audio", "=== Audio Capture Initialization ===");
+
+    #[cfg(target_os = "linux")]
+    match Self::new_pulse(device_name) {
+      Ok(capture) => return Ok(capture),
+      Err(error) => append_debug_line(
+        "audio",
+        format!("Linux PulseAudio/PipeWire backend unavailable, falling back to CPAL: {error}"),
+      ),
+    }
 
     // Find the device - either by name or auto-detect system audio
     let (host, device) = if let Some(name) = device_name {
@@ -252,9 +280,41 @@ impl AudioCapture {
 
     Ok(Self {
       _stream: Some(stream),
+      #[cfg(target_os = "linux")]
+      _pulse_capture: None,
       buffer,
       sample_rate,
       using_output_config_fallback,
+    })
+  }
+
+  #[cfg(target_os = "linux")]
+  fn new_pulse(device_name: Option<&str>) -> anyhow::Result<Self> {
+    append_debug_line(
+      "audio",
+      "Trying Linux PulseAudio/PipeWire monitor backend...",
+    );
+
+    let buffer = Arc::new(Mutex::new(SharedSampleBuffer::with_max_len(
+      MAX_PENDING_SAMPLES,
+    )));
+    let pulse_capture = pulse_capture::PulseCapture::new(device_name, Arc::clone(&buffer))?;
+    let sample_rate = pulse_capture.sample_rate;
+
+    append_debug_line(
+      "audio",
+      format!(
+        "Linux PulseAudio/PipeWire monitor backend started from '{}'",
+        pulse_capture.source_name
+      ),
+    );
+
+    Ok(Self {
+      _stream: None,
+      _pulse_capture: Some(pulse_capture),
+      buffer,
+      sample_rate,
+      using_output_config_fallback: false,
     })
   }
 

@@ -30,6 +30,13 @@
           inherit (pkgs) lib;
 
           rustToolchain = pkgs.rust-bin.stable.latest.default;
+          devRustToolchain = pkgs.rust-bin.nightly.latest.default.override {
+            extensions = [
+              "rust-src"
+              "rustfmt"
+              "clippy"
+            ];
+          };
           rustPlatform = pkgs.makeRustPlatform {
             cargo = rustToolchain;
             rustc = rustToolchain;
@@ -55,45 +62,46 @@
           runtimeLibraryPath = lib.makeLibraryPath [
             pkgs.vulkan-loader
             pkgs.alsa-lib
+            pkgs.libpulseaudio
           ];
 
           cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
 
-          chroma =
-            rustPlatform.buildRustPackage {
-              pname = "chroma";
-              inherit src;
-              version = cargoToml.package.version;
+          chroma = rustPlatform.buildRustPackage {
+            pname = "chroma";
+            inherit src;
+            version = cargoToml.package.version;
 
-              cargoLock.lockFile = ./Cargo.lock;
+            cargoLock.lockFile = ./Cargo.lock;
 
-              nativeBuildInputs = [
-                pkgs.makeWrapper
-                pkgs.pkg-config
-              ];
+            nativeBuildInputs = [
+              pkgs.makeWrapper
+              pkgs.pkg-config
+            ];
 
-              buildInputs = [
-                pkgs.vulkan-loader
-                pkgs.alsa-lib
-              ];
+            buildInputs = [
+              pkgs.vulkan-loader
+              pkgs.alsa-lib
+              pkgs.libpulseaudio
+            ];
 
-              # The integration suite exercises terminal/GPU/audio-adjacent behavior
-              # that is better validated outside the pure Nix build sandbox.
-              doCheck = false;
+            # The integration suite exercises terminal/GPU/audio-adjacent behavior
+            # that is better validated outside the pure Nix build sandbox.
+            doCheck = false;
 
-              postInstall = ''
-                wrapProgram "$out/bin/chroma" \
-                  --prefix LD_LIBRARY_PATH : "${runtimeLibraryPath}"
-              '';
+            postInstall = ''
+              wrapProgram "$out/bin/chroma" \
+                --prefix LD_LIBRARY_PATH : "${runtimeLibraryPath}"
+            '';
 
-              meta = {
-                description = "Rust-based ASCII art shader audio visualizer for the terminal";
-                homepage = "https://github.com/yuri-xyz/chroma";
-                license = lib.licenses.mit;
-                mainProgram = "chroma";
-                platforms = lib.platforms.linux;
-              };
+            meta = {
+              description = "Rust-based ASCII art shader audio visualizer for the terminal";
+              homepage = "https://github.com/yuri-xyz/chroma";
+              license = lib.licenses.mit;
+              mainProgram = "chroma";
+              platforms = lib.platforms.linux;
             };
+          };
         in
         {
           packages = {
@@ -120,15 +128,14 @@
 
           devShells.default = pkgs.mkShell {
             packages = [
-              rustToolchain
-              pkgs.cargo
+              devRustToolchain
               pkgs.rust-analyzer
-              pkgs.clippy
-              pkgs.rustfmt
+              pkgs.actionlint
               pkgs.pkg-config
               pkgs.vulkan-loader
               pkgs.vulkan-tools
               pkgs.alsa-lib
+              pkgs.libpulseaudio
               pkgs.pipewire
             ];
 
@@ -140,6 +147,7 @@
               echo "  cargo run"
               echo "  nix run ."
               echo "  nix build"
+              echo "  actionlint"
             '';
           };
         }

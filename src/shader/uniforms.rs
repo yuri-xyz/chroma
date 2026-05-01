@@ -97,9 +97,10 @@ impl ShaderUniforms {
 
 #[cfg(test)]
 mod tests {
+  use std::mem;
+
   use super::*;
   use crate::params::{ColorMode, PatternType, ShaderParams};
-  use std::mem;
 
   #[test]
   fn test_uniforms_from_params() {

@@ -1,5 +1,6 @@
-use chroma::params::{ColorMode, PaletteType, PatternType};
 use std::str::FromStr;
+
+use chroma::params::{ColorMode, PaletteType, PatternType};
 
 #[test]
 fn test_pattern_type_parses_aliases_and_round_trips_full_names() {

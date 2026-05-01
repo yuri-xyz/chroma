@@ -1,6 +1,8 @@
 pub mod analyzer;
 pub mod capture;
 pub mod device_selector;
+#[cfg(target_os = "linux")]
+mod pulse_capture;
 
 pub use analyzer::{AudioAnalyzer, ANALYSIS_HOP_SIZE, ANALYSIS_WINDOW_SIZE};
 pub use capture::AudioCapture;

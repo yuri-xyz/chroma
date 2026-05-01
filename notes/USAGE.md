@@ -92,7 +92,7 @@ Full range of ASCII characters for maximum detail
 
 1. **Resolution**: The shader resolution matches your terminal size. Smaller terminals = better performance.
 
-2. **Frame Rate**: Default target is 30 FPS. You can modify `TARGET_FPS` in `main.rs` for different performance profiles.
+2. **Frame Rate**: Default target is 60 FPS. Use `--fps <value>` for different performance profiles.
 
 3. **GPU Support**: The application requires a GPU with wgpu support (Vulkan, Metal, DX12, or WebGPU).
 
@@ -140,7 +140,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
 The application will:
 
-1. Capture system audio using cpal
+1. Capture system audio using PulseAudio/PipeWire on Linux, with CPAL fallback
 2. Perform FFT analysis
 3. Map frequency bands to shader parameters:
    - Bass → Amplitude
@@ -158,7 +158,7 @@ The application will:
 ### Low Frame Rate
 
 - Reduce terminal size
-- Lower `TARGET_FPS`
+- Run with a lower `--fps` value
 - Use a simpler ASCII palette
 - Use a GPU-accelerated terminal
 

@@ -7,19 +7,19 @@ To enable audio reactivity, you need to install system audio libraries:
 ### Arch Linux
 
 ```bash
-sudo pacman -S pkg-config alsa-lib
+sudo pacman -S pkg-config alsa-lib libpulse pipewire-pulse
 ```
 
 ### Ubuntu/Debian
 
 ```bash
-sudo apt install pkg-config libalsa-ocaml-dev
+sudo apt install pkg-config libasound2-dev libpulse-dev
 ```
 
 ### Fedora
 
 ```bash
-sudo dnf install pkg-config alsa-lib-devel
+sudo dnf install pkg-config alsa-lib-devel pulseaudio-libs-devel
 ```
 
 ## Building
@@ -97,7 +97,7 @@ This creates a powerful visual effect where the shader appears to "die down" dur
 
 ## Notes
 
-- Audio capture uses your system's default input device (usually microphone)
-- To capture system audio, you may need to configure a loopback device:
-  - Linux: Use PulseAudio/PipeWire monitor
-  - Run: `pavucontrol` and set the recording source to "Monitor of ..."
+- On Linux, Chroma first records directly from the default PulseAudio/PipeWire sink monitor using libpulse.
+- If PulseAudio/PipeWire is not available, Chroma falls back to CPAL device selection.
+- To inspect capture devices, run `chroma --list-audio-devices`.
+- If automatic monitor capture fails, use `pavucontrol` and set Chroma's recording source to "Monitor of ...".

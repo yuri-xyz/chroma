@@ -1,12 +1,14 @@
 mod support;
 
-use support::audio_fixtures::{
-  analyze_fixture, analyze_fixture_with_chunk_schedule, FixtureBuilder, ANALYSIS_HOP,
-  ANALYSIS_WINDOW,
-};
-use support::audio_trace::{
-  segment_drop_count, segment_frames, segment_has_drop, segment_max, trailing_segment_average,
-  trailing_segment_has_drop,
+use support::{
+  audio_fixtures::{
+    analyze_fixture, analyze_fixture_with_chunk_schedule, FixtureBuilder, PulseLayer, ANALYSIS_HOP,
+    ANALYSIS_WINDOW,
+  },
+  audio_trace::{
+    segment_drop_count, segment_frames, segment_has_drop, segment_max, trailing_segment_average,
+    trailing_segment_has_drop,
+  },
 };
 
 #[test]
@@ -457,10 +459,12 @@ fn test_authored_fixture_fakeout_buildup_stays_below_drop_threshold() {
       "fakeout",
       4,
       &[(900.0, 0.28), (4_800.0, 0.18)],
-      ANALYSIS_WINDOW / 2,
-      128,
-      0.72,
-      80.0,
+      PulseLayer {
+        stride: ANALYSIS_WINDOW / 2,
+        width: 128,
+        amplitude: 0.72,
+        frequency_hz: 80.0,
+      },
     )
     .silence("release", 4)
     .build();
@@ -596,10 +600,12 @@ fn test_authored_fixture_fakeout_then_real_drop_distinguishes_buildup_from_commi
       "fakeout",
       4,
       &[(900.0, 0.28), (4_800.0, 0.18)],
-      ANALYSIS_WINDOW / 2,
-      128,
-      0.72,
-      80.0,
+      PulseLayer {
+        stride: ANALYSIS_WINDOW / 2,
+        width: 128,
+        amplitude: 0.72,
+        frequency_hz: 80.0,
+      },
     )
     .silence("breath", 2)
     .kick_pulses("real_drop", 4, ANALYSIS_WINDOW, 224, 1.0, 70.0)

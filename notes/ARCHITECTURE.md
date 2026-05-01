@@ -83,7 +83,7 @@ This project avoids unnecessary complexity:
 
 ## Data Flow
 
-### Frame Rendering Cycle (30 FPS)
+### Frame Rendering Cycle (60 FPS default)
 
 ```
 1. Check for config file changes
@@ -309,7 +309,6 @@ frequency = 1.0
 [display]
 palette = "standard"
 use_color = true
-target_fps = 30
 
 [audio]
 enabled = false

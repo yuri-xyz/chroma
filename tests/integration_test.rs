@@ -1,6 +1,8 @@
-use chroma::ascii::{AsciiConverter, AsciiPalette};
-use chroma::params::ShaderParams;
-use chroma::shader::ShaderUniforms;
+use chroma::{
+  ascii::{AsciiConverter, AsciiPalette},
+  params::ShaderParams,
+  shader::ShaderUniforms,
+};
 
 #[test]
 fn test_params_default() {

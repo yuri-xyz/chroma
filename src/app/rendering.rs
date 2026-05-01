@@ -1,10 +1,15 @@
-use super::DebugLog;
-use anyhow::Result;
-use chroma::ascii::AsciiConverter;
-use chroma::render::{RenderedCell, RenderedFrame};
-use chroma::shader::{ShaderPipeline, ShaderUniforms};
-use crossterm::style::Color;
 use std::io::{stdout, Write as IoWrite};
+
+use anyhow::Result;
+use chroma::{
+  ascii::AsciiConverter,
+  debug::frame_logging_enabled,
+  render::{RenderedCell, RenderedFrame},
+  shader::{ShaderPipeline, ShaderUniforms},
+};
+use crossterm::style::Color;
+
+use super::DebugLog;
 
 fn build_rendered_frame(
   pipeline: &ShaderPipeline,
@@ -72,6 +77,10 @@ fn log_pixel_data(
   pipeline: &ShaderPipeline,
   debug_log: &mut DebugLog,
 ) -> Result<()> {
+  if !frame_logging_enabled() {
+    return Ok(());
+  }
+
   debug_logln!(debug_log, "DEBUG: pixel_data length: {}", pixel_data.len())?;
   debug_logln!(
     debug_log,
@@ -116,6 +125,10 @@ fn log_pixel_data(
 
 /// Log ASCII frame statistics for debugging
 fn log_ascii_frame(ascii_frame: &[Vec<(char, Color)>], debug_log: &mut DebugLog) -> Result<()> {
+  if !frame_logging_enabled() {
+    return Ok(());
+  }
+
   debug_logln!(debug_log, "DEBUG: ascii_frame rows: {}", ascii_frame.len())?;
 
   if !ascii_frame.is_empty() {
@@ -146,6 +159,10 @@ fn log_frame_stats(
   buffer: &str,
   debug_log: &mut DebugLog,
 ) -> Result<()> {
+  if !frame_logging_enabled() {
+    return Ok(());
+  }
+
   debug_logln!(
     debug_log,
     "DEBUG: frame rendered {} rows x {} cols (expected {}x{}), buffer size: {}",

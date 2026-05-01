@@ -1,6 +1,8 @@
-use std::fs::{File, OpenOptions};
-use std::io::{self, BufWriter, Sink, Write};
-use std::path::Path;
+use std::{
+  fs::{File, OpenOptions},
+  io::{self, BufWriter, Sink, Write},
+  path::Path,
+};
 
 pub const DEFAULT_DEBUG_LOG_PATH: &str = "debug.log";
 
@@ -23,7 +25,8 @@ impl DebugLog {
   }
 
   pub fn file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-    let file = File::create(path)?;
+    File::create(path.as_ref())?;
+    let file = OpenOptions::new().create(true).append(true).open(path)?;
 
     Ok(Self::File(BufWriter::new(file)))
   }
@@ -51,6 +54,12 @@ impl Write for DebugLog {
 
 pub fn debug_logging_enabled() -> bool {
   cfg!(debug_assertions)
+}
+
+pub fn frame_logging_enabled() -> bool {
+  debug_logging_enabled()
+    && std::env::var("CHROMA_TRACE_FRAMES")
+      .is_ok_and(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
 }
 
 pub fn append_debug_line(component: &str, message: impl AsRef<str>) {

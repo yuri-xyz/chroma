@@ -10,8 +10,7 @@ mod list_commands;
 mod terminal;
 
 use app::App;
-use chroma::constants::DEFAULT_FPS;
-use chroma::params::ShaderParams;
+use chroma::{constants::DEFAULT_FPS, params::ShaderParams};
 use cli::CliArgs;
 
 fn main() -> Result<()> {
@@ -210,8 +209,7 @@ fn apply_cli_overrides(params: &mut ShaderParams, cli: &CliArgs) -> Result<()> {
 
 /// Load and validate custom shader file
 fn load_custom_shader(shader_path: &str) -> Result<String> {
-  use std::fs;
-  use std::path::Path;
+  use std::{fs, path::Path};
 
   let path = Path::new(shader_path);
 

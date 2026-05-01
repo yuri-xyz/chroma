@@ -1,6 +1,9 @@
+use cpal::{
+  traits::{DeviceTrait, HostTrait},
+  Device, Host,
+};
+
 use crate::debug::append_debug_line;
-use cpal::traits::{DeviceTrait, HostTrait};
-use cpal::{Device, Host};
 
 #[cfg(target_os = "linux")]
 const PACTL_BIN: &str = "pactl";
@@ -469,16 +472,23 @@ pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
     ))
   }
 
-  // Priority 2 (non-macOS): Find any usable device that's NOT a microphone
-  #[cfg(not(target_os = "macos"))]
+  #[cfg(target_os = "linux")]
+  {
+    Err(anyhow::anyhow!(
+      "No system audio monitor source is exposed through CPAL. PipeWire/PulseAudio reports monitor sources, but the current ALSA/CPAL host does not list them as selectable input devices. Use pavucontrol to move Chroma's recording stream to a monitor source, or run with --audio-device to intentionally use a listed input device."
+    ))
+  }
+
+  // Priority 2 (non-macOS/non-Linux): Find any usable device that's NOT a microphone
+  #[cfg(not(any(target_os = "macos", target_os = "linux")))]
   for (device, name) in &devices {
     if !is_dummy_device(name) && !is_microphone(name) && is_device_usable(device) {
       return Ok(device.clone());
     }
   }
 
-  // On Linux/other platforms, fall back to default device if usable
-  #[cfg(not(target_os = "macos"))]
+  // On other platforms, fall back to default device if usable
+  #[cfg(not(any(target_os = "macos", target_os = "linux")))]
   {
     if let Some(device) = host.default_input_device() {
       let is_default_device_dummy =
@@ -653,13 +663,15 @@ pub fn list_devices(host: &Host) -> anyhow::Result<()> {
   let has_loopback = false;
 
   if !has_monitor && !has_loopback {
-    println!("\n⚠️  No system audio source detected!");
+    println!("\n⚠️  No CPAL-exposed system audio source detected!");
     println!("\nTo capture system audio:");
 
     #[cfg(target_os = "linux")]
     {
-      println!("  Linux: Monitor sources should appear automatically with PipeWire/PulseAudio");
-      println!("         Check: pactl list sources | grep -i monitor");
+      println!("  Linux: CPAL did not list a monitor source.");
+      println!(
+        "         Chroma can still use PulseAudio/PipeWire monitor sources when listed below."
+      );
     }
   } else if !has_monitor && has_loopback {
     #[cfg(target_os = "macos")]

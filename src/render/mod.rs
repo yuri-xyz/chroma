@@ -1,8 +1,9 @@
-use crate::constants::MIN_BRIGHTNESS_THRESHOLD;
-use crate::utils::color::calculate_brightness;
-use crossterm::style::Color;
 use std::fmt::Write as _;
+
+use crossterm::style::Color;
 use unicode_width::UnicodeWidthChar;
+
+use crate::{constants::MIN_BRIGHTNESS_THRESHOLD, utils::color::calculate_brightness};
 
 pub type RgbColor = (u8, u8, u8);
 

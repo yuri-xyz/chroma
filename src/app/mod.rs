@@ -11,17 +11,22 @@ mod input;
 mod rendering;
 mod status_bar;
 
+use std::{io::Write, time::Instant};
+
 use anyhow::Result;
-use chroma::ascii::{AsciiConverter, AsciiPalette};
-use chroma::audio::{AudioAnalyzer, AudioCapture, AudioFeatures};
-use chroma::constants::AUDIO_SILENCE_THRESHOLD;
-use chroma::debug::DebugLog;
-use chroma::params::ShaderParams;
-use chroma::render::RenderedCell;
-use chroma::shader::{ShaderPipeline, ShaderUniforms};
+use chroma::{
+  ascii::{AsciiConverter, AsciiPalette},
+  audio::{AudioAnalyzer, AudioCapture, AudioFeatures},
+  constants::AUDIO_SILENCE_THRESHOLD,
+  debug::{frame_logging_enabled, DebugLog},
+  params::ShaderParams,
+  render::RenderedCell,
+  shader::{ShaderPipeline, ShaderUniforms},
+};
 use crossterm::terminal;
-use std::io::Write;
-use std::time::Instant;
+
+const STATUS_BAR_AUDIO_HOLD_SECONDS: f32 = 0.75;
+const STATUS_BAR_AUDIO_OFF_THRESHOLD: f32 = AUDIO_SILENCE_THRESHOLD * 0.4;
 
 fn shader_dimensions(
   terminal_width: u16,
@@ -55,6 +60,24 @@ fn terminal_background_color(params: &ShaderParams) -> Option<(u8, u8, u8)> {
   }
 }
 
+fn next_status_bar_audio_state(
+  overall: f32,
+  currently_active: bool,
+  hold_remaining: f32,
+  delta_time: f32,
+) -> (bool, f32) {
+  if overall >= AUDIO_SILENCE_THRESHOLD {
+    return (true, STATUS_BAR_AUDIO_HOLD_SECONDS);
+  }
+
+  if currently_active && overall >= STATUS_BAR_AUDIO_OFF_THRESHOLD {
+    return (true, STATUS_BAR_AUDIO_HOLD_SECONDS);
+  }
+
+  let hold_remaining = (hold_remaining - delta_time).max(0.0);
+  (hold_remaining > 0.0, hold_remaining)
+}
+
 fn prepare_reloaded_params(
   current_params: &ShaderParams,
   mut new_params: ShaderParams,
@@ -85,6 +108,8 @@ pub struct App {
   audio_capture: Option<AudioCapture>,
   audio_analyzer: Option<AudioAnalyzer>,
   latest_audio_features: AudioFeatures,
+  status_bar_audio_active: bool,
+  status_bar_audio_hold_remaining: f32,
 }
 
 impl App {
@@ -172,6 +197,8 @@ impl App {
       audio_capture,
       audio_analyzer,
       latest_audio_features: AudioFeatures::default(),
+      status_bar_audio_active: false,
+      status_bar_audio_hold_remaining: 0.0,
     })
   }
 
@@ -235,6 +262,7 @@ impl App {
       &mut self.debug_log,
     );
     self.latest_audio_features = features;
+    self.update_status_bar_audio_activity(delta_time);
 
     self.check_and_apply_config_reload();
 
@@ -262,20 +290,22 @@ impl App {
   fn render(&mut self) -> Result<()> {
     let uniforms = ShaderUniforms::from_params(&self.params);
 
-    debug_logln!(
-      self.debug_log,
-      "DEBUG: Uniforms - time: {}, freq: {}, amp: {}, scale: {}",
-      self.params.time,
-      self.params.frequency,
-      self.params.amplitude,
-      self.params.scale
-    )?;
-    debug_logln!(
-      self.debug_log,
-      "DEBUG: Resolution in uniforms: {}x{}",
-      self.params.resolution_width,
-      self.params.resolution_height
-    )?;
+    if frame_logging_enabled() {
+      debug_logln!(
+        self.debug_log,
+        "DEBUG: Uniforms - time: {}, freq: {}, amp: {}, scale: {}",
+        self.params.time,
+        self.params.frequency,
+        self.params.amplitude,
+        self.params.scale
+      )?;
+      debug_logln!(
+        self.debug_log,
+        "DEBUG: Resolution in uniforms: {}x{}",
+        self.params.resolution_width,
+        self.params.resolution_height
+      )?;
+    }
 
     // Stream mode: use simplified rendering
     if self.stream_mode {
@@ -313,8 +343,20 @@ impl App {
   }
 
   /// Check if audio is currently active
+  fn update_status_bar_audio_activity(&mut self, delta_time: f32) {
+    let (active, hold_remaining) = next_status_bar_audio_state(
+      self.latest_audio_features.overall,
+      self.status_bar_audio_active,
+      self.status_bar_audio_hold_remaining,
+      delta_time,
+    );
+
+    self.status_bar_audio_active = active;
+    self.status_bar_audio_hold_remaining = hold_remaining;
+  }
+
   fn check_audio_activity(&self) -> bool {
-    self.latest_audio_features.overall >= AUDIO_SILENCE_THRESHOLD
+    self.status_bar_audio_active
   }
 
   /// Build status bar cells
@@ -405,8 +447,9 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use chroma::params::PaletteType;
+
+  use super::*;
 
   #[test]
   fn test_shader_dimensions_only_reserve_status_row_outside_stream_mode() {
@@ -461,6 +504,44 @@ mod tests {
     let frame = converter.convert_frame(&pixels, 1, 1);
 
     assert_eq!(frame[0][0].0, 'o');
+  }
+
+  #[test]
+  fn test_status_bar_audio_state_turns_on_at_audio_threshold() {
+    let (active, hold_remaining) =
+      next_status_bar_audio_state(AUDIO_SILENCE_THRESHOLD, false, 0.0, 1.0 / 60.0);
+
+    assert!(active);
+    assert_eq!(hold_remaining, STATUS_BAR_AUDIO_HOLD_SECONDS);
+  }
+
+  #[test]
+  fn test_status_bar_audio_state_holds_through_brief_silence() {
+    let (active, hold_remaining) = next_status_bar_audio_state(0.0, true, 0.4, 1.0 / 60.0);
+
+    assert!(active);
+    assert!(hold_remaining > 0.38);
+  }
+
+  #[test]
+  fn test_status_bar_audio_state_stays_on_with_hysteresis_band() {
+    let (active, hold_remaining) = next_status_bar_audio_state(
+      STATUS_BAR_AUDIO_OFF_THRESHOLD,
+      true,
+      0.1,
+      STATUS_BAR_AUDIO_HOLD_SECONDS,
+    );
+
+    assert!(active);
+    assert_eq!(hold_remaining, STATUS_BAR_AUDIO_HOLD_SECONDS);
+  }
+
+  #[test]
+  fn test_status_bar_audio_state_turns_off_after_sustained_silence() {
+    let (active, hold_remaining) = next_status_bar_audio_state(0.0, true, 0.1, 0.2);
+
+    assert!(!active);
+    assert_eq!(hold_remaining, 0.0);
   }
 
   #[test]

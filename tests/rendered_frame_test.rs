@@ -1,5 +1,7 @@
-use chroma::ascii::{AsciiConverter, AsciiPalette};
-use chroma::render::{RenderedCell, RenderedFrame};
+use chroma::{
+  ascii::{AsciiConverter, AsciiPalette},
+  render::{RenderedCell, RenderedFrame},
+};
 use crossterm::style::Color;
 
 fn frame_from_pixels(

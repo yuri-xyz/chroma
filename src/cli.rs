@@ -1,5 +1,6 @@
-use clap::Parser;
 use std::str::FromStr;
+
+use clap::Parser;
 
 /// Dimensions for stream mode (width x height in terminal cells)
 #[derive(Debug, Clone, Copy)]

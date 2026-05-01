@@ -1,11 +1,13 @@
 mod support;
 
-use support::audio_fixtures::{
-  analyze_fixture, analyze_fixture_with_chunk_schedule, FixtureBuilder, ANALYSIS_HOP,
-  ANALYSIS_WINDOW,
-};
-use support::audio_trace::{
-  segment_drop_onset_count, segment_has_drop, segment_max, trailing_segment_average,
+use support::{
+  audio_fixtures::{
+    analyze_fixture, analyze_fixture_with_chunk_schedule, FixtureBuilder, ANALYSIS_HOP,
+    ANALYSIS_WINDOW,
+  },
+  audio_trace::{
+    segment_drop_onset_count, segment_has_drop, segment_max, trailing_segment_average,
+  },
 };
 
 #[test]

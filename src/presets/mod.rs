@@ -29,10 +29,11 @@ mod p7;
 mod p8;
 mod p9;
 
-use crate::params::ShaderParams;
 use rand::Rng;
 #[cfg(test)]
 use rand::SeedableRng;
+
+use crate::params::ShaderParams;
 
 /// All preset functions
 const PRESETS: &[fn() -> ShaderParams] = &[

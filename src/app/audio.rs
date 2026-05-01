@@ -1,9 +1,15 @@
 // Audio-reactive update logic
 
-use super::DebugLog;
-use chroma::audio::{AudioAnalyzer, AudioCapture, AudioFeatures};
-use chroma::constants::{AUDIO_DECAY_RATE, AUDIO_SILENCE_THRESHOLD, AUDIO_SPEED_DECAY_RATE};
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+use chroma::{
+  audio::{AudioAnalyzer, AudioCapture, AudioFeatures},
+  constants::{
+    AUDIO_DECAY_RATE, AUDIO_SAMPLE_THRESHOLD, AUDIO_SILENCE_THRESHOLD, AUDIO_SPEED_DECAY_RATE,
+  },
+};
+
+use super::DebugLog;
 
 const SILENT_AMPLITUDE_BASELINE: f32 = 0.4;
 const SILENT_FREQUENCY_BASELINE: f32 = 6.0;
@@ -16,6 +22,13 @@ const REGULAR_BEAT_DISTORTION_STRENGTH: f32 = 0.85;
 const REGULAR_BEAT_ZOOM_STRENGTH: f32 = 0.7;
 static EMPTY_SAMPLE_BATCH_COUNT: AtomicUsize = AtomicUsize::new(0);
 static FEATURE_LOG_COUNT: AtomicUsize = AtomicUsize::new(0);
+static SILENCE_DECAY_LOG_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Debug, Clone, Copy)]
+struct SampleActivity {
+  peak: f32,
+  rms: f32,
+}
 
 fn blend_towards(current: f32, target: f32, retain: f32) -> f32 {
   current * retain + target * (1.0 - retain)
@@ -27,6 +40,33 @@ fn weighted_energy(features: &AudioFeatures) -> f32 {
 
 fn regular_beat_threshold(params: &chroma::params::ShaderParams) -> f32 {
   REGULAR_BEAT_THRESHOLD_BASE / params.beat_sensitivity
+}
+
+fn sample_activity(samples: &[f32]) -> SampleActivity {
+  if samples.is_empty() {
+    return SampleActivity {
+      peak: 0.0,
+      rms: 0.0,
+    };
+  }
+
+  let mut peak = 0.0_f32;
+  let mut sum_squares = 0.0_f32;
+
+  for sample in samples {
+    let abs_sample = sample.abs();
+    peak = peak.max(abs_sample);
+    sum_squares += sample * sample;
+  }
+
+  SampleActivity {
+    peak,
+    rms: (sum_squares / samples.len() as f32).sqrt(),
+  }
+}
+
+fn samples_have_audio(activity: SampleActivity) -> bool {
+  activity.peak >= AUDIO_SAMPLE_THRESHOLD && activity.rms >= AUDIO_SAMPLE_THRESHOLD * 0.5
 }
 
 fn trigger_beat_visuals(
@@ -56,7 +96,7 @@ pub fn update_audio_reactive(
 
     if samples.is_empty() {
       let empty_count = EMPTY_SAMPLE_BATCH_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
-      if empty_count <= 5 || empty_count % 120 == 0 {
+      if empty_count <= 5 || empty_count.is_multiple_of(120) {
         let _ = debug_logln!(
           debug_log,
           "AUDIO: no samples drained yet (empty_batch_count={})",
@@ -68,19 +108,37 @@ pub fn update_audio_reactive(
 
     EMPTY_SAMPLE_BATCH_COUNT.store(0, Ordering::Relaxed);
 
+    let activity = sample_activity(&samples);
+
+    if !samples_have_audio(activity) {
+      let features = AudioFeatures::default();
+      let feature_log_count = FEATURE_LOG_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+
+      if feature_log_count <= 5 || feature_log_count.is_multiple_of(60) {
+        let _ = debug_logln!(
+          debug_log,
+          "AUDIO: samples={} peak={:.5} rms={:.5} below raw threshold - treating as silence",
+          samples.len(),
+          activity.peak,
+          activity.rms
+        );
+      }
+
+      apply_silence_decay(params, &features, debug_log);
+      return features;
+    }
+
     let features = analyzer.analyze(&samples, delta_time);
     let is_silent = features.overall < AUDIO_SILENCE_THRESHOLD;
     let feature_log_count = FEATURE_LOG_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
 
-    if feature_log_count <= 5 || feature_log_count % 60 == 0 {
-      let peak_sample = samples
-        .iter()
-        .fold(0.0_f32, |max_value, sample| max_value.max(sample.abs()));
+    if feature_log_count <= 5 || feature_log_count.is_multiple_of(60) {
       let _ = debug_logln!(
         debug_log,
-        "AUDIO: samples={} peak={:.5} features=bass:{:.4} mid:{:.4} treble:{:.4} overall:{:.4} beat:{:.4} drop:{}",
+        "AUDIO: samples={} peak={:.5} rms={:.5} features=bass:{:.4} mid:{:.4} treble:{:.4} overall:{:.4} beat:{:.4} drop:{}",
         samples.len(),
-        peak_sample,
+        activity.peak,
+        activity.rms,
         features.bass,
         features.mid,
         features.treble,
@@ -135,12 +193,15 @@ fn apply_silence_decay(
   params.noise_strength *= 0.85;
   params.contrast = blend_towards(params.contrast, SILENT_CONTRAST_BASELINE, AUDIO_DECAY_RATE);
 
-  let _ = debug_logln!(
-    debug_log,
-    "AUDIO: Silence (vol={:.4}) - slowing to stop (speed={:.3})",
-    features.overall,
-    params.speed
-  );
+  let silence_log_count = SILENCE_DECAY_LOG_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+  if silence_log_count <= 5 || silence_log_count.is_multiple_of(120) {
+    let _ = debug_logln!(
+      debug_log,
+      "AUDIO: Silence (vol={:.4}) - slowing to stop (speed={:.3})",
+      features.overall,
+      params.speed
+    );
+  }
 }
 
 /// Apply audio features to shader parameters
@@ -229,10 +290,11 @@ fn apply_audio_reactivity(
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use chroma::debug::DebugLog;
-  use chroma::params::ShaderParams;
   use std::time::{SystemTime, UNIX_EPOCH};
+
+  use chroma::{debug::DebugLog, params::ShaderParams};
+
+  use super::*;
 
   fn test_debug_log() -> DebugLog {
     let timestamp = SystemTime::now()
@@ -269,6 +331,30 @@ mod tests {
 
     assert!(regular_beat_threshold(&high) < regular_beat_threshold(&low));
     assert!((regular_beat_threshold(&high) - 0.09).abs() < 0.0001);
+  }
+
+  #[test]
+  fn test_sample_activity_uses_peak_and_rms() {
+    let activity = sample_activity(&[0.0, 0.03, -0.04, 0.0]);
+
+    assert!((activity.peak - 0.04).abs() < 0.0001);
+    assert!((activity.rms - 0.025).abs() < 0.0001);
+  }
+
+  #[test]
+  fn test_samples_have_audio_rejects_sparse_input_spikes() {
+    let activity = sample_activity(&[
+      0.0, 0.0, 0.0, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    ]);
+
+    assert!(!samples_have_audio(activity));
+  }
+
+  #[test]
+  fn test_samples_have_audio_accepts_sustained_signal() {
+    let activity = sample_activity(&[0.03, -0.03, 0.03, -0.03]);
+
+    assert!(samples_have_audio(activity));
   }
 
   #[test]

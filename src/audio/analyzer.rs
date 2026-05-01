@@ -1,10 +1,8 @@
-use std::collections::VecDeque;
-use std::ops::Range;
-use std::sync::Arc;
-
-use super::AudioFeatures;
+use std::{collections::VecDeque, ops::Range, sync::Arc};
 
 use rustfft::{num_complex::Complex, Fft, FftPlanner};
+
+use super::AudioFeatures;
 
 pub const ANALYSIS_WINDOW_SIZE: usize = 2_048;
 pub const ANALYSIS_HOP_SIZE: usize = 512;

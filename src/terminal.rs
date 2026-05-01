@@ -1,6 +1,7 @@
+use std::io::{stdout, Write};
+
 use anyhow::Result;
 use crossterm::{cursor, execute, terminal};
-use std::io::{stdout, Write};
 
 fn write_setup_sequence<W: Write>(writer: &mut W) -> Result<()> {
   execute!(

@@ -43,6 +43,13 @@ pub struct AnalyzerFrame {
   pub features: AudioFeatures,
 }
 
+pub struct PulseLayer {
+  pub stride: usize,
+  pub width: usize,
+  pub amplitude: f32,
+  pub frequency_hz: f32,
+}
+
 pub struct FixtureBuilder {
   samples: Vec<f32>,
   segments: Vec<FixtureSegment>,
@@ -179,10 +186,7 @@ impl FixtureBuilder {
     label: &'static str,
     windows: usize,
     bed_components: &[(f32, f32)],
-    pulse_stride: usize,
-    pulse_width: usize,
-    pulse_amplitude: f32,
-    pulse_frequency_hz: f32,
+    pulse: PulseLayer,
   ) -> Self {
     let sample_count = windows * ANALYSIS_WINDOW;
     let mut samples = vec![0.0; sample_count];
@@ -196,16 +200,13 @@ impl FixtureBuilder {
       }
     }
 
-    for (sample, pulse) in samples.iter_mut().zip(
-      pulse_train(
-        sample_count,
-        pulse_stride,
-        pulse_width,
-        pulse_amplitude,
-        pulse_frequency_hz,
-      )
-      .into_iter(),
-    ) {
+    for (sample, pulse) in samples.iter_mut().zip(pulse_train(
+      sample_count,
+      pulse.stride,
+      pulse.width,
+      pulse.amplitude,
+      pulse.frequency_hz,
+    )) {
       *sample = (*sample + pulse).clamp(-1.0, 1.0);
     }
 

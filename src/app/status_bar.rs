@@ -1,7 +1,9 @@
-use chroma::constants::EFFECT_NAMES;
-use chroma::params::ShaderParams;
-use chroma::render::{RenderedCell, RgbColor};
-use chroma::utils::color::hue_to_pastel_rgb;
+use chroma::{
+  constants::EFFECT_NAMES,
+  params::ShaderParams,
+  render::{RenderedCell, RgbColor},
+  utils::color::hue_to_pastel_rgb,
+};
 use unicode_width::UnicodeWidthChar;
 
 /// Build status bar text with current parameters
@@ -12,7 +14,7 @@ pub fn build_status_text(params: &ShaderParams, effect_type: u32) -> String {
   let palette_initial = params.palette.name().chars().next().unwrap_or('?');
 
   format!(
-    "{} {}{}{}  F:{:.1}  Q:quit R:random S:save A:audio N:effect C:color P:palette",
+    "{} {}{}{}  F:{:.1}  Q:quit R:random S:save N:effect C:color P:palette",
     effect_name, pattern_initial, color_initial, palette_initial, params.frequency
   )
 }
@@ -108,8 +110,9 @@ where
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use chroma::params::{ColorMode, PaletteType, PatternType};
+
+  use super::*;
 
   fn test_params() -> ShaderParams {
     ShaderParams {
@@ -127,7 +130,7 @@ mod tests {
 
     assert_eq!(
       text,
-      "Star WFB  F:12.3  Q:quit R:random S:save A:audio N:effect C:color P:palette"
+      "Star WFB  F:12.3  Q:quit R:random S:save N:effect C:color P:palette"
     );
   }
 

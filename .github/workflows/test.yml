@@ -12,6 +12,24 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
+  workflows:
+    name: GitHub Actions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: "1.7.12"
+        run: |
+          curl -fsSLo actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          tar -xzf actionlint.tar.gz actionlint
+          sudo install -m 0755 actionlint /usr/local/bin/actionlint
+
+      - name: Lint workflows
+        run: actionlint -color
+
   test:
     name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -74,7 +92,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
 
@@ -123,4 +141,4 @@ jobs:
           sudo apt-get install -y libasound2-dev
 
       - name: Run clippy
-        run: cargo clippy --all-targets
+        run: cargo clippy --all-targets -- -D warnings

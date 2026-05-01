@@ -13,10 +13,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
 
       - name: Build release
         run: cargo build --release
@@ -24,13 +28,13 @@ jobs:
       - name: Create tar.gz
         run: |
           VERSION=${{ github.ref_name }}
-          tar -czvf target/chroma-v$VERSION.tar.gz -C target release
+          tar -czvf target/chroma-$VERSION.tar.gz -C target release
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: chroma-v${{ github.ref_name }}
-          files: target/chroma-v${{ github.ref_name }}.tar.gz
+          name: chroma-${{ github.ref_name }}
+          files: target/chroma-${{ github.ref_name }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

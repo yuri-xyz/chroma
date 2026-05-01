@@ -1,5 +1,7 @@
-use chroma::params::{ColorMode, PatternType, ShaderParams};
-use chroma::shader::ShaderUniforms;
+use chroma::{
+  params::{ColorMode, PatternType, ShaderParams},
+  shader::ShaderUniforms,
+};
 
 #[test]
 fn test_uniforms_all_basic_fields_mapped() {

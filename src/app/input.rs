@@ -1,9 +1,13 @@
-use super::DebugLog;
-use anyhow::Result;
-use chroma::ascii::{AsciiConverter, AsciiPalette};
-use chroma::params::ShaderParams;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::time::Duration;
+
+use anyhow::Result;
+use chroma::{
+  ascii::{AsciiConverter, AsciiPalette},
+  params::ShaderParams,
+};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+
+use super::DebugLog;
 
 const EFFECT_TYPE_COUNT: u32 = 7;
 const FIRST_ACTIVE_EFFECT_TYPE: u32 = 2;
@@ -161,10 +165,14 @@ fn handle_key_press(
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use chroma::debug::DebugLog;
-  use chroma::params::{ColorMode, PaletteType, PatternType};
   use std::time::{SystemTime, UNIX_EPOCH};
+
+  use chroma::{
+    debug::DebugLog,
+    params::{ColorMode, PaletteType, PatternType},
+  };
+
+  use super::*;
 
   fn test_debug_log() -> DebugLog {
     let timestamp = SystemTime::now()
@@ -233,10 +241,12 @@ mod tests {
 
   #[test]
   fn test_arrow_keys_keep_audio_reactive_params_locked() {
-    let mut params = ShaderParams::default();
-    params.audio_enabled = false;
-    params.frequency = 10.0;
-    params.speed = 0.5;
+    let mut params = ShaderParams {
+      audio_enabled: false,
+      frequency: 10.0,
+      speed: 0.5,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();
@@ -266,10 +276,12 @@ mod tests {
 
   #[test]
   fn test_arrow_keys_do_not_adjust_audio_reactive_params_when_audio_is_enabled() {
-    let mut params = ShaderParams::default();
-    params.audio_enabled = true;
-    params.frequency = 10.0;
-    params.speed = 0.5;
+    let mut params = ShaderParams {
+      audio_enabled: true,
+      frequency: 10.0,
+      speed: 0.5,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();
@@ -297,9 +309,11 @@ mod tests {
 
   #[test]
   fn test_amplitude_keys_are_ignored_for_audio_reactive_params() {
-    let mut params = ShaderParams::default();
-    params.audio_enabled = false;
-    params.amplitude = 1.0;
+    let mut params = ShaderParams {
+      audio_enabled: false,
+      amplitude: 1.0,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();
@@ -328,9 +342,11 @@ mod tests {
 
   #[test]
   fn test_amplitude_alias_keys_are_ignored_for_audio_reactive_params() {
-    let mut params = ShaderParams::default();
-    params.audio_enabled = false;
-    params.amplitude = 1.0;
+    let mut params = ShaderParams {
+      audio_enabled: false,
+      amplitude: 1.0,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();
@@ -359,8 +375,10 @@ mod tests {
 
   #[test]
   fn test_scale_adjustment_clamps_at_minimum() {
-    let mut params = ShaderParams::default();
-    params.scale = 0.1;
+    let mut params = ShaderParams {
+      scale: 0.1,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();
@@ -379,8 +397,10 @@ mod tests {
 
   #[test]
   fn test_scale_adjustment_clamps_at_maximum() {
-    let mut params = ShaderParams::default();
-    params.scale = 5.0;
+    let mut params = ShaderParams {
+      scale: 5.0,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();
@@ -399,9 +419,11 @@ mod tests {
 
   #[test]
   fn test_pattern_and_color_keys_cycle_enums() {
-    let mut params = ShaderParams::default();
-    params.pattern_type = PatternType::Plasma;
-    params.color_mode = ColorMode::Rainbow;
+    let mut params = ShaderParams {
+      pattern_type: PatternType::Plasma,
+      color_mode: ColorMode::Rainbow,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();
@@ -429,9 +451,11 @@ mod tests {
 
   #[test]
   fn test_uppercase_pattern_and_color_keys_cycle_enums() {
-    let mut params = ShaderParams::default();
-    params.pattern_type = PatternType::Plasma;
-    params.color_mode = ColorMode::Rainbow;
+    let mut params = ShaderParams {
+      pattern_type: PatternType::Plasma,
+      color_mode: ColorMode::Rainbow,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();
@@ -459,8 +483,10 @@ mod tests {
 
   #[test]
   fn test_palette_key_updates_params_and_converter_palette() {
-    let mut params = ShaderParams::default();
-    params.palette = PaletteType::Simple;
+    let mut params = ShaderParams {
+      palette: PaletteType::Simple,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let baseline = converter_output(&converter);
     let mut running = true;
@@ -484,8 +510,10 @@ mod tests {
 
   #[test]
   fn test_uppercase_palette_key_updates_params_and_converter_palette() {
-    let mut params = ShaderParams::default();
-    params.palette = PaletteType::Simple;
+    let mut params = ShaderParams {
+      palette: PaletteType::Simple,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let baseline = converter_output(&converter);
     let mut running = true;
@@ -509,9 +537,11 @@ mod tests {
 
   #[test]
   fn test_effect_key_skips_disabled_effect_slots_and_syncs_effect_time() {
-    let mut params = ShaderParams::default();
-    params.effect_type = 0;
-    params.time = 42.5;
+    let mut params = ShaderParams {
+      effect_type: 0,
+      time: 42.5,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();
@@ -546,9 +576,11 @@ mod tests {
 
   #[test]
   fn test_uppercase_effect_key_cycles_effects() {
-    let mut params = ShaderParams::default();
-    params.effect_type = 5;
-    params.time = 12.0;
+    let mut params = ShaderParams {
+      effect_type: 5,
+      time: 12.0,
+      ..ShaderParams::default()
+    };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
     let mut running = true;
     let mut debug_log = test_debug_log();

@@ -1,5 +1,6 @@
-use anyhow::Result;
 use std::io::Write;
+
+use anyhow::Result;
 
 use super::uniforms::ShaderUniforms;
 
