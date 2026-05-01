@@ -110,6 +110,7 @@ pub struct App {
   latest_audio_features: AudioFeatures,
   status_bar_audio_active: bool,
   status_bar_audio_hold_remaining: f32,
+  status_bar_audio_active_elapsed: f32,
 }
 
 impl App {
@@ -199,6 +200,7 @@ impl App {
       latest_audio_features: AudioFeatures::default(),
       status_bar_audio_active: false,
       status_bar_audio_hold_remaining: 0.0,
+      status_bar_audio_active_elapsed: 0.0,
     })
   }
 
@@ -353,6 +355,11 @@ impl App {
 
     self.status_bar_audio_active = active;
     self.status_bar_audio_hold_remaining = hold_remaining;
+    self.status_bar_audio_active_elapsed = if active {
+      self.status_bar_audio_active_elapsed + delta_time
+    } else {
+      0.0
+    };
   }
 
   fn check_audio_activity(&self) -> bool {
@@ -364,7 +371,13 @@ impl App {
     let available_cols = self.last_terminal_size.0 as usize;
     let status_text = status_bar::build_status_text(&self.params, self.params.effect_type);
 
-    status_bar::format_status_bar(&status_text, available_cols, has_sound, self.params.time)
+    status_bar::format_status_bar(
+      &status_text,
+      available_cols,
+      has_sound,
+      self.params.time,
+      self.status_bar_audio_active_elapsed,
+    )
   }
 
   /// Handle window resize
