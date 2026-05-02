@@ -50,13 +50,3 @@ path = "src/lib.rs"
 
 [package.metadata.deb]
 depends = "libvulkan1, libasound2, libpulse0"
-
-[package.metadata.rpm]
-package = "chroma"
-requires = ["vulkan-loader", "alsa-lib", "pulseaudio-libs"]
-
-[package.metadata.rpm.cargo]
-buildflags = ["--release"]
-
-[package.metadata.rpm.targets]
-chroma = { path = "/usr/bin/chroma" }
