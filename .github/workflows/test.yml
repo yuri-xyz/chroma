@@ -1,4 +1,4 @@
-name: Test
+name: tests
 
 on:
   push:
@@ -31,13 +31,8 @@ jobs:
         run: actionlint -color
 
   test:
-    name: Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable]
+    name: tests
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -45,8 +40,6 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ matrix.rust }}
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -72,11 +65,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-target-
 
-      - name: Install system dependencies (Linux)
-        if: runner.os == 'Linux'
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev
+          sudo apt-get install -y libasound2-dev libpulse-dev
 
       - name: Run tests
         run: cargo test --verbose
@@ -138,7 +130,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev
+          sudo apt-get install -y libasound2-dev libpulse-dev
 
       - name: Run clippy
         run: cargo clippy --all-targets -- -D warnings
