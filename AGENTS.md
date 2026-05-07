@@ -19,6 +19,7 @@ Chroma is a Rust terminal audio visualizer. It renders GPU-generated WGSL shader
 - Audio support is built in. Linux uses PulseAudio/PipeWire monitor capture through libpulse when available, then falls back to CPAL.
 - Linux runtime/package dependencies include Vulkan loader support, ALSA, and PulseAudio libraries.
 - Stream mode is selected with `--stream WIDTHxHEIGHT`; it disables terminal setup, status bar, and interactive input, and emits full frames to stdout.
+- Third-party embedders such as kew rely on `--stream WIDTHxHEIGHT`, `--preset NUM`, `--bass-influence FLOAT`, `--audio-device DEVICE`, and `-c/--config FILE` retaining their names and compatible behavior. Do not rename, remove, or repurpose these flags, and preserve plain `--stream` compatibility unless there is an intentional migration plan for existing embedders.
 - Built-in presets are numbered `0..24` and live in `src/presets/`.
 - `CLAUDE.md` and `CONTRIBUTING.md` should remain symlinks to `AGENTS.md`.
 

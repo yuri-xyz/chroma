@@ -183,7 +183,7 @@ impl RenderedFrame {
   }
 
   pub fn to_stream_string(&self, format: StreamFormat, frame_index: u64) -> String {
-    stream::to_framed_stream_string(self, format, frame_index)
+    stream::to_stream_string(self, format, frame_index)
   }
 
   fn status_bar_width(&self) -> usize {

@@ -86,7 +86,15 @@ fn test_terminal_string_preserves_status_bar_and_cell_styles() {
 }
 
 #[test]
-fn test_stream_string_uses_length_prefixed_frame_header() {
+fn test_stream_string_uses_legacy_blank_line_delimiter() {
+  let ascii_frame = vec![vec![('A', Color::White), ('B', Color::White)]];
+  let frame = RenderedFrame::from_ascii_frame(&ascii_frame, 2, 1, None, None);
+
+  assert_eq!(frame.to_stream_string(StreamFormat::Legacy, 2), "AB\n\n");
+}
+
+#[test]
+fn test_framed_ansi_stream_string_uses_length_prefixed_frame_header() {
   let ascii_frame = vec![vec![('A', Color::White), ('B', Color::White)]];
   let frame = RenderedFrame::from_ascii_frame(&ascii_frame, 2, 1, None, None);
 

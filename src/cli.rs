@@ -89,8 +89,8 @@ pub struct CliArgs {
   #[arg(long, value_name = "WIDTHxHEIGHT")]
   pub stream: Option<StreamDimensions>,
 
-  /// Stream output format. ansi preserves colored terminal text; cells emits tab-separated cell records.
-  #[arg(long, value_name = "FORMAT", default_value = "ansi")]
+  /// Stream output format. legacy preserves the pre-framed ANSI stream; ansi and cells use framed output.
+  #[arg(long, value_name = "FORMAT", default_value = "legacy")]
   pub stream_format: StreamFormat,
 
   /// Start with randomized parameters (lowest priority, overridden by config and args)
@@ -269,10 +269,10 @@ mod tests {
   }
 
   #[test]
-  fn test_cli_args_use_ansi_stream_format_by_default() {
+  fn test_cli_args_use_legacy_stream_format_by_default() {
     let args = CliArgs::try_parse_from(["chroma", "--stream", "64x32"]).unwrap();
 
-    assert_eq!(args.stream_format, StreamFormat::Ansi);
+    assert_eq!(args.stream_format, StreamFormat::Legacy);
   }
 
   #[test]

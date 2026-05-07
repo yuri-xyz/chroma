@@ -8,6 +8,7 @@ const STREAM_PROTOCOL_VERSION: u8 = 1;
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum StreamFormat {
   #[default]
+  Legacy,
   Ansi,
   Cells,
 }
@@ -15,6 +16,7 @@ pub enum StreamFormat {
 impl fmt::Display for StreamFormat {
   fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     formatter.write_str(match self {
+      Self::Legacy => "legacy",
       Self::Ansi => "ansi",
       Self::Cells => "cells",
     })
@@ -26,21 +28,26 @@ impl FromStr for StreamFormat {
 
   fn from_str(value: &str) -> Result<Self, Self::Err> {
     match value {
+      "legacy" => Ok(Self::Legacy),
       "ansi" => Ok(Self::Ansi),
       "cells" => Ok(Self::Cells),
       _ => Err(format!(
-        "Invalid stream format '{}'. Expected one of: ansi, cells",
+        "Invalid stream format '{}'. Expected one of: legacy, ansi, cells",
         value
       )),
     }
   }
 }
 
-pub(super) fn to_framed_stream_string(
+pub(super) fn to_stream_string(
   frame: &RenderedFrame,
   format: StreamFormat,
   frame_index: u64,
 ) -> String {
+  if format == StreamFormat::Legacy {
+    return to_legacy_stream_string(frame);
+  }
+
   let payload = to_stream_payload(frame, format);
   let header = stream_frame_header(frame, format, frame_index, payload.len());
   let mut buffer = String::with_capacity(header.len() + payload.len());
@@ -65,9 +72,15 @@ fn stream_frame_header(
 
 fn to_stream_payload(frame: &RenderedFrame, format: StreamFormat) -> String {
   match format {
-    StreamFormat::Ansi => to_ansi_stream_payload(frame),
+    StreamFormat::Legacy | StreamFormat::Ansi => to_ansi_stream_payload(frame),
     StreamFormat::Cells => to_cells_stream_payload(frame),
   }
+}
+
+fn to_legacy_stream_string(frame: &RenderedFrame) -> String {
+  let mut buffer = to_ansi_stream_payload(frame);
+  buffer.push('\n');
+  buffer
 }
 
 fn to_ansi_stream_payload(frame: &RenderedFrame) -> String {
@@ -145,6 +158,10 @@ mod tests {
 
   #[test]
   fn stream_format_parses_supported_values() {
+    assert_eq!(
+      "legacy".parse::<StreamFormat>().unwrap(),
+      StreamFormat::Legacy
+    );
     assert_eq!("ansi".parse::<StreamFormat>().unwrap(), StreamFormat::Ansi);
     assert_eq!(
       "cells".parse::<StreamFormat>().unwrap(),
@@ -154,6 +171,7 @@ mod tests {
 
   #[test]
   fn stream_format_displays_wire_values() {
+    assert_eq!(StreamFormat::Legacy.to_string(), "legacy");
     assert_eq!(StreamFormat::Ansi.to_string(), "ansi");
     assert_eq!(StreamFormat::Cells.to_string(), "cells");
   }
@@ -163,6 +181,14 @@ mod tests {
     let error = "json".parse::<StreamFormat>().unwrap_err();
 
     assert!(error.contains("Expected one of"));
+  }
+
+  #[test]
+  fn legacy_stream_output_uses_blank_line_delimiter() {
+    let ascii_frame = vec![vec![('A', Color::White), ('B', Color::White)]];
+    let frame = RenderedFrame::from_ascii_frame(&ascii_frame, 2, 1, None, None);
+
+    assert_eq!(frame.to_stream_string(StreamFormat::Legacy, 7), "AB\n\n");
   }
 
   #[test]
