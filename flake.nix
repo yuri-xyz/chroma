@@ -146,7 +146,10 @@
             // {
               pname = "chroma-test";
               doCheck = true;
-              cargoTestCommand = "cargo test --all-targets --offline --frozen";
+              cargoTestFlags = [
+                "--all-targets"
+                "--frozen"
+              ];
               installPhase = "touch $out";
             }
           );
@@ -155,7 +158,11 @@
             // {
               pname = "chroma-clippy";
               doCheck = false;
-              cargoBuildCommand = "cargo clippy --all-targets --offline --frozen -- -D warnings";
+              buildPhase = ''
+                runHook preBuild
+                cargo clippy --all-targets --offline --frozen -- -D warnings
+                runHook postBuild
+              '';
               installPhase = "touch $out";
             }
           );
