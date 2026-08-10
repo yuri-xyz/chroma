@@ -5,6 +5,8 @@ use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
 
 /// Max fraction of gravity acceleration the mouse may cancel (must stay < 1).
 const MOUSE_FIGHT_CAP: f32 = 0.75;
+/// Fight strength when the cursor is active but the button is not held.
+const HOVER_FIGHT_FACTOR: f32 = 0.65;
 /// UV units / s² per unit of the `gravity` parameter.
 const GRAVITY_ACCEL_SCALE: f32 = 0.45;
 /// Horizontal pull toward the mouse cursor (scaled by gravity).
@@ -64,7 +66,7 @@ impl GravityState {
     if self.mouse_pressed {
       base
     } else {
-      base * 0.65
+      base * HOVER_FIGHT_FACTOR
     }
   }
 
@@ -96,7 +98,11 @@ impl GravityState {
     let accel_y = net_vertical_accel(gravity, mouse_fight, self.mouse_active, self.mouse_pressed);
 
     if self.mouse_active {
-      let press_boost = if self.mouse_pressed { 1.0 } else { 0.65 };
+      let press_boost = if self.mouse_pressed {
+        1.0
+      } else {
+        HOVER_FIGHT_FACTOR
+      };
       // Horizontal tug toward the cursor; strength scales with gravity.
       accel_x += (self.mouse[0] - 0.5) * HORIZONTAL_PULL * gravity * press_boost;
     }
@@ -164,7 +170,11 @@ fn net_vertical_accel(
   }
 
   let fight_strength = mouse_fight.clamp(0.0, 1.0);
-  let press_boost = if mouse_pressed { 1.0 } else { 0.65 };
+  let press_boost = if mouse_pressed {
+    1.0
+  } else {
+    HOVER_FIGHT_FACTOR
+  };
   let requested_fight = gravity_accel * MOUSE_FIGHT_CAP * fight_strength * press_boost;
   let min_net_accel = gravity_accel * (1.0 - MOUSE_FIGHT_CAP);
   (gravity_accel - requested_fight).max(min_net_accel)
