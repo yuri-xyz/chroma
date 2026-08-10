@@ -55,6 +55,15 @@ Controls the zoom level of the shader pattern.
 - Default: 1.0
 - Effect: Lower values zoom in, higher values zoom out
 
+### Gravity
+
+Controls downward pattern scroll. Default is off (`0.0`).
+
+- Range: 0.0 to 2.0
+- CLI: `--gravity FLOAT`, `--mouse-fight FLOAT`
+- Keys: `g` / `G`
+- Mouse movement and click fight the fall but cannot cancel it (capped below full gravity). Interactive sessions enable mouse capture so live gravity adjustments can receive pointer input.
+
 ## ASCII Palettes
 
 The application supports multiple ASCII palettes:

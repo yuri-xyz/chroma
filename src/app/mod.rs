@@ -320,7 +320,9 @@ impl App {
     let interaction = InteractionUniforms {
       gravity_offset: self.gravity.offset,
       mouse_position: self.gravity.mouse,
-      mouse_influence: self.gravity.shader_mouse_influence(self.params.mouse_fight),
+      mouse_influence: self
+        .gravity
+        .shader_mouse_influence(self.params.gravity, self.params.mouse_fight),
     };
     let uniforms = ShaderUniforms::from_params_with_interaction(&self.params, interaction);
 

@@ -54,9 +54,9 @@ impl GravityState {
     }
   }
 
-  /// Effective mouse influence sent to the shader (0 = idle).
-  pub fn shader_mouse_influence(&self, mouse_fight: f32) -> f32 {
-    if !self.mouse_active {
+  /// Effective mouse influence sent to the shader (0 = idle or gravity off).
+  pub fn shader_mouse_influence(&self, gravity: f32, mouse_fight: f32) -> f32 {
+    if !self.mouse_active || gravity <= 0.0001 {
       return 0.0;
     }
 
@@ -93,12 +93,7 @@ impl GravityState {
     }
 
     let mut accel_x = 0.0;
-    let accel_y = net_vertical_accel(
-      gravity,
-      mouse_fight,
-      self.mouse_active,
-      self.mouse_pressed,
-    );
+    let accel_y = net_vertical_accel(gravity, mouse_fight, self.mouse_active, self.mouse_pressed);
 
     if self.mouse_active {
       let press_boost = if self.mouse_pressed { 1.0 } else { 0.65 };
@@ -209,6 +204,21 @@ mod tests {
     }
     assert!(state.offset[1] > 0.0);
     assert!(state.velocity[1] > 0.0);
+  }
+
+  #[test]
+  fn gravity_zero_ignores_mouse_for_shader_influence_and_fall() {
+    let mut state = GravityState::default();
+    state.set_mouse_position(0.2, 0.2);
+    state.set_mouse_pressed(true);
+
+    for _ in 0..30 {
+      state.update(0.0, 1.0, 1.0 / 60.0);
+    }
+
+    assert_eq!(state.shader_mouse_influence(0.0, 1.0), 0.0);
+    assert!(state.offset[1].abs() < 0.02);
+    assert!(state.velocity[1].abs() < 0.05);
   }
 
   #[test]

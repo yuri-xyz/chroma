@@ -131,6 +131,7 @@ pub fn randomize_with_rng(params: &mut ShaderParams, rng: &mut impl Rng) {
     params.mouse_fight = rng.random_range(0.4..=1.0);
   } else {
     params.gravity = 0.0;
+    params.mouse_fight = 0.7;
   }
 }
 

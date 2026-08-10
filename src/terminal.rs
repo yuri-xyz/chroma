@@ -4,6 +4,8 @@ use anyhow::Result;
 use crossterm::{cursor, event, execute, terminal};
 
 fn write_setup_sequence<W: Write>(writer: &mut W) -> Result<()> {
+  // Mouse capture stays on for the whole interactive session so live `g`/`G`
+  // gravity adjustments can receive pointer input without restarting.
   execute!(
     writer,
     terminal::EnterAlternateScreen,
