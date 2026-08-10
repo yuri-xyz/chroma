@@ -1,21 +1,27 @@
 use std::io::{stdout, Write};
 
 use anyhow::Result;
-use crossterm::{cursor, execute, terminal};
+use crossterm::{cursor, event, execute, terminal};
 
 fn write_setup_sequence<W: Write>(writer: &mut W) -> Result<()> {
   execute!(
     writer,
     terminal::EnterAlternateScreen,
     cursor::Hide,
-    terminal::Clear(terminal::ClearType::All)
+    terminal::Clear(terminal::ClearType::All),
+    event::EnableMouseCapture
   )?;
 
   Ok(())
 }
 
 fn write_cleanup_sequence<W: Write>(writer: &mut W) -> Result<()> {
-  execute!(writer, cursor::Show, terminal::LeaveAlternateScreen)?;
+  execute!(
+    writer,
+    event::DisableMouseCapture,
+    cursor::Show,
+    terminal::LeaveAlternateScreen
+  )?;
 
   Ok(())
 }
@@ -44,24 +50,39 @@ mod tests {
   use super::*;
 
   #[test]
-  fn test_setup_sequence_writes_alternate_screen_hide_and_clear() {
+  fn test_setup_sequence_writes_alternate_screen_hide_clear_and_mouse() {
     let mut output = Vec::new();
 
     write_setup_sequence(&mut output).unwrap();
 
     let text = String::from_utf8(output).unwrap();
 
-    assert_eq!(text, "\u{1b}[?1049h\u{1b}[?25l\u{1b}[2J");
+    assert!(text.contains("\u{1b}[?1049h"));
+    assert!(text.contains("\u{1b}[?25l"));
+    assert!(text.contains("\u{1b}[2J"));
+    assert!(
+      text.contains("\u{1b}[?1000h")
+        || text.contains("\u{1b}[?1002h")
+        || text.contains("\u{1b}[?1003h")
+        || text.contains("\u{1b}[?1006h")
+    );
   }
 
   #[test]
-  fn test_cleanup_sequence_writes_show_and_leave_alternate_screen() {
+  fn test_cleanup_sequence_disables_mouse_shows_cursor_and_leaves_alt_screen() {
     let mut output = Vec::new();
 
     write_cleanup_sequence(&mut output).unwrap();
 
     let text = String::from_utf8(output).unwrap();
 
-    assert_eq!(text, "\u{1b}[?25h\u{1b}[?1049l");
+    assert!(text.contains("\u{1b}[?25h"));
+    assert!(text.contains("\u{1b}[?1049l"));
+    assert!(
+      text.contains("\u{1b}[?1000l")
+        || text.contains("\u{1b}[?1002l")
+        || text.contains("\u{1b}[?1003l")
+        || text.contains("\u{1b}[?1006l")
+    );
   }
 }

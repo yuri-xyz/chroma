@@ -62,6 +62,11 @@ pub struct ShaderParams {
   pub beat_distortion_time: f32,
   pub beat_distortion_strength: f32,
   pub beat_zoom_strength: f32,
+
+  /// Downward gravity strength for UV scroll. 0 = off. Range: 0.0-2.0
+  pub gravity: f32,
+  /// How strongly the mouse may fight gravity (never enough to cancel it). Range: 0.0-1.0
+  pub mouse_fight: f32,
 }
 
 impl Default for ShaderParams {
@@ -117,6 +122,9 @@ impl Default for ShaderParams {
       beat_distortion_time: -100.0,
       beat_distortion_strength: 0.85,
       beat_zoom_strength: 0.7,
+
+      gravity: 0.0,
+      mouse_fight: 0.7,
     }
   }
 }
@@ -230,6 +238,9 @@ impl ShaderParams {
     self.mid_influence = self.mid_influence.clamp(0.0, 1.0);
     self.treble_influence = self.treble_influence.clamp(0.0, 1.0);
     self.beat_sensitivity = self.beat_sensitivity.clamp(0.1, 3.0);
+
+    self.gravity = self.gravity.clamp(0.0, 2.0);
+    self.mouse_fight = self.mouse_fight.clamp(0.0, 1.0);
   }
 
   pub fn adjust_frequency(&mut self, delta: f32) {
@@ -246,6 +257,14 @@ impl ShaderParams {
 
   pub fn adjust_scale(&mut self, delta: f32) {
     Self::adjust_clamped(&mut self.scale, delta, 0.1, 5.0);
+  }
+
+  pub fn adjust_gravity(&mut self, delta: f32) {
+    Self::adjust_clamped(&mut self.gravity, delta, 0.0, 2.0);
+  }
+
+  pub fn adjust_mouse_fight(&mut self, delta: f32) {
+    Self::adjust_clamped(&mut self.mouse_fight, delta, 0.0, 1.0);
   }
 
   pub fn adjust_brightness(&mut self, delta: f32) {

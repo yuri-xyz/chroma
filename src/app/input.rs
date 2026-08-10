@@ -7,31 +7,39 @@ use chroma::{
 };
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
-use super::DebugLog;
+use super::{
+  gravity::{self, GravityState},
+  DebugLog,
+};
 
 const EFFECT_TYPE_COUNT: u32 = 7;
 const FIRST_ACTIVE_EFFECT_TYPE: u32 = 2;
 const PARAMETER_STEP: f32 = 0.1;
 
-/// Handle keyboard input events
+/// Handle keyboard and mouse input events
 pub fn handle_input(
   params: &mut ShaderParams,
   converter: &mut AsciiConverter,
+  gravity: &mut GravityState,
+  terminal_size: (u16, u16),
   running: &mut bool,
   debug_log: &mut DebugLog,
 ) -> Result<()> {
-  if !event::poll(Duration::from_millis(0))? {
-    return Ok(());
-  }
-
-  if let Event::Key(KeyEvent {
-    code,
-    modifiers,
-    kind: KeyEventKind::Press,
-    ..
-  }) = event::read()?
-  {
-    handle_key_press(code, modifiers, params, converter, running, debug_log)?;
+  while event::poll(Duration::from_millis(0))? {
+    match event::read()? {
+      Event::Key(KeyEvent {
+        code,
+        modifiers,
+        kind: KeyEventKind::Press,
+        ..
+      }) => {
+        handle_key_press(code, modifiers, params, converter, running, debug_log)?;
+      }
+      Event::Mouse(mouse) => {
+        gravity::handle_mouse_event(mouse, gravity, terminal_size);
+      }
+      _ => {}
+    }
   }
 
   Ok(())
@@ -124,6 +132,10 @@ fn handle_key_press(
     }
     KeyCode::Char('[') => params.adjust_scale(-PARAMETER_STEP),
     KeyCode::Char(']') => params.adjust_scale(PARAMETER_STEP),
+
+    // Gravity
+    KeyCode::Char('g') => params.adjust_gravity(PARAMETER_STEP),
+    KeyCode::Char('G') => params.adjust_gravity(-PARAMETER_STEP),
 
     // Pattern selection
     KeyCode::Char('t') | KeyCode::Char('T') => {
@@ -596,6 +608,37 @@ mod tests {
 
     assert_eq!(params.effect_type, 6);
     assert_eq!(params.effect_time, 12.0);
+  }
+
+  #[test]
+  fn test_gravity_keys_adjust_strength() {
+    let mut params = ShaderParams {
+      gravity: 0.5,
+      ..ShaderParams::default()
+    };
+    let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
+    let mut running = true;
+    let mut debug_log = test_debug_log();
+
+    invoke_key(
+      KeyCode::Char('g'),
+      KeyModifiers::NONE,
+      &mut params,
+      &mut converter,
+      &mut running,
+      &mut debug_log,
+    );
+    assert!((params.gravity - 0.6).abs() < 1e-5);
+
+    invoke_key(
+      KeyCode::Char('G'),
+      KeyModifiers::NONE,
+      &mut params,
+      &mut converter,
+      &mut running,
+      &mut debug_log,
+    );
+    assert!((params.gravity - 0.5).abs() < 1e-5);
   }
 
   #[test]

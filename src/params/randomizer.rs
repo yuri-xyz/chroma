@@ -124,6 +124,14 @@ pub fn randomize_with_rng(params: &mut ShaderParams, rng: &mut impl Rng) {
   params.mid_influence = rng.random_range(0.2..=0.6);
   params.treble_influence = rng.random_range(0.1..=0.5);
   params.beat_sensitivity = rng.random_range(0.5..=2.0);
+
+  // Occasional gravity so randomization can discover the effect
+  if rng.random_bool(0.25) {
+    params.gravity = rng.random_range(0.2..=1.2);
+    params.mouse_fight = rng.random_range(0.4..=1.0);
+  } else {
+    params.gravity = 0.0;
+  }
 }
 
 #[cfg(test)]

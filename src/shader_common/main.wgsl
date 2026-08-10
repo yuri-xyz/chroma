@@ -69,8 +69,9 @@ fn pattern_position(position: vec2<f32>, pattern_type: u32) -> vec2<f32> {
 }
 
 fn plasma_effect(position: vec2<f32>, time: f32) -> vec3<f32> {
-    // Apply beat zoom first
-    var processed_position = apply_beat_zoom(position, time);
+    // Gravity scroll + capped mouse tug, then beat zoom / distortion
+    var processed_position = apply_gravity_and_mouse(position);
+    processed_position = apply_beat_zoom(processed_position, time);
     
     // Then apply beat-reactive distortion to position for visual pop effect
     processed_position = apply_beat_distortion(processed_position, time);

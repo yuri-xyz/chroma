@@ -186,6 +186,14 @@ pub struct CliArgs {
   #[arg(short = 'v', long, value_name = "FLOAT")]
   pub vignette: Option<f32>,
 
+  /// Downward gravity for the pattern scroll. 0 = off. Mouse can fight it but not cancel it. Range: 0.0-2.0
+  #[arg(long, value_name = "FLOAT")]
+  pub gravity: Option<f32>,
+
+  /// How strongly mouse input fights gravity (still cannot overpower it). Range: 0.0-1.0
+  #[arg(long, value_name = "FLOAT")]
+  pub mouse_fight: Option<f32>,
+
   /// Terminal background color in hex format (e.g. FF0000, #00FF00, ABC, #123456). Sets the background color for the terminal cells/window
   #[arg(long, value_name = "HEX")]
   pub background_color: Option<String>,

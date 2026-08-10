@@ -7,6 +7,7 @@ macro_rules! debug_logln {
 
 mod audio;
 mod config_watcher;
+mod gravity;
 mod input;
 mod rendering;
 mod status_bar;
@@ -21,7 +22,7 @@ use chroma::{
   debug::{frame_logging_enabled, DebugLog},
   params::ShaderParams,
   render::{RenderedCell, StreamFormat},
-  shader::{ShaderPipeline, ShaderUniforms},
+  shader::{InteractionUniforms, ShaderPipeline, ShaderUniforms},
 };
 use crossterm::terminal;
 
@@ -114,6 +115,7 @@ pub struct App {
   status_bar_audio_hold_remaining: f32,
   status_bar_audio_flow_elapsed: f32,
   status_bar_audio_production_elapsed: f32,
+  gravity: gravity::GravityState,
 }
 
 pub struct AppOptions {
@@ -221,6 +223,7 @@ impl App {
       status_bar_audio_hold_remaining: 0.0,
       status_bar_audio_flow_elapsed: 0.0,
       status_bar_audio_production_elapsed: 0.0,
+      gravity: gravity::GravityState::default(),
     })
   }
 
@@ -276,6 +279,10 @@ impl App {
 
     self.params.update_time(delta_time);
 
+    self
+      .gravity
+      .update(self.params.gravity, self.params.mouse_fight, delta_time);
+
     let features = audio::update_audio_reactive(
       &mut self.params,
       &self.audio_capture,
@@ -310,7 +317,12 @@ impl App {
 
   /// Render current frame
   fn render(&mut self) -> Result<()> {
-    let uniforms = ShaderUniforms::from_params(&self.params);
+    let interaction = InteractionUniforms {
+      gravity_offset: self.gravity.offset,
+      mouse_position: self.gravity.mouse,
+      mouse_influence: self.gravity.shader_mouse_influence(self.params.mouse_fight),
+    };
+    let uniforms = ShaderUniforms::from_params_with_interaction(&self.params, interaction);
 
     if frame_logging_enabled() {
       debug_logln!(
@@ -483,6 +495,8 @@ impl App {
         input::handle_input(
           &mut self.params,
           &mut self.converter,
+          &mut self.gravity,
+          self.last_terminal_size,
           &mut self.running,
           &mut self.debug_log,
         )?;

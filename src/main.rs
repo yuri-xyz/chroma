@@ -190,6 +190,12 @@ fn apply_cli_overrides(params: &mut ShaderParams, cli: &CliArgs) -> Result<()> {
   if let Some(v) = cli.vignette {
     params.vignette = v;
   }
+  if let Some(v) = cli.gravity {
+    params.gravity = v;
+  }
+  if let Some(v) = cli.mouse_fight {
+    params.mouse_fight = v;
+  }
 
   // Background color (parse hex) - for terminal cell background
   if let Some(ref hex_color) = cli.background_color {
