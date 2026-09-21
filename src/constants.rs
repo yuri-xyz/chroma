@@ -16,7 +16,8 @@ pub const AUDIO_DECAY_RATE: f32 = 0.92;
 /// Speed decay rate when audio is silent (0.0-1.0)
 pub const AUDIO_SPEED_DECAY_RATE: f32 = 0.88;
 
-/// Effect names for status bar display
+/// Effect names for status bar display, indexed by the `effect_type` branches
+/// in `src/shader_common/effects.wgsl`
 pub const EFFECT_NAMES: [&str; 7] = [
-  "Circle", "Cross", "Diamond", "Star", "Grid", "Wave", "Octgrams",
+  "Circle", "Cross", "Diamond", "Star", "Grid", "Octgrams", "Wave",
 ];

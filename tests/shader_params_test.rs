@@ -254,3 +254,72 @@ fn test_save_to_file_in_reuses_hash_based_path() {
   assert_eq!(first_path.parent(), Some(dir.as_path()));
   assert!(first_path.file_name().is_some());
 }
+
+#[test]
+fn test_load_from_str_over_keeps_base_values_for_missing_fields() {
+  let base = chroma::presets::get_preset(3);
+  let loaded = ShaderParams::load_from_str_over("brightness = 0.9\n", &base).unwrap();
+
+  assert_eq!(loaded.brightness, 0.9);
+  assert_eq!(loaded.pattern_type, base.pattern_type);
+  assert_eq!(loaded.color_mode, base.color_mode);
+  assert_eq!(loaded.palette, base.palette);
+}
+
+#[test]
+fn test_clamp_all_bounds_octaves_and_effect_type() {
+  let mut params = ShaderParams {
+    octaves: 1_000_000,
+    effect_type: u32::MAX,
+    ..ShaderParams::default()
+  };
+
+  params.clamp_all();
+
+  assert_eq!(params.octaves, 8);
+  assert_eq!(params.effect_type, 6);
+
+  params.octaves = 0;
+  params.clamp_all();
+
+  assert_eq!(params.octaves, 1);
+}
+
+#[test]
+fn test_clamp_all_replaces_non_finite_values_with_defaults() {
+  let defaults = ShaderParams::default();
+  let mut params = ShaderParams {
+    frequency: f32::NAN,
+    brightness: f32::NAN,
+    hue: f32::INFINITY,
+    ..ShaderParams::default()
+  };
+
+  params.clamp_all();
+
+  assert_eq!(params.frequency, defaults.frequency);
+  assert_eq!(params.brightness, defaults.brightness);
+  assert_eq!(params.hue, defaults.hue);
+}
+
+#[test]
+fn test_config_accepts_cli_enum_names_and_saved_variant_names() {
+  use chroma::params::{ColorMode, PaletteType, PatternType};
+
+  let cli_names = ShaderParams::load_from_str(
+    "pattern_type = \"warped\"\ncolor_mode = \"cyber\"\npalette = \"boxdraw\"\n",
+  )
+  .unwrap();
+  let saved_names = ShaderParams::load_from_str(
+    "pattern_type = \"WarpedFbm\"\ncolor_mode = \"Cyberpunk\"\npalette = \"BoxDraw\"\n",
+  )
+  .unwrap();
+
+  for params in [cli_names, saved_names] {
+    assert_eq!(params.pattern_type, PatternType::WarpedFbm);
+    assert_eq!(params.color_mode, ColorMode::Cyberpunk);
+    assert_eq!(params.palette, PaletteType::BoxDraw);
+  }
+
+  assert!(ShaderParams::load_from_str("pattern_type = \"nope\"\n").is_err());
+}

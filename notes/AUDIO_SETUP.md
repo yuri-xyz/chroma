@@ -30,7 +30,7 @@ After installing dependencies:
 cargo build --release
 ```
 
-Chroma always builds with audio support.
+Chroma always builds with audio support. `cargo build --release --features audio` is still accepted so build commands written for older releases keep working; the `audio` feature is empty and changes nothing.
 
 ## How Audio Reactivity Works
 
@@ -82,7 +82,7 @@ When no audio is playing (volume < 2%), the shader automatically:
 - **Reduces contrast** to 0.8
 - **Decays noise** smoothly
 
-The animation uses **exponential decay** (88-92% per frame) to create a dramatic "wind down" effect. When music stops:
+The animation uses **exponential decay** (88-92% per frame at 60 FPS, scaled to the actual frame time so `--fps` does not change the pace) to create a dramatic "wind down" effect. When music stops:
 
 1. **First 2 seconds**: Visuals noticeably slow and dim
 2. **After 3-4 seconds**: Nearly frozen in place
@@ -99,5 +99,6 @@ This creates a powerful visual effect where the shader appears to "die down" dur
 
 - On Linux, Chroma first records directly from the default PulseAudio/PipeWire sink monitor using libpulse.
 - If PulseAudio/PipeWire is not available, Chroma falls back to CPAL device selection.
+- On Windows, Chroma captures system audio through WASAPI loopback on the default output device, so no "Stereo Mix" input needs to be enabled. Pass `--audio-device` with an output device name to loop back a different output.
 - To inspect capture devices, run `chroma --list-audio-devices`.
 - If automatic monitor capture fails, use `pavucontrol` and set Chroma's recording source to "Monitor of ...".

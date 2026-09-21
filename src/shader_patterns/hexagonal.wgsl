@@ -3,7 +3,7 @@
 
 fn hexagonal_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let scale = uniforms.frequency;
-    let hex_uv = uv * scale * vec2<f32>(1.0, 0.866);
+    let hex_uv = centered_uv(uv) * scale * vec2<f32>(1.0, 0.866);
     
     let q = vec2<f32>(hex_uv.x * 1.1547, hex_uv.y - hex_uv.x * 0.5773);
     let p = vec2<f32>(floor(q.x), floor(q.y));

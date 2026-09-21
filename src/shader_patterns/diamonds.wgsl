@@ -4,7 +4,7 @@
 fn diamonds_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     // Diamond lattice - spacious
     let offset = vec2<f32>(sin(time * 0.3) * 0.2, cos(time * 0.4) * 0.2);
-    let rotated = (uv + offset) * uniforms.frequency * 5.0;
+    let rotated = (centered_uv(uv) + offset) * uniforms.frequency * 5.0;
     
     // Create diamond shape using Manhattan distance
     let diamond_x = abs(fract(rotated.x + rotated.y) - 0.5);

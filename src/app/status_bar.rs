@@ -139,14 +139,21 @@ fn apply_music_symbol_flow(
   audio_flow_elapsed: f32,
   audio_production_elapsed: f32,
 ) {
+  // Compare display columns, not cell counts: wide characters span two
+  // columns but occupy a single cell.
+  let total_cols: usize = cells.iter().map(|cell| cell.display_width).sum();
+
   if audio_flow_elapsed < MUSIC_SYMBOL_DELAY_SECONDS
     || audio_production_elapsed < MUSIC_SYMBOL_DELAY_SECONDS
-    || status_width >= cells.len()
+    || status_width >= total_cols
   {
     return;
   }
 
-  let spare_cols = cells.len() - status_width;
+  let spare_cols = total_cols - status_width;
+  // The spare area is single-width padding, so its first cell sits this many
+  // cells from the end.
+  let first_spare_cell = cells.len() - spare_cols;
   if spare_cols < MUSIC_SYMBOL_MIN_SPARE_COLS {
     return;
   }
@@ -176,7 +183,7 @@ fn apply_music_symbol_flow(
     let symbol = MUSIC_SYMBOLS[symbol_hash as usize % MUSIC_SYMBOLS.len()];
     draw_music_symbol(
       cells,
-      status_width,
+      first_spare_cell,
       spare_cols,
       text_clearance_cols + x,
       text_clearance_cols,
@@ -191,7 +198,7 @@ fn music_symbol_text_clearance(spare_cols: usize) -> usize {
 
 fn draw_music_symbol(
   cells: &mut [RenderedCell],
-  status_width: usize,
+  first_spare_cell: usize,
   spare_cols: usize,
   spare_position: usize,
   text_clearance_cols: usize,
@@ -206,7 +213,7 @@ fn draw_music_symbol(
     return;
   }
 
-  let cell_index = status_width + spare_position;
+  let cell_index = first_spare_cell + spare_position;
   let background = cells[cell_index].background.unwrap_or((255, 255, 255));
 
   cells[cell_index] = RenderedCell::new(
@@ -575,6 +582,25 @@ mod tests {
     assert_eq!(post_text_gap, " ".repeat(expected_clearance));
     assert!(!music_symbol_positions(&cells).is_empty());
     assert!(music_symbol_drain_seconds(status, available_cols) > 0.0);
+  }
+
+  #[test]
+  fn test_music_symbols_never_overwrite_wide_status_text() {
+    let status = "界界";
+    let cells = format_status_bar(
+      status,
+      40,
+      true,
+      0.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 3.0,
+      MUSIC_SYMBOL_DELAY_SECONDS + 3.0,
+    );
+    let display_width: usize = cells.iter().map(|cell| cell.display_width).sum();
+
+    assert_eq!(cells[0].character, '界');
+    assert_eq!(cells[1].character, '界');
+    assert_eq!(display_width, 40);
+    assert!(!music_symbol_positions(&cells).is_empty());
   }
 
   fn music_symbol_positions(cells: &[RenderedCell]) -> Vec<usize> {

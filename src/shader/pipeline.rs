@@ -8,6 +8,7 @@ pub struct ShaderPipeline {
   device: wgpu::Device,
   queue: wgpu::Queue,
   compute_pipeline: wgpu::ComputePipeline,
+  bind_group_layout: wgpu::BindGroupLayout,
   bind_group: wgpu::BindGroup,
   uniform_buffer: wgpu::Buffer,
   output_buffer: wgpu::Buffer,
@@ -23,6 +24,8 @@ impl ShaderPipeline {
     custom_shader: Option<String>,
     debug_log: &mut W,
   ) -> Result<Self> {
+    ensure_non_empty_dimensions(width, height)?;
+
     let mut instance_descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
     instance_descriptor.backends = wgpu::Backends::PRIMARY;
     let instance = wgpu::Instance::new(instance_descriptor);
@@ -60,32 +63,18 @@ impl ShaderPipeline {
     };
 
     writeln!(debug_log, "DEBUG: Creating shader module...")?;
+    // Without an error scope, wgpu reports invalid WGSL (e.g. a broken
+    // --custom-shader) through its uncaptured-error handler, which panics.
+    let validation_scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
       label: Some("Shader Module"),
       source: wgpu::ShaderSource::Wgsl(shader_source.into()),
     });
-    writeln!(debug_log, "DEBUG: Shader module created successfully")?;
 
     let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("Uniform Buffer"),
       size: std::mem::size_of::<ShaderUniforms>() as u64,
       usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-      mapped_at_creation: false,
-    });
-
-    let buffer_size = (width * height * 4 * 4) as u64;
-
-    let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-      label: Some("Output Buffer"),
-      size: buffer_size,
-      usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-      mapped_at_creation: false,
-    });
-
-    let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-      label: Some("Staging Buffer"),
-      size: buffer_size,
-      usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
       mapped_at_creation: false,
     });
 
@@ -115,21 +104,6 @@ impl ShaderPipeline {
       ],
     });
 
-    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("Bind Group"),
-      layout: &bind_group_layout,
-      entries: &[
-        wgpu::BindGroupEntry {
-          binding: 0,
-          resource: uniform_buffer.as_entire_binding(),
-        },
-        wgpu::BindGroupEntry {
-          binding: 1,
-          resource: output_buffer.as_entire_binding(),
-        },
-      ],
-    });
-
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("Pipeline Layout"),
       bind_group_layouts: &[Some(&bind_group_layout)],
@@ -145,12 +119,25 @@ impl ShaderPipeline {
       compilation_options: Default::default(),
       cache: None,
     });
+
+    if let Some(error) = validation_scope.pop().await {
+      anyhow::bail!("Failed to compile shader: {error}");
+    }
     writeln!(debug_log, "DEBUG: Compute pipeline created successfully")?;
+
+    let (output_buffer, staging_buffer, bind_group) = Self::create_size_dependent_resources(
+      &device,
+      &bind_group_layout,
+      &uniform_buffer,
+      width,
+      height,
+    );
 
     Ok(Self {
       device,
       queue,
       compute_pipeline,
+      bind_group_layout,
       bind_group,
       uniform_buffer,
       output_buffer,
@@ -158,6 +145,69 @@ impl ShaderPipeline {
       width,
       height,
     })
+  }
+
+  /// Reallocate the output buffers for new dimensions, reusing the device and
+  /// compiled pipeline.
+  pub fn resize(&mut self, width: u32, height: u32) -> Result<()> {
+    ensure_non_empty_dimensions(width, height)?;
+
+    let (output_buffer, staging_buffer, bind_group) = Self::create_size_dependent_resources(
+      &self.device,
+      &self.bind_group_layout,
+      &self.uniform_buffer,
+      width,
+      height,
+    );
+
+    self.output_buffer = output_buffer;
+    self.staging_buffer = staging_buffer;
+    self.bind_group = bind_group;
+    self.width = width;
+    self.height = height;
+
+    Ok(())
+  }
+
+  fn create_size_dependent_resources(
+    device: &wgpu::Device,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    uniform_buffer: &wgpu::Buffer,
+    width: u32,
+    height: u32,
+  ) -> (wgpu::Buffer, wgpu::Buffer, wgpu::BindGroup) {
+    let buffer_size = (width * height * 4 * 4) as u64;
+
+    let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some("Output Buffer"),
+      size: buffer_size,
+      usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+      mapped_at_creation: false,
+    });
+
+    let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some("Staging Buffer"),
+      size: buffer_size,
+      usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+      mapped_at_creation: false,
+    });
+
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+      label: Some("Bind Group"),
+      layout: bind_group_layout,
+      entries: &[
+        wgpu::BindGroupEntry {
+          binding: 0,
+          resource: uniform_buffer.as_entire_binding(),
+        },
+        wgpu::BindGroupEntry {
+          binding: 1,
+          resource: output_buffer.as_entire_binding(),
+        },
+      ],
+    });
+
+    (output_buffer, staging_buffer, bind_group)
   }
 
   pub fn render(&self, uniforms: &ShaderUniforms) -> Result<Vec<u8>> {
@@ -231,4 +281,12 @@ impl ShaderPipeline {
   pub fn height(&self) -> u32 {
     self.height
   }
+}
+
+fn ensure_non_empty_dimensions(width: u32, height: u32) -> Result<()> {
+  if width == 0 || height == 0 {
+    anyhow::bail!("Shader output dimensions must be non-zero, got {width}x{height}");
+  }
+
+  Ok(())
 }

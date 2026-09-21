@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 define_named_enum!(
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
   pub enum PatternType {
     Plasma => {
       full: "plasma",
@@ -133,6 +133,11 @@ define_named_enum!(
       full: "infinity",
       display: "Infinity",
       aliases: ["loop", "infinite", "lemniscate"]
+    },
+    VortexCorner => {
+      full: "vortex-corner",
+      display: "VortexTL",
+      aliases: ["corner-vortex", "vortex-tl"]
     }
   },
   error_label: "pattern type"

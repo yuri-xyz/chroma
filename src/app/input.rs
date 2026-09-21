@@ -9,7 +9,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifier
 
 use super::DebugLog;
 
-const EFFECT_TYPE_COUNT: u32 = 7;
+const EFFECT_TYPE_COUNT: u32 = chroma::constants::EFFECT_NAMES.len() as u32;
 const FIRST_ACTIVE_EFFECT_TYPE: u32 = 2;
 const PARAMETER_STEP: f32 = 0.1;
 
@@ -50,7 +50,7 @@ fn sync_palette(converter: &mut AsciiConverter, palette: chroma::params::Palette
 }
 
 fn next_effect_type(effect_type: u32) -> u32 {
-  match (effect_type + 1) % EFFECT_TYPE_COUNT {
+  match (effect_type % EFFECT_TYPE_COUNT + 1) % EFFECT_TYPE_COUNT {
     0 | 1 => FIRST_ACTIVE_EFFECT_TYPE,
     next => next,
   }
@@ -158,7 +158,10 @@ fn handle_key_press(
     _ => {}
   }
 
-  params.clamp_all();
+  // No clamp_all() here: audio reactivity intentionally drives speed,
+  // frequency and brightness past the manual ranges, and clamping on every
+  // key press made them visibly snap. Each branch above keeps its own
+  // parameter in range.
 
   Ok(())
 }
@@ -572,6 +575,35 @@ mod tests {
 
     assert_eq!(params.effect_type, 2);
     assert_eq!(params.effect_time, 99.0);
+  }
+
+  #[test]
+  fn test_effect_key_does_not_overflow_on_out_of_range_effect_type() {
+    assert_eq!(next_effect_type(u32::MAX), next_effect_type(u32::MAX % 7));
+  }
+
+  #[test]
+  fn test_non_adjusting_keys_keep_audio_driven_values() {
+    let mut params = ShaderParams {
+      speed: 3.0,
+      frequency: 24.0,
+      ..ShaderParams::default()
+    };
+    let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
+    let mut running = true;
+    let mut debug_log = test_debug_log();
+
+    invoke_key(
+      KeyCode::Char('c'),
+      KeyModifiers::NONE,
+      &mut params,
+      &mut converter,
+      &mut running,
+      &mut debug_log,
+    );
+
+    assert_eq!(params.speed, 3.0);
+    assert_eq!(params.frequency, 24.0);
   }
 
   #[test]

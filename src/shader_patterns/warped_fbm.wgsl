@@ -51,7 +51,7 @@ fn warp_pattern_value(p_input: vec2<f32>, time: f32) -> f32 {
 }
 
 fn warped_fbm_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
-    let scaled_uv = uv * uniforms.frequency;
+    let scaled_uv = centered_uv(uv) * uniforms.frequency;
     let shade = warp_pattern_value(scaled_uv, time * uniforms.speed);
     
     return vec2<f32>(shade * 2.0 - 1.0, shade);

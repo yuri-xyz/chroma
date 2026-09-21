@@ -51,21 +51,31 @@ fn compute_pattern(uv: vec2<f32>, time: f32, pattern_type: u32) -> vec2<f32> {
         return fluid_pattern(uv, time);
     } else if pattern_type == 24u {
         return pyramid_pattern(uv, time);
-    } else {
+    } else if pattern_type == 25u {
         return infinity_pattern(uv, time);
+    } else {
+        return vortex_corner_pattern(uv, time);
     }
 }
 
-fn pattern_position_for_scale(position: vec2<f32>, scale: f32, pattern_type: u32) -> vec2<f32> {
-    if pattern_type == 16u || pattern_type == 22u || pattern_type == 24u || pattern_type == 25u {
-        return (position - vec2<f32>(0.5, 0.5)) * scale + vec2<f32>(0.5, 0.5);
-    }
+// Pattern space keeps the screen centre at (0.5, 0.5) for every pattern and every
+// scale. Patterns rely on that: their hard-coded 0.5 centres are only the middle of
+// the screen, and `scale` only zooms about the middle, because of this mapping.
+const PATTERN_CENTER: vec2<f32> = vec2<f32>(0.5, 0.5);
 
-    return position * scale;
+fn pattern_position_for_scale(position: vec2<f32>, scale: f32) -> vec2<f32> {
+    return (position - PATTERN_CENTER) * scale + PATTERN_CENTER;
 }
 
-fn pattern_position(position: vec2<f32>, pattern_type: u32) -> vec2<f32> {
-    return pattern_position_for_scale(position, uniforms.scale, pattern_type);
+fn pattern_position(position: vec2<f32>) -> vec2<f32> {
+    return pattern_position_for_scale(position, uniforms.scale);
+}
+
+// Coordinates relative to the screen centre. Tiled patterns multiply these, never
+// raw `uv`, by `uniforms.frequency`: audio reactivity moves frequency every frame,
+// and scaling raw `uv` anchors that zoom at the top-left corner of the screen.
+fn centered_uv(uv: vec2<f32>) -> vec2<f32> {
+    return uv - PATTERN_CENTER;
 }
 
 fn plasma_effect(position: vec2<f32>, time: f32) -> vec3<f32> {
@@ -75,7 +85,7 @@ fn plasma_effect(position: vec2<f32>, time: f32) -> vec3<f32> {
     // Then apply beat-reactive distortion to position for visual pop effect
     processed_position = apply_beat_distortion(processed_position, time);
     
-    let uv = pattern_position(processed_position, uniforms.pattern_type);
+    let uv = pattern_position(processed_position);
     
     let pattern_result = compute_pattern(uv, time, uniforms.pattern_type);
     let combined = pattern_result.x;

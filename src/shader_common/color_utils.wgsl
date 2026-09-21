@@ -15,6 +15,12 @@ fn rgb_to_hsv(rgb: vec3<f32>) -> vec3<f32> {
             hue = 60.0 * (((rgb.r - rgb.g) / delta) + 4.0);
         }
     }
+
+    // WGSL `%` keeps the dividend's sign, so red-dominant colors with more blue
+    // than green produce a negative hue that hsv_to_rgb cannot represent.
+    if hue < 0.0 {
+        hue += 360.0;
+    }
     
     var saturation = 0.0;
     if max_val > 0.0001 {
@@ -59,11 +65,13 @@ fn apply_color_adjustments(color: vec3<f32>) -> vec3<f32> {
     adjusted = adjusted * uniforms.brightness;
     
     var hsv = rgb_to_hsv(adjusted);
-    hsv.x = (hsv.x + uniforms.hue) % 360.0;
-    hsv.y = hsv.y * uniforms.saturation;
+    hsv.x = fract((hsv.x + uniforms.hue) / 360.0) * 360.0;
+    // Saturation above 1 would make hsv_to_rgb emit negative channels.
+    hsv.y = clamp(hsv.y * uniforms.saturation, 0.0, 1.0);
     adjusted = hsv_to_rgb(hsv);
     
-    adjusted = pow(adjusted, vec3<f32>(1.0 / uniforms.gamma));
+    // pow() is undefined for negative bases, so keep channels non-negative.
+    adjusted = pow(max(adjusted, vec3<f32>(0.0)), vec3<f32>(1.0 / uniforms.gamma));
     
     adjusted = clamp(adjusted, vec3<f32>(0.0), vec3<f32>(1.0));
     

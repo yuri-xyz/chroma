@@ -5,14 +5,15 @@ fn waves_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let freq = uniforms.frequency;
     
     // Primary horizontal waves with phase modulation
-    let wave1 = sin(uv.x * freq * 1.0 + time * 1.0 + sin(uv.y * 2.0) * 0.5);
+    let centered = centered_uv(uv);
+    let wave1 = sin(centered.x * freq * 1.0 + time * 1.0 + sin(uv.y * 2.0) * 0.5);
     
     // Vertical waves moving at different speed
-    let wave2 = cos(uv.y * freq * 0.7 + time * 0.8 + cos(uv.x * 1.5) * 0.4);
+    let wave2 = cos(centered.y * freq * 0.7 + time * 0.8 + cos(uv.x * 1.5) * 0.4);
     
     // Diagonal waves for complexity
-    let diag1 = sin((uv.x + uv.y) * freq * 0.5 + time * 0.6);
-    let diag2 = cos((uv.x - uv.y) * freq * 0.5 - time * 0.5);
+    let diag1 = sin((centered.x + centered.y) * freq * 0.5 + time * 0.6);
+    let diag2 = cos((centered.x - centered.y) * freq * 0.5 - time * 0.5);
     
     // Circular ripples emanating from center
     let center = vec2<f32>(0.5, 0.5);
@@ -42,8 +43,8 @@ fn waves_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     
     // Calculate gradient for edge detection and color variation
     // Sample directional derivative along the dominant wave direction
-    let gradient_x = cos(uv.x * freq + time) * 0.6 + sin((uv.x + uv.y) * freq * 0.5 + time * 0.6) * 0.4;
-    let gradient_y = sin(uv.y * freq * 0.7 + time * 0.8) * 0.5;
+    let gradient_x = cos(centered.x * freq + time) * 0.6 + sin((centered.x + centered.y) * freq * 0.5 + time * 0.6) * 0.4;
+    let gradient_y = sin(centered.y * freq * 0.7 + time * 0.8) * 0.5;
     let gradient = gradient_x + gradient_y + ripple * 0.5;
     
     return vec2<f32>(value, gradient);

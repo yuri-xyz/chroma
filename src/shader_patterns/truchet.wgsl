@@ -3,8 +3,9 @@
 
 fn truchet_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let scale = uniforms.frequency;
-    let cell = floor(uv * scale);
-    let local = fract(uv * scale);
+    let scaled_uv = centered_uv(uv) * scale;
+    let cell = floor(scaled_uv);
+    let local = fract(scaled_uv);
     
     let hash_val = simple_hash(cell + vec2<f32>(time * 0.05, 0.0));
     let rotation = floor(hash_val * 4.0);

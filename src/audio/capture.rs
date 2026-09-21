@@ -214,8 +214,8 @@ impl AudioCapture {
       ),
     );
 
-    // Get config - try input first, then output for loopback (macOS)
-    #[cfg(target_os = "macos")]
+    // Get config - try input first, then output for loopback (macOS CoreAudio, Windows WASAPI)
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
     let (config, config_source) = match input_config_result {
       Ok(config) => (config, "default-input-config"),
       Err(input_error) => match output_config_result {
@@ -236,7 +236,7 @@ impl AudioCapture {
       },
     };
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     let (config, config_source) = (
       input_config_result.map_err(|e| anyhow::anyhow!("Failed to get device config: {}", e))?,
       "default-input-config",
@@ -256,7 +256,7 @@ impl AudioCapture {
       append_debug_line(
         "audio",
         format!(
-          "Using output-config fallback for '{device_name}'. On macOS this may still produce silent buffers unless the device truly supports loopback."
+          "Using output-config fallback for '{device_name}' (loopback capture). On macOS this may still produce silent buffers unless the device truly supports loopback."
         ),
       );
     }
@@ -390,7 +390,7 @@ impl AudioCapture {
     if should_warn_zero_stream && self.using_output_config_fallback {
       append_debug_line(
         "audio",
-        "WARNING: received a long run of all-zero callbacks while using macOS output-config fallback. This usually means the selected output device is not providing real system-audio loopback. Install/select BlackHole or another loopback-capable source.",
+        "WARNING: received a long run of all-zero callbacks while using output-config loopback fallback. Either nothing is playing, or the selected output device is not providing real system-audio loopback. On macOS, install/select BlackHole or another loopback-capable source.",
       );
     }
 

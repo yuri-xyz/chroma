@@ -19,8 +19,9 @@ Chroma is a Rust terminal audio visualizer. It renders GPU-generated WGSL shader
 - Audio support is built in. Linux uses PulseAudio/PipeWire monitor capture through libpulse when available, then falls back to CPAL.
 - Linux runtime/package dependencies include Vulkan loader support, ALSA, and PulseAudio libraries.
 - Stream mode is selected with `--stream WIDTHxHEIGHT`; it disables terminal setup, status bar, and interactive input, and emits full frames to stdout.
-- Third-party embedders such as kew rely on `--stream WIDTHxHEIGHT`, `--preset NUM`, `--bass-influence FLOAT`, `--audio-device DEVICE`, and `-c/--config FILE` retaining their names and compatible behavior. Do not rename, remove, or repurpose these flags, and preserve plain `--stream` compatibility unless there is an intentional migration plan for existing embedders.
-- Built-in presets are numbered `0..24` and live in `src/presets/`.
+- Third-party embedders rely on `--stream WIDTHxHEIGHT`, `--preset NUM`, `--bass-influence FLOAT`, `--audio-device DEVICE`, and `-c/--config FILE` retaining their names and compatible behavior. Do not rename, remove, or repurpose these flags, and preserve plain `--stream` compatibility unless there is an intentional migration plan for existing embedders.
+- Built-in presets are numbered `0..25` and live in `src/presets/`.
+- The empty `audio` Cargo feature is intentional backwards compatibility: audio is always built in, and the feature only exists so `cargo install --features audio` from older instructions keeps working. Do not gate code behind it or remove it.
 - `CLAUDE.md` and `CONTRIBUTING.md` should remain symlinks to `AGENTS.md`.
 
 ## Runtime Output Rule
@@ -52,6 +53,7 @@ Useful focused checks:
 ```bash
 nix --extra-experimental-features 'nix-command flakes' develop -c cargo test --test shader_pattern_position_test
 nix --extra-experimental-features 'nix-command flakes' develop -c cargo test --test render_test test_shader_produces_non_zero_output -- --ignored --exact
+nix --extra-experimental-features 'nix-command flakes' develop -c cargo test --test pattern_zoom_test -- --ignored --test-threads=1
 ```
 
 Running `cargo test` outside the dev shell may fail to link Linux PulseAudio libraries even when the Rust code is correct.
@@ -75,8 +77,9 @@ Running `cargo test` outside the dev shell may fail to link Linux PulseAudio lib
 - Built-in shaders are concatenated by `build.rs` into `compiled_shader.wgsl`; update `build.rs` when adding a WGSL module.
 - `src/shader_common/uniforms.wgsl` and `src/shader/uniforms.rs` must stay layout-compatible.
 - The shader entry point writes RGBA float output that is read back and converted to ASCII on the CPU.
-- Some patterns are tiled and can scale from the origin; localized patterns such as globe/sphere effects need center-based coordinate handling.
-- GPU render tests in `tests/render_test.rs` are ignored by default because they require hardware/driver availability. Run targeted ignored tests when touching shader compilation or pipeline code.
+- Pattern space keeps the screen centre at `(0.5, 0.5)` for every pattern and scale (`pattern_position_for_scale` in `src/shader_common/main.wgsl`), so `scale` zooms about the centre and patterns can hard-code `0.5` as the middle of the screen. `VortexCorner` is the one deliberate exception: it places its eye at screen position `0.5 / scale` to keep the corner-anchored vortex look that presets 3, 9 and 18 were designed around.
+- Audio reactivity changes `frequency` every frame. Tiled patterns must multiply `centered_uv(uv)`, never raw `uv`, by `uniforms.frequency`, and must add scroll or drift offsets after that product. Otherwise every beat looks like a zoom into the top-left corner or a jump along the scroll direction. `tests/pattern_zoom_test.rs` measures the zoom anchor on the GPU.
+- GPU render tests in `tests/render_test.rs` and `tests/pattern_zoom_test.rs` are ignored by default because they require hardware/driver availability. Run several of them with `--test-threads=1`: each test creates its own Vulkan device, and creating devices on parallel threads can intermittently segfault inside the Vulkan loader. Run targeted ignored tests when touching shader compilation or pipeline code.
 
 ## Audio Notes
 

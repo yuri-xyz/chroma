@@ -37,7 +37,9 @@ cargo run --release -- --config config_a3f8c2d9e1b5.toml
 cargo run --release -- -c config_a3f8c2d9e1b5.toml
 ```
 
-If the config file fails to load, the application will fall back to the default configuration and print a warning.
+If the config file fails to load at startup, Chroma exits with an error. Fields missing from the file keep the values from `--preset`/`--random` (or the defaults). During live reload, an invalid edit is skipped and the current parameters stay active.
+
+Enum fields accept either the saved names (`"WarpedFbm"`) or the CLI names and aliases (`"warped"`).
 
 ## Configuration Format
 

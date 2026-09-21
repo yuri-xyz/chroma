@@ -76,6 +76,21 @@ macro_rules! define_named_enum {
         }
       }
     }
+
+    // Saved configs use the Rust variant names ("WarpedFbm"), while users
+    // write the CLI names ("warped"), so accept both.
+    impl<'de> serde::Deserialize<'de> for $name {
+      fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = String::deserialize(deserializer)?;
+
+        match value.as_str() {
+          $(
+            stringify!($variant) => Ok(Self::$variant),
+          )+
+          other => other.parse().map_err(serde::de::Error::custom),
+        }
+      }
+    }
   };
 }
 

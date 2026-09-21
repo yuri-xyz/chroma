@@ -4,6 +4,7 @@ use std::{
     Arc, Mutex,
   },
   thread::{self, JoinHandle},
+  time::Duration,
 };
 
 use anyhow::Context as _;
@@ -28,6 +29,8 @@ const PULSE_SAMPLE_RATE: u32 = 48_000;
 const PULSE_CHANNELS: u8 = 2;
 const PULSE_READ_FRAMES: usize = 1_024;
 const PULSE_BUFFER_FRAGMENTS: u32 = 4;
+const RECONNECT_INITIAL_DELAY: Duration = Duration::from_millis(250);
+const RECONNECT_MAX_DELAY: Duration = Duration::from_secs(5);
 
 pub(super) struct PulseCapture {
   _reader: JoinHandle<()>,
@@ -41,70 +44,22 @@ impl PulseCapture {
     device_name: Option<&str>,
     buffer: Arc<Mutex<SharedSampleBuffer>>,
   ) -> anyhow::Result<Self> {
-    let source_name = match device_name {
-      Some(name) => name.to_string(),
-      None => default_monitor_source_name()?.with_context(|| {
-        "PulseAudio/PipeWire did not expose a monitor source for the default sink"
-      })?,
-    };
-
-    append_debug_line(
-      "audio",
-      format!("Opening PulseAudio/PipeWire source '{source_name}'"),
-    );
-
-    let spec = Spec {
-      format: Format::FLOAT32NE,
-      rate: PULSE_SAMPLE_RATE,
-      channels: PULSE_CHANNELS,
-    };
-    anyhow::ensure!(spec.is_valid(), "invalid PulseAudio sample specification");
-
-    let fragment_bytes = pulse_fragment_size_bytes();
-    let buffer_attr = BufferAttr {
-      maxlength: fragment_bytes * PULSE_BUFFER_FRAGMENTS,
-      tlength: u32::MAX,
-      prebuf: u32::MAX,
-      minreq: u32::MAX,
-      fragsize: fragment_bytes,
-    };
-
-    append_debug_line(
-      "audio",
-      format!(
-        "PulseAudio capture buffer: fragment_bytes={}, target_fragment_ms={:.1}",
-        buffer_attr.fragsize,
-        pulse_fragment_duration_ms()
-      ),
-    );
-
-    let stream = Simple::new(
-      None,
-      PULSE_APP_NAME,
-      Direction::Record,
-      Some(&source_name),
-      PULSE_STREAM_NAME,
-      &spec,
-      None,
-      Some(&buffer_attr),
-    )
-    .map_err(|error| {
-      anyhow::anyhow!("failed to open PulseAudio source '{source_name}': {error}")
-    })?;
-    if let Ok(latency) = stream.get_latency() {
-      append_debug_line(
-        "audio",
-        format!("PulseAudio reported initial latency: {} usec", latency.0),
-      );
-    }
+    let (stream, source_name) = open_source(device_name)?;
 
     let stop = Arc::new(AtomicBool::new(false));
     let reader_stop = Arc::clone(&stop);
+    let requested_device = device_name.map(str::to_string);
     let reader_source_name = source_name.clone();
     let reader = thread::Builder::new()
       .name("chroma-pulse-capture".to_string())
       .spawn(move || {
-        read_pulse_samples(stream, reader_source_name, reader_stop, buffer);
+        read_pulse_samples(
+          stream,
+          reader_source_name,
+          requested_device,
+          reader_stop,
+          buffer,
+        );
       })
       .context("failed to spawn PulseAudio capture thread")?;
 
@@ -115,6 +70,66 @@ impl PulseCapture {
       source_name,
     })
   }
+}
+
+/// Open the requested source, or the default sink's monitor when none is given.
+fn open_source(device_name: Option<&str>) -> anyhow::Result<(Simple, String)> {
+  let source_name = match device_name {
+    Some(name) => name.to_string(),
+    None => default_monitor_source_name()?.with_context(|| {
+      "PulseAudio/PipeWire did not expose a monitor source for the default sink"
+    })?,
+  };
+
+  append_debug_line(
+    "audio",
+    format!("Opening PulseAudio/PipeWire source '{source_name}'"),
+  );
+
+  let spec = Spec {
+    format: Format::FLOAT32NE,
+    rate: PULSE_SAMPLE_RATE,
+    channels: PULSE_CHANNELS,
+  };
+  anyhow::ensure!(spec.is_valid(), "invalid PulseAudio sample specification");
+
+  let fragment_bytes = pulse_fragment_size_bytes();
+  let buffer_attr = BufferAttr {
+    maxlength: fragment_bytes * PULSE_BUFFER_FRAGMENTS,
+    tlength: u32::MAX,
+    prebuf: u32::MAX,
+    minreq: u32::MAX,
+    fragsize: fragment_bytes,
+  };
+
+  append_debug_line(
+    "audio",
+    format!(
+      "PulseAudio capture buffer: fragment_bytes={}, target_fragment_ms={:.1}",
+      buffer_attr.fragsize,
+      pulse_fragment_duration_ms()
+    ),
+  );
+
+  let stream = Simple::new(
+    None,
+    PULSE_APP_NAME,
+    Direction::Record,
+    Some(&source_name),
+    PULSE_STREAM_NAME,
+    &spec,
+    None,
+    Some(&buffer_attr),
+  )
+  .map_err(|error| anyhow::anyhow!("failed to open PulseAudio source '{source_name}': {error}"))?;
+  if let Ok(latency) = stream.get_latency() {
+    append_debug_line(
+      "audio",
+      format!("PulseAudio reported initial latency: {} usec", latency.0),
+    );
+  }
+
+  Ok((stream, source_name))
 }
 
 fn pulse_fragment_size_bytes() -> u32 {
@@ -153,8 +168,9 @@ pub(super) fn print_pulse_sources() {
 }
 
 fn read_pulse_samples(
-  stream: Simple,
-  source_name: String,
+  mut stream: Simple,
+  mut source_name: String,
+  requested_device: Option<String>,
   stop: Arc<AtomicBool>,
   buffer: Arc<Mutex<SharedSampleBuffer>>,
 ) {
@@ -167,9 +183,19 @@ fn read_pulse_samples(
     if let Err(error) = stream.read(&mut bytes) {
       append_debug_line(
         "audio",
-        format!("PulseAudio read error for '{source_name}': {error}"),
+        format!("PulseAudio read error for '{source_name}': {error}; reconnecting"),
       );
-      break;
+
+      // The server may have restarted; keep retrying instead of leaving the
+      // visualizer without audio for the rest of the session.
+      match reconnect(requested_device.as_deref(), &stop) {
+        Some((new_stream, new_source_name)) => {
+          stream = new_stream;
+          source_name = new_source_name;
+          continue;
+        }
+        None => break,
+      }
     }
 
     samples.clear();
@@ -195,6 +221,32 @@ fn read_pulse_samples(
       );
     }
   }
+}
+
+/// Retry opening the source with exponential backoff until it succeeds or
+/// capture is stopped.
+fn reconnect(requested_device: Option<&str>, stop: &AtomicBool) -> Option<(Simple, String)> {
+  let mut delay = RECONNECT_INITIAL_DELAY;
+
+  while !stop.load(Ordering::Relaxed) {
+    thread::sleep(delay);
+
+    match open_source(requested_device) {
+      Ok(opened) => {
+        append_debug_line(
+          "audio",
+          format!("PulseAudio capture reconnected to '{}'", opened.1),
+        );
+        return Some(opened);
+      }
+      Err(error) => {
+        append_debug_line("audio", format!("PulseAudio reconnect failed: {error}"));
+        delay = (delay * 2).min(RECONNECT_MAX_DELAY);
+      }
+    }
+  }
+
+  None
 }
 
 fn default_monitor_source_name() -> anyhow::Result<Option<String>> {

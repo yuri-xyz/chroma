@@ -8,6 +8,7 @@ macro_rules! debug_logln {
 mod audio;
 mod config_watcher;
 mod input;
+mod preset_cycle;
 mod rendering;
 mod status_bar;
 
@@ -23,10 +24,18 @@ use chroma::{
   render::{RenderedCell, StreamFormat},
   shader::{ShaderPipeline, ShaderUniforms},
 };
+pub use config_watcher::ConfigLoader;
 use crossterm::terminal;
+pub use preset_cycle::PresetCycler;
 
 const STATUS_BAR_AUDIO_HOLD_SECONDS: f32 = 0.75;
 const STATUS_BAR_AUDIO_OFF_THRESHOLD: f32 = AUDIO_SILENCE_THRESHOLD * 0.4;
+
+/// The status bar needs its own row, so it is hidden when the terminal cannot
+/// fit both it and at least one shader row.
+fn status_bar_visible(show_status_bar: bool, stream_mode: bool, terminal_height: u16) -> bool {
+  show_status_bar && !stream_mode && terminal_height >= 2
+}
 
 fn shader_dimensions(
   terminal_width: u16,
@@ -35,13 +44,14 @@ fn shader_dimensions(
   stream_mode: bool,
 ) -> (u32, u32) {
   let shader_width = terminal_width as u32;
-  let shader_height = if show_status_bar && !stream_mode {
-    terminal_height.saturating_sub(1) as u32
+  let shader_height = if status_bar_visible(show_status_bar, stream_mode, terminal_height) {
+    terminal_height as u32 - 1
   } else {
     terminal_height as u32
   };
 
-  (shader_width, shader_height)
+  // GPU buffers cannot be zero-sized, so keep at least one cell to render.
+  (shader_width.max(1), shader_height.max(1))
 }
 
 fn create_converter(params: &ShaderParams) -> AsciiConverter {
@@ -105,7 +115,7 @@ pub struct App {
   debug_log: DebugLog,
   last_terminal_size: (u16, u16),
   config_watcher: Option<config_watcher::ConfigWatcher>,
-  custom_shader: Option<String>,
+  preset_cycler: Option<PresetCycler>,
   target_fps: u32,
   audio_capture: Option<AudioCapture>,
   audio_analyzer: Option<AudioAnalyzer>,
@@ -118,6 +128,8 @@ pub struct App {
 
 pub struct AppOptions {
   pub(crate) loaded_config: Option<ShaderParams>,
+  pub(crate) config_loader: ConfigLoader,
+  pub(crate) preset_cycler: Option<PresetCycler>,
   pub(crate) show_status_bar: bool,
   pub(crate) stream_dimensions: Option<crate::cli::StreamDimensions>,
   pub(crate) stream_format: StreamFormat,
@@ -132,6 +144,8 @@ impl App {
   pub async fn new(options: AppOptions) -> Result<Self> {
     let AppOptions {
       loaded_config,
+      config_loader,
+      preset_cycler,
       show_status_bar,
       stream_dimensions,
       stream_format,
@@ -184,20 +198,15 @@ impl App {
       )?;
     }
 
-    let pipeline = ShaderPipeline::new(
-      shader_width,
-      shader_height,
-      custom_shader.clone(),
-      &mut debug_log,
-    )
-    .await?;
+    let pipeline =
+      ShaderPipeline::new(shader_width, shader_height, custom_shader, &mut debug_log).await?;
 
     let converter = create_converter(&params);
 
     let (audio_capture, audio_analyzer) =
       Self::init_audio(&mut debug_log, audio_device.as_deref())?;
 
-    let config_watcher = Self::init_config_watcher(&config_path, &mut debug_log)?;
+    let config_watcher = Self::init_config_watcher(&config_path, config_loader, &mut debug_log)?;
 
     Ok(Self {
       params,
@@ -212,7 +221,7 @@ impl App {
       debug_log,
       last_terminal_size: (terminal_width, terminal_height),
       config_watcher,
-      custom_shader,
+      preset_cycler,
       target_fps,
       audio_capture,
       audio_analyzer,
@@ -249,10 +258,11 @@ impl App {
   /// Initialize config file watcher if config path is provided
   fn init_config_watcher(
     config_path: &Option<String>,
+    config_loader: ConfigLoader,
     debug_log: &mut DebugLog,
   ) -> Result<Option<config_watcher::ConfigWatcher>> {
     if let Some(path) = config_path {
-      match config_watcher::ConfigWatcher::new(path) {
+      match config_watcher::ConfigWatcher::new(path, config_loader) {
         Ok(watcher) => {
           writeln!(debug_log, "Config file watcher initialized for: {}", path)?;
           Ok(Some(watcher))
@@ -287,25 +297,34 @@ impl App {
     self.update_status_bar_audio_activity(delta_time);
 
     self.check_and_apply_config_reload();
+    self.advance_preset_cycle(delta_time);
 
     self.last_frame_time = current_time;
   }
 
   /// Check for config file changes and apply them if valid
   fn check_and_apply_config_reload(&mut self) {
-    if let Some(ref watcher) = self.config_watcher {
-      if let Some(new_params) = watcher.try_receive_config() {
-        let new_params = prepare_reloaded_params(&self.params, new_params);
+    let new_params = self
+      .config_watcher
+      .as_ref()
+      .and_then(|watcher| watcher.try_receive_config());
 
-        if new_params.palette != self.params.palette {
-          self.converter = create_converter(&new_params);
-        }
+    if let Some(new_params) = new_params {
+      self.apply_reloaded_params(new_params);
 
-        self.params = new_params;
-
-        let _ = debug_logln!(self.debug_log, "Config reloaded successfully");
-      }
+      let _ = debug_logln!(self.debug_log, "Config reloaded successfully");
     }
+  }
+
+  /// Swap in freshly layered params (config reload or preset cycle), keeping runtime state
+  fn apply_reloaded_params(&mut self, new_params: ShaderParams) {
+    let new_params = prepare_reloaded_params(&self.params, new_params);
+
+    if new_params.palette != self.params.palette {
+      self.converter = create_converter(&new_params);
+    }
+
+    self.params = new_params;
   }
 
   /// Render current frame
@@ -353,7 +372,11 @@ impl App {
     // Normal mode: full rendering with status bar
     let has_sound = self.check_audio_activity();
 
-    let status_bar = if self.show_status_bar {
+    let status_bar = if status_bar_visible(
+      self.show_status_bar,
+      self.stream_mode,
+      self.last_terminal_size.1,
+    ) {
       Some(self.build_status_bar(has_sound))
     } else {
       None
@@ -427,7 +450,7 @@ impl App {
   }
 
   /// Handle window resize
-  async fn handle_resize(&mut self, new_width: u16, new_height: u16) -> Result<()> {
+  fn handle_resize(&mut self, new_width: u16, new_height: u16) -> Result<()> {
     debug_logln!(
       self.debug_log,
       "RESIZE: Terminal resized to {}x{} (was {}x{})",
@@ -446,13 +469,7 @@ impl App {
 
     self.params.set_resolution(shader_width, shader_height);
 
-    self.pipeline = ShaderPipeline::new(
-      shader_width,
-      shader_height,
-      self.custom_shader.clone(),
-      &mut self.debug_log,
-    )
-    .await?;
+    self.pipeline.resize(shader_width, shader_height)?;
 
     self.last_terminal_size = (new_width, new_height);
 
@@ -476,7 +493,7 @@ impl App {
         // Check for window resize
         let (current_width, current_height) = terminal::size()?;
         if (current_width, current_height) != self.last_terminal_size {
-          pollster::block_on(async { self.handle_resize(current_width, current_height).await })?;
+          self.handle_resize(current_width, current_height)?;
         }
 
         // Handle input
@@ -518,9 +535,18 @@ mod tests {
   }
 
   #[test]
-  fn test_shader_dimensions_saturate_when_terminal_height_is_tiny() {
-    assert_eq!(shader_dimensions(80, 0, true, false), (80, 0));
-    assert_eq!(shader_dimensions(80, 1, true, false), (80, 0));
+  fn test_shader_dimensions_never_collapse_to_zero() {
+    assert_eq!(shader_dimensions(80, 0, true, false), (80, 1));
+    assert_eq!(shader_dimensions(80, 1, true, false), (80, 1));
+    assert_eq!(shader_dimensions(0, 24, false, false), (1, 24));
+  }
+
+  #[test]
+  fn test_status_bar_hidden_when_terminal_has_no_spare_row() {
+    assert!(status_bar_visible(true, false, 2));
+    assert!(!status_bar_visible(true, false, 1));
+    assert!(!status_bar_visible(true, true, 24));
+    assert!(!status_bar_visible(false, false, 24));
   }
 
   #[test]

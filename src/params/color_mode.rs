@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 define_named_enum!(
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
   pub enum ColorMode {
     Rainbow => {
       full: "rainbow",

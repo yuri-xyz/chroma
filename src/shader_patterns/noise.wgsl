@@ -55,7 +55,8 @@ fn fbm_noise(p: vec2<f32>, octaves: i32) -> f32 {
 
 fn noise_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let scale = uniforms.frequency * 3.0;
-    let animated_uv = uv * scale + vec2<f32>(time * 0.15, time * 0.1);
+    let centered = centered_uv(uv);
+    let animated_uv = centered * scale + vec2<f32>(time * 0.15, time * 0.1);
     
     // Main noise with multiple octaves for detail
     let octaves = max(3, i32(uniforms.octaves));
@@ -73,10 +74,10 @@ fn noise_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     
     // Calculate gradient for edge detection (sample nearby points)
     let offset = 0.01;
-    let dx = fbm_noise((uv + vec2<f32>(offset, 0.0)) * scale, octaves - 1) - 
-             fbm_noise((uv - vec2<f32>(offset, 0.0)) * scale, octaves - 1);
-    let dy = fbm_noise((uv + vec2<f32>(0.0, offset)) * scale, octaves - 1) - 
-             fbm_noise((uv - vec2<f32>(0.0, offset)) * scale, octaves - 1);
+    let dx = fbm_noise((centered + vec2<f32>(offset, 0.0)) * scale, octaves - 1) - 
+             fbm_noise((centered - vec2<f32>(offset, 0.0)) * scale, octaves - 1);
+    let dy = fbm_noise((centered + vec2<f32>(0.0, offset)) * scale, octaves - 1) - 
+             fbm_noise((centered - vec2<f32>(0.0, offset)) * scale, octaves - 1);
     let gradient = length(vec2<f32>(dx, dy));
     
     return vec2<f32>(value * 2.0 - 1.0, gradient * 2.0);

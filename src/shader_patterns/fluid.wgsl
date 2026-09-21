@@ -142,7 +142,8 @@ fn fluid_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
         fluid_fbm(uv * 2.0, flow_time) * 0.08,
         fluid_fbm(uv * 2.0 + vec2<f32>(5.0, 3.0), flow_time) * 0.08
     ) * amp;
-    let distorted_uv = uv + flow_distort;
+    let centered = centered_uv(uv);
+    let distorted_uv = centered + flow_distort;
 
     // Compute caustics - the star of the show
     let caustic_value = caustics(distorted_uv, time);
@@ -154,7 +155,7 @@ fn fluid_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let foam_value = foam_cells(distorted_uv, time);
 
     // Curl flow for swirling patterns
-    let curl_value = curl_flow(uv * uniforms.frequency, time);
+    let curl_value = curl_flow(centered * uniforms.frequency, time);
 
     // Combine layers with artistic weighting
     // Caustics are primary, waves add motion, foam adds texture

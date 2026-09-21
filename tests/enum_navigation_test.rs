@@ -28,6 +28,7 @@ fn test_pattern_type_to_u32_all_variants() {
   assert_eq!(PatternType::Fluid.to_u32(), 23);
   assert_eq!(PatternType::Pyramid.to_u32(), 24);
   assert_eq!(PatternType::Infinity.to_u32(), 25);
+  assert_eq!(PatternType::VortexCorner.to_u32(), 26);
 }
 
 #[test]
@@ -58,6 +59,7 @@ fn test_pattern_type_name_all_variants() {
   assert_eq!(PatternType::Fluid.name(), "Fluid");
   assert_eq!(PatternType::Pyramid.name(), "Pyramid");
   assert_eq!(PatternType::Infinity.name(), "Infinity");
+  assert_eq!(PatternType::VortexCorner.name(), "VortexTL");
 }
 
 #[test]
@@ -65,13 +67,16 @@ fn test_pattern_type_next_cycles_through_all() {
   let mut current = PatternType::Plasma;
   let start = current;
 
-  for _ in 0..25 {
+  for _ in 1..PatternType::all().len() {
     current = current.next();
     assert_ne!(current, start, "Should not cycle back too early");
   }
 
   current = current.next();
-  assert_eq!(current, start, "Should cycle back to start after 26 steps");
+  assert_eq!(
+    current, start,
+    "Should cycle back to start after visiting every pattern"
+  );
 }
 
 #[test]
@@ -79,13 +84,16 @@ fn test_pattern_type_previous_cycles_through_all() {
   let mut current = PatternType::Plasma;
   let start = current;
 
-  for _ in 0..25 {
+  for _ in 1..PatternType::all().len() {
     current = current.previous();
     assert_ne!(current, start, "Should not cycle back too early");
   }
 
   current = current.previous();
-  assert_eq!(current, start, "Should cycle back to start after 26 steps");
+  assert_eq!(
+    current, start,
+    "Should cycle back to start after visiting every pattern"
+  );
 }
 
 #[test]

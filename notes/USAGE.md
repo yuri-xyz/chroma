@@ -119,6 +119,19 @@ CHROMA_FRAME v=1 frame=<index> width=<w> height=<h> format=<format> encoding=utf
 
 The header is followed by exactly `bytes` UTF-8 payload bytes. `--stream-format ansi` preserves ANSI-colored rows. `--stream-format cells` emits one tab-separated record per cell: `x`, `y`, display width, Unicode code point, foreground RGB hex or `-`, and background RGB hex or `-`.
 
+## Built-in Presets
+
+`--preset NUM` starts from one of the built-in presets (`0`-`25`, wrapping past the end) and `--preset random` picks one at random.
+
+`--preset-interval SECONDS` switches to another preset every `SECONDS` (a whole number, at least `1`) without restarting Chroma. It requires `--preset`, which also sets the order: a number steps through the presets in order from that preset, and `random` keeps picking a random preset that differs from the current one.
+
+```bash
+chroma --preset random --preset-interval 30
+chroma --stream 80x24 --preset 0 --preset-interval 60 --bass-influence 0.8
+```
+
+Every switch re-applies the config file and the other CLI parameters on top of the new preset, exactly like startup, so values such as `--bass-influence` stay in effect. A config saved with `S` sets every field, so combining one with `--preset-interval` hides the preset changes; use a partial config with only the fields you want to pin. Parameters changed with the keyboard are replaced by the next preset. It works in both the interactive UI and stream mode.
+
 ## Creating Custom Shaders
 
 ### WGSL Shader Format
@@ -158,7 +171,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
 The application will:
 
-1. Capture system audio using PulseAudio/PipeWire on Linux, with CPAL fallback
+1. Capture system audio using PulseAudio/PipeWire on Linux (with CPAL fallback), WASAPI loopback of the default output device on Windows, and CPAL device selection on macOS
 2. Perform FFT analysis
 3. Map frequency bands to shader parameters:
    - Bass → Amplitude

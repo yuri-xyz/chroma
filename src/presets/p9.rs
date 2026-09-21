@@ -24,7 +24,7 @@ pub fn preset() -> ShaderParams {
     glyph_sharpness: 0.837,
     palette: PaletteType::Braille,
     color_mode: ColorMode::Chromatic,
-    pattern_type: PatternType::Vortex,
+    pattern_type: PatternType::VortexCorner,
     audio_enabled: true,
     bass_influence: 0.466,
     mid_influence: 0.473,

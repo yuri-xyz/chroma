@@ -31,6 +31,12 @@ clap = { version = "4.6.1", features = ["derive"] }
 sha2 = "0.11.0"
 notify = "9.0.0-rc.3"
 
+[features]
+# Audio is always built in. This empty feature is kept intentionally so build
+# commands written for older releases (`cargo install --features audio`) still
+# succeed. Do not gate code behind it.
+audio = []
+
 [target.'cfg(target_os = "linux")'.dependencies]
 libpulse-binding = "2.30.1"
 libpulse-simple-binding = "2.29.0"

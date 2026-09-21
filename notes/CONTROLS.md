@@ -28,26 +28,13 @@ Save the current configuration to a file in the working directory.
 
 ## Parameter Adjustments
 
-### Frequency (Wave Density)
+### Frequency, Speed, and Amplitude
 
-- `↑` **Up Arrow** - Increase frequency (+0.1)
-- `↓` **Down Arrow** - Decrease frequency (-0.1)
-- Range: 3.0 → 18.0
-- Effect: More/fewer wave oscillations
-
-### Speed (Animation Speed)
-
-- `→` **Right Arrow** - Increase speed (+0.1)
-- `←` **Left Arrow** - Decrease speed (-0.1)
-- Range: 0.0 → 1.0
-- Effect: Faster/slower animation
-
-### Amplitude (Wave Height)
-
-- `+` or `=` - Increase amplitude (+0.1)
-- `-` or `_` - Decrease amplitude (-0.1)
-- Range: 0.0 → 2.0
-- Effect: More/less extreme color variations
+These are driven by audio reactivity every frame, so the arrow keys and
+`+`/`-` do not adjust them. Set their starting values with `--frequency`,
+`--speed`, and `--amplitude` or a config file, and tune how strongly audio
+drives them with `--bass-influence`, `--mid-influence`, and
+`--treble-influence`.
 
 ### Scale (Zoom)
 
@@ -60,7 +47,7 @@ Save the current configuration to a file in the working directory.
 
 - `T` - Next pattern
 - `Y` - Previous pattern
-- Effect: Cycle through different visual patterns (Plasma, Waves, Ripples, Vortex, Noise, Geometric, Voronoi, Truchet, Hexagonal, Interference, Fractal, Glitch, Spiral, Rings, Grid, Diamonds, Sphere, Octgrams, WarpedFbm, Kaleidoscope, Tunnel, Metaballs, World, Fluid, Pyramid, Infinity)
+- Effect: Cycle through different visual patterns (Plasma, Waves, Ripples, Vortex, Noise, Geometric, Voronoi, Truchet, Hexagonal, Interference, Fractal, Glitch, Spiral, Rings, Grid, Diamonds, Sphere, Octgrams, WarpedFbm, Kaleidoscope, Tunnel, Metaballs, World, Fluid, Pyramid, Infinity, VortexTL). Vortex keeps its eye in the middle of the screen; VortexTL (`--pattern vortex-corner`) anchors it to the top-left corner, at screen position `0.5 / scale`, so larger scales show the sweeping outer arms instead
 
 ### Color Mode
 

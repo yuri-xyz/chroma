@@ -20,6 +20,9 @@ const DROP_BEAT_DISTORTION_STRENGTH: f32 = 1.2;
 const DROP_BEAT_ZOOM_STRENGTH: f32 = 1.0;
 const REGULAR_BEAT_DISTORTION_STRENGTH: f32 = 0.85;
 const REGULAR_BEAT_ZOOM_STRENGTH: f32 = 0.7;
+/// Smoothing factors below were tuned per frame at this rate; they are scaled
+/// by the real frame time so `--fps` does not change how fast visuals react.
+const REFERENCE_FPS: f32 = 60.0;
 static EMPTY_SAMPLE_BATCH_COUNT: AtomicUsize = AtomicUsize::new(0);
 static FEATURE_LOG_COUNT: AtomicUsize = AtomicUsize::new(0);
 static SILENCE_DECAY_LOG_COUNT: AtomicUsize = AtomicUsize::new(0);
@@ -32,6 +35,11 @@ struct SampleActivity {
 
 fn blend_towards(current: f32, target: f32, retain: f32) -> f32 {
   current * retain + target * (1.0 - retain)
+}
+
+/// Convert a per-reference-frame retain factor into one for `delta_time`.
+fn frame_retain(retain: f32, delta_time: f32) -> f32 {
+  retain.powf(delta_time * REFERENCE_FPS)
 }
 
 fn weighted_energy(features: &AudioFeatures) -> f32 {
@@ -124,7 +132,7 @@ pub fn update_audio_reactive(
         );
       }
 
-      apply_silence_decay(params, &features, debug_log);
+      apply_silence_decay(params, &features, delta_time, debug_log);
       return features;
     }
 
@@ -149,9 +157,9 @@ pub fn update_audio_reactive(
     }
 
     if is_silent {
-      apply_silence_decay(params, &features, debug_log);
+      apply_silence_decay(params, &features, delta_time, debug_log);
     } else {
-      apply_audio_reactivity(params, &features, debug_log);
+      apply_audio_reactivity(params, &features, delta_time, debug_log);
     }
 
     return features;
@@ -171,27 +179,18 @@ pub fn update_audio_reactive(
 fn apply_silence_decay(
   params: &mut chroma::params::ShaderParams,
   features: &chroma::audio::AudioFeatures,
+  delta_time: f32,
   debug_log: &mut DebugLog,
 ) {
-  params.amplitude = blend_towards(
-    params.amplitude,
-    SILENT_AMPLITUDE_BASELINE,
-    AUDIO_DECAY_RATE,
-  );
-  params.distort_amplitude *= AUDIO_DECAY_RATE;
-  params.frequency = blend_towards(
-    params.frequency,
-    SILENT_FREQUENCY_BASELINE,
-    AUDIO_DECAY_RATE,
-  );
-  params.speed *= AUDIO_SPEED_DECAY_RATE;
-  params.brightness = blend_towards(
-    params.brightness,
-    SILENT_BRIGHTNESS_BASELINE,
-    AUDIO_DECAY_RATE,
-  );
-  params.noise_strength *= 0.85;
-  params.contrast = blend_towards(params.contrast, SILENT_CONTRAST_BASELINE, AUDIO_DECAY_RATE);
+  let decay = frame_retain(AUDIO_DECAY_RATE, delta_time);
+
+  params.amplitude = blend_towards(params.amplitude, SILENT_AMPLITUDE_BASELINE, decay);
+  params.distort_amplitude *= decay;
+  params.frequency = blend_towards(params.frequency, SILENT_FREQUENCY_BASELINE, decay);
+  params.speed *= frame_retain(AUDIO_SPEED_DECAY_RATE, delta_time);
+  params.brightness = blend_towards(params.brightness, SILENT_BRIGHTNESS_BASELINE, decay);
+  params.noise_strength *= frame_retain(0.85, delta_time);
+  params.contrast = blend_towards(params.contrast, SILENT_CONTRAST_BASELINE, decay);
 
   let silence_log_count = SILENCE_DECAY_LOG_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
   if silence_log_count <= 5 || silence_log_count.is_multiple_of(120) {
@@ -208,28 +207,32 @@ fn apply_silence_decay(
 fn apply_audio_reactivity(
   params: &mut chroma::params::ShaderParams,
   features: &chroma::audio::AudioFeatures,
+  delta_time: f32,
   debug_log: &mut DebugLog,
 ) {
+  let half_retain = frame_retain(0.50, delta_time);
+
   // Emphasize treble for melody visibility
   let energy = weighted_energy(features);
 
   // Bass affects amplitude and distortion - more responsive for pop effect
   let bass_multiplier = 1.0 + features.bass * params.bass_influence * 0.8;
-  params.amplitude = blend_towards(params.amplitude, bass_multiplier, 0.50);
+  params.amplitude = blend_towards(params.amplitude, bass_multiplier, half_retain);
   params.distort_amplitude = features.bass * params.bass_influence * 0.6;
 
   // Mid frequencies
   let mid_boost = 1.0 + features.mid * params.mid_influence * 2.0;
-  params.frequency = blend_towards(params.frequency, 8.0 * mid_boost, 0.50);
+  params.frequency = blend_towards(params.frequency, 8.0 * mid_boost, half_retain);
 
   // Speed scales with treble - much more responsive
   let treble_boost = 1.0 + features.treble * params.treble_influence * 2.5;
   let base_speed = 0.08 + energy * 0.9;
   let target_speed = base_speed * treble_boost;
-  params.speed = blend_towards(params.speed, target_speed, 0.45);
+  params.speed = blend_towards(params.speed, target_speed, frame_retain(0.45, delta_time));
 
   // Color shift reacts to high notes
-  params.color_shift = (params.color_shift + features.treble * 0.25) % std::f32::consts::TAU;
+  params.color_shift = (params.color_shift + features.treble * 0.25 * delta_time * REFERENCE_FPS)
+    % std::f32::consts::TAU;
 
   // Bass drop triggers major effect AND full-strength distortion + zoom (check first for priority)
   if features.is_drop {
@@ -277,7 +280,7 @@ fn apply_audio_reactivity(
   // Contrast reacts more dynamically
   let treble_contrast = features.treble * 0.8;
   let target_contrast = 0.6 + energy * 0.6 + treble_contrast;
-  params.contrast = blend_towards(params.contrast, target_contrast, 0.50);
+  params.contrast = blend_towards(params.contrast, target_contrast, half_retain);
 
   // Saturation reacts to bass and beats - colors "pop" on bass hits
   let bass_saturation = features.bass * 0.3; // Bass makes colors more vibrant
@@ -309,6 +312,34 @@ mod tests {
   #[test]
   fn test_blend_towards_preserves_expected_weighting() {
     assert!((blend_towards(10.0, 2.0, 0.25) - 4.0).abs() < 0.0001);
+  }
+
+  #[test]
+  fn test_silence_decay_is_independent_of_frame_rate() {
+    let start = ShaderParams {
+      amplitude: 1.6,
+      speed: 0.9,
+      brightness: 1.8,
+      ..ShaderParams::default()
+    };
+    let features = AudioFeatures::default();
+    let mut debug_log = test_debug_log();
+
+    let mut at_60_fps = start.clone();
+    apply_silence_decay(&mut at_60_fps, &features, 1.0 / 60.0, &mut debug_log);
+
+    let mut at_120_fps = start;
+    apply_silence_decay(&mut at_120_fps, &features, 1.0 / 120.0, &mut debug_log);
+    apply_silence_decay(&mut at_120_fps, &features, 1.0 / 120.0, &mut debug_log);
+
+    assert!((at_60_fps.amplitude - at_120_fps.amplitude).abs() < 1e-4);
+    assert!((at_60_fps.speed - at_120_fps.speed).abs() < 1e-4);
+    assert!((at_60_fps.brightness - at_120_fps.brightness).abs() < 1e-4);
+  }
+
+  #[test]
+  fn test_frame_retain_matches_reference_rate() {
+    assert!((frame_retain(0.9, 1.0 / REFERENCE_FPS) - 0.9).abs() < 1e-6);
   }
 
   #[test]
@@ -428,7 +459,7 @@ mod tests {
     };
     let mut debug_log = test_debug_log();
 
-    apply_silence_decay(&mut params, &features, &mut debug_log);
+    apply_silence_decay(&mut params, &features, 1.0 / REFERENCE_FPS, &mut debug_log);
 
     assert!(params.amplitude < 1.6);
     assert!(params.frequency < 14.0);
@@ -460,7 +491,7 @@ mod tests {
     };
     let mut debug_log = test_debug_log();
 
-    apply_audio_reactivity(&mut params, &features, &mut debug_log);
+    apply_audio_reactivity(&mut params, &features, 1.0 / REFERENCE_FPS, &mut debug_log);
 
     assert_eq!(params.effect_time, 42.0);
     assert_eq!(params.beat_distortion_time, 42.0);
@@ -491,7 +522,7 @@ mod tests {
     };
     let mut debug_log = test_debug_log();
 
-    apply_audio_reactivity(&mut params, &features, &mut debug_log);
+    apply_audio_reactivity(&mut params, &features, 1.0 / REFERENCE_FPS, &mut debug_log);
 
     assert_eq!(params.beat_distortion_time, 12.0);
     assert_eq!(

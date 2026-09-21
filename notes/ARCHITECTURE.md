@@ -121,11 +121,11 @@ User edits config.toml
    ↓
 File system notifies app (notify crate)
    ↓
-Parse TOML file
+Parse TOML file over the current base (random/preset layer; `--preset-interval` swaps it at runtime)
    ↓
-Validate parameters
+Re-apply CLI overrides, validate parameters
    ↓
-Update ShaderParams
+Update ShaderParams (time and resolution are kept)
    ↓
 Next frame uses new parameters
 ```

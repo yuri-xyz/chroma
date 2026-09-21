@@ -26,7 +26,7 @@ This document describes all available shader parameters, their ranges, and defau
 
 - **Range**: 0.1 → 5.0
 - **Default**: 1.0
-- **Description**: UV coordinate scale. Lower values zoom in, higher values zoom out.
+- **Description**: UV coordinate scale. Lower values zoom in, higher values zoom out. The zoom is centred on the middle of the screen for every pattern.
 
 ### color_shift
 

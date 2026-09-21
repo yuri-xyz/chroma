@@ -19,11 +19,13 @@ fn kaleidoscope_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     // Fold angle into one segment (creates mirror effect)
     angle = abs(((angle % segment_angle) - segment_angle * 0.5));
 
-    // Convert back to cartesian for pattern sampling
+    // Convert back to cartesian for pattern sampling. These stay relative to the
+    // centre so the frequency terms below zoom about it; adding `center` back would
+    // anchor them half a screen away.
     let folded_uv = vec2<f32>(
         cos(angle) * radius,
         sin(angle) * radius
-    ) + center;
+    );
 
     // Create interesting pattern within the kaleidoscope
     let freq = uniforms.frequency * 0.5;

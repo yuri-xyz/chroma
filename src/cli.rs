@@ -47,7 +47,7 @@ impl FromStr for StreamDimensions {
 }
 
 /// Command-line arguments
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(name = "chroma")]
 #[command(
   about = "GPU-accelerated terminal shader visualizer with audio reactivity",
@@ -97,10 +97,21 @@ pub struct CliArgs {
   #[arg(short = 'r', long)]
   pub random: bool,
 
-  /// Use a built-in preset by number (0-24) or "random". Wraps around if exceeds max.
+  /// Use a built-in preset by number (0-25) or "random". Wraps around if exceeds max.
   /// Presets are embedded in the binary, no external files needed.
   #[arg(long, value_name = "NUM|random")]
   pub preset: Option<String>,
+
+  /// Switch to another built-in preset every SECONDS while running. Requires --preset: a number
+  /// steps through the presets in order, "random" keeps picking random ones. The config file
+  /// and the other CLI parameters stay applied on top of every preset.
+  #[arg(
+    long,
+    value_name = "SECONDS",
+    requires = "preset",
+    value_parser = clap::value_parser!(u32).range(1..)
+  )]
+  pub preset_interval: Option<u32>,
 
   // Visual parameters
   /// Pattern wave density/detail level. Higher = more detail. Range: 3.0-18.0
@@ -135,7 +146,7 @@ pub struct CliArgs {
   #[arg(short = 'H', long, value_name = "DEGREES")]
   pub hue: Option<f32>,
 
-  /// Pattern type: plasma, waves, ripples, vortex, noise, geometric, voronoi, truchet, hexagonal, interference, fractal, glitch, spiral, rings, grid, diamonds, sphere, octgrams, warped, kaleidoscope, tunnel, metaballs, world, fluid, pyramid, infinity
+  /// Pattern type: plasma, waves, ripples, vortex, noise, geometric, voronoi, truchet, hexagonal, interference, fractal, glitch, spiral, rings, grid, diamonds, sphere, octgrams, warped, kaleidoscope, tunnel, metaballs, world, fluid, pyramid, infinity, vortex-corner
   #[arg(short = 'p', long, value_name = "PATTERN")]
   pub pattern: Option<String>,
 
@@ -273,6 +284,27 @@ mod tests {
     let args = CliArgs::try_parse_from(["chroma", "--stream", "64x32"]).unwrap();
 
     assert_eq!(args.stream_format, StreamFormat::Legacy);
+  }
+
+  #[test]
+  fn test_cli_args_parse_preset_interval() {
+    let args =
+      CliArgs::try_parse_from(["chroma", "--preset", "random", "--preset-interval", "30"]).unwrap();
+
+    assert_eq!(args.preset.as_deref(), Some("random"));
+    assert_eq!(args.preset_interval, Some(30));
+  }
+
+  #[test]
+  fn test_cli_args_preset_interval_requires_preset() {
+    assert!(CliArgs::try_parse_from(["chroma", "--preset-interval", "30"]).is_err());
+  }
+
+  #[test]
+  fn test_cli_args_reject_zero_preset_interval() {
+    assert!(
+      CliArgs::try_parse_from(["chroma", "--preset", "0", "--preset-interval", "0"]).is_err()
+    );
   }
 
   #[test]

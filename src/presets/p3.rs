@@ -24,7 +24,7 @@ pub fn preset() -> ShaderParams {
     glyph_sharpness: 1.034,
     palette: PaletteType::Simple,
     color_mode: ColorMode::Neon,
-    pattern_type: PatternType::Vortex,
+    pattern_type: PatternType::VortexCorner,
     audio_enabled: true,
     bass_influence: 0.575,
     mid_influence: 0.272,

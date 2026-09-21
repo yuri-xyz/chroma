@@ -3,8 +3,9 @@
 
 fn voronoi_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let scale = uniforms.frequency * 2.0;
-    let cell = floor(uv * scale);
-    let fract_uv = fract(uv * scale);
+    let scaled_uv = centered_uv(uv) * scale;
+    let cell = floor(scaled_uv);
+    let fract_uv = fract(scaled_uv);
     
     var min_dist = 10.0;
     var second_min = 10.0;

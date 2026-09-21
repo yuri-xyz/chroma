@@ -3,6 +3,7 @@
 //! Each preset is defined in its own file and returns a ShaderParams instance.
 //! These presets are also available as TOML files in the examples/ folder.
 
+mod cycle;
 mod p0;
 mod p1;
 mod p10;
@@ -21,6 +22,7 @@ mod p21;
 mod p22;
 mod p23;
 mod p24;
+mod p25;
 mod p3;
 mod p4;
 mod p5;
@@ -29,9 +31,8 @@ mod p7;
 mod p8;
 mod p9;
 
-use rand::RngExt;
-#[cfg(test)]
-use rand::SeedableRng;
+pub use cycle::{PresetCycle, PresetOrder};
+use rand::{Rng, RngExt};
 
 use crate::params::ShaderParams;
 
@@ -62,6 +63,7 @@ const PRESETS: &[fn() -> ShaderParams] = &[
   p22::preset,
   p23::preset,
   p24::preset,
+  p25::preset,
 ];
 
 /// Get a preset by index. Wraps around if index exceeds the number of presets.
@@ -70,19 +72,13 @@ pub fn get_preset(index: u32) -> ShaderParams {
   PRESETS[wrapped]()
 }
 
-/// Get a random preset.
-pub fn get_random_preset() -> ShaderParams {
-  let index = rand::rng().random_range(0..PRESETS.len());
-
-  PRESETS[index]()
+/// Pick a random preset index, for use with `get_preset`.
+pub fn random_preset_index() -> u32 {
+  random_preset_index_with_rng(&mut rand::rng())
 }
 
-#[cfg(test)]
-fn get_random_preset_with_seed(seed: u64) -> ShaderParams {
-  let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-  let index = rng.random_range(0..PRESETS.len());
-
-  PRESETS[index]()
+fn random_preset_index_with_rng(rng: &mut impl Rng) -> u32 {
+  rng.random_range(0..PRESETS.len()) as u32
 }
 
 /// Get the total number of available presets.
@@ -92,16 +88,25 @@ pub fn preset_count() -> usize {
 
 #[cfg(test)]
 mod tests {
+  use rand::SeedableRng;
+
   use super::*;
+  use crate::params::PatternType;
+
+  fn get_random_preset_with_seed(seed: u64) -> ShaderParams {
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+
+    get_preset(random_preset_index_with_rng(&mut rng))
+  }
 
   #[test]
   fn test_preset_count() {
-    assert_eq!(preset_count(), 25);
+    assert_eq!(preset_count(), 26);
   }
 
   #[test]
   fn test_get_preset_valid_indices() {
-    for i in 0..25 {
+    for i in 0..preset_count() as u32 {
       let preset = get_preset(i);
       // Just verify it doesn't panic and returns valid params
       assert!(
@@ -114,18 +119,32 @@ mod tests {
 
   #[test]
   fn test_get_preset_wraparound() {
+    let count = preset_count() as u32;
     let preset_0 = get_preset(0);
-    let preset_25 = get_preset(25);
-    let preset_50 = get_preset(50);
 
     assert_eq!(
-      preset_0.frequency, preset_25.frequency,
-      "Preset 25 should wrap to preset 0"
+      preset_0.frequency,
+      get_preset(count).frequency,
+      "The first index past the end should wrap to preset 0"
     );
     assert_eq!(
-      preset_0.frequency, preset_50.frequency,
-      "Preset 50 should wrap to preset 0"
+      preset_0.frequency,
+      get_preset(count * 2).frequency,
+      "Wrapping should keep working past the second lap"
     );
+  }
+
+  #[test]
+  fn test_full_screen_corner_vortex_only_drops_the_vignette() {
+    let bubble = get_preset(18);
+    let full_screen = get_preset(25);
+
+    assert_eq!(full_screen.vignette, 0.0);
+    assert!(bubble.vignette > 0.0);
+    assert_eq!(full_screen.pattern_type, PatternType::VortexCorner);
+    assert_eq!(full_screen.scale, bubble.scale);
+    assert_eq!(full_screen.color_mode, bubble.color_mode);
+    assert_eq!(full_screen.palette, bubble.palette);
   }
 
   #[test]

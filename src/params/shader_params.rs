@@ -9,6 +9,11 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use super::{randomizer, ColorMode, PaletteType, PatternType};
+use crate::constants::EFFECT_NAMES;
+
+/// Octave bounds for fbm patterns; the shader loops this many times per sample.
+const MIN_OCTAVES: u32 = 1;
+const MAX_OCTAVES: u32 = 8;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShaderParams {
@@ -126,6 +131,15 @@ impl ShaderParams {
     *current = (*current + delta).clamp(min, max);
   }
 
+  /// Clamp into range; NaN falls back to the default because `clamp` passes it through.
+  fn clamp_finite(value: f32, default: f32, min: f32, max: f32) -> f32 {
+    if value.is_nan() {
+      default
+    } else {
+      value.clamp(min, max)
+    }
+  }
+
   fn normalized_hue(hue: f32) -> f32 {
     let normalized = hue % 360.0;
 
@@ -195,41 +209,60 @@ impl ShaderParams {
   }
 
   pub fn clamp_all(&mut self) {
+    let defaults = Self::default();
+
     self.audio_enabled = true;
 
-    self.frequency = self.frequency.clamp(3.0, 18.0);
-    self.amplitude = self.amplitude.clamp(0.0, 2.0);
-    self.speed = self.speed.clamp(0.0, 1.0);
-    self.scale = self.scale.clamp(0.1, 5.0);
+    self.frequency = Self::clamp_finite(self.frequency, defaults.frequency, 3.0, 18.0);
+    self.amplitude = Self::clamp_finite(self.amplitude, defaults.amplitude, 0.0, 2.0);
+    self.speed = Self::clamp_finite(self.speed, defaults.speed, 0.0, 1.0);
+    self.scale = Self::clamp_finite(self.scale, defaults.scale, 0.1, 5.0);
+    self.octaves = self.octaves.clamp(MIN_OCTAVES, MAX_OCTAVES);
 
-    self.noise_strength = self.noise_strength.clamp(0.0, 0.5);
-    self.distort_amplitude = self.distort_amplitude.clamp(0.0, 2.0);
-    self.noise_scale = self.noise_scale.clamp(0.0, 0.01);
-    self.z_rate = self.z_rate.clamp(0.0, 0.1);
+    self.noise_strength =
+      Self::clamp_finite(self.noise_strength, defaults.noise_strength, 0.0, 0.5);
+    self.distort_amplitude =
+      Self::clamp_finite(self.distort_amplitude, defaults.distort_amplitude, 0.0, 2.0);
+    self.noise_scale = Self::clamp_finite(self.noise_scale, defaults.noise_scale, 0.0, 0.01);
+    self.z_rate = Self::clamp_finite(self.z_rate, defaults.z_rate, 0.0, 0.1);
 
-    self.brightness = self.brightness.clamp(0.0, 2.0);
-    self.contrast = self.contrast.clamp(0.2, 2.0);
-    self.hue = Self::normalized_hue(self.hue);
+    self.brightness = Self::clamp_finite(self.brightness, defaults.brightness, 0.0, 2.0);
+    self.contrast = Self::clamp_finite(self.contrast, defaults.contrast, 0.2, 2.0);
+    self.hue = if self.hue.is_finite() {
+      Self::normalized_hue(self.hue)
+    } else {
+      defaults.hue
+    };
 
-    self.saturation = self.saturation.clamp(0.0, 2.0);
-    self.gamma = self.gamma.clamp(0.5, 2.0);
+    self.saturation = Self::clamp_finite(self.saturation, defaults.saturation, 0.0, 2.0);
+    self.gamma = Self::clamp_finite(self.gamma, defaults.gamma, 0.5, 2.0);
 
-    self.vignette = self.vignette.clamp(0.0, 1.0);
-    self.vignette_softness = self.vignette_softness.clamp(0.0, 1.0);
-    self.glyph_sharpness = self.glyph_sharpness.clamp(0.5, 2.0);
+    self.vignette = Self::clamp_finite(self.vignette, defaults.vignette, 0.0, 1.0);
+    self.vignette_softness =
+      Self::clamp_finite(self.vignette_softness, defaults.vignette_softness, 0.0, 1.0);
+    self.glyph_sharpness =
+      Self::clamp_finite(self.glyph_sharpness, defaults.glyph_sharpness, 0.5, 2.0);
 
-    self.background_tint_r = self.background_tint_r.clamp(0.0, 1.0);
-    self.background_tint_g = self.background_tint_g.clamp(0.0, 1.0);
-    self.background_tint_b = self.background_tint_b.clamp(0.0, 1.0);
+    self.background_tint_r =
+      Self::clamp_finite(self.background_tint_r, defaults.background_tint_r, 0.0, 1.0);
+    self.background_tint_g =
+      Self::clamp_finite(self.background_tint_g, defaults.background_tint_g, 0.0, 1.0);
+    self.background_tint_b =
+      Self::clamp_finite(self.background_tint_b, defaults.background_tint_b, 0.0, 1.0);
 
-    self.terminal_bg_r = self.terminal_bg_r.clamp(0.0, 1.0);
-    self.terminal_bg_g = self.terminal_bg_g.clamp(0.0, 1.0);
-    self.terminal_bg_b = self.terminal_bg_b.clamp(0.0, 1.0);
+    self.terminal_bg_r = Self::clamp_finite(self.terminal_bg_r, defaults.terminal_bg_r, 0.0, 1.0);
+    self.terminal_bg_g = Self::clamp_finite(self.terminal_bg_g, defaults.terminal_bg_g, 0.0, 1.0);
+    self.terminal_bg_b = Self::clamp_finite(self.terminal_bg_b, defaults.terminal_bg_b, 0.0, 1.0);
 
-    self.bass_influence = self.bass_influence.clamp(0.0, 1.0);
-    self.mid_influence = self.mid_influence.clamp(0.0, 1.0);
-    self.treble_influence = self.treble_influence.clamp(0.0, 1.0);
-    self.beat_sensitivity = self.beat_sensitivity.clamp(0.1, 3.0);
+    self.bass_influence =
+      Self::clamp_finite(self.bass_influence, defaults.bass_influence, 0.0, 1.0);
+    self.mid_influence = Self::clamp_finite(self.mid_influence, defaults.mid_influence, 0.0, 1.0);
+    self.treble_influence =
+      Self::clamp_finite(self.treble_influence, defaults.treble_influence, 0.0, 1.0);
+    self.beat_sensitivity =
+      Self::clamp_finite(self.beat_sensitivity, defaults.beat_sensitivity, 0.1, 3.0);
+
+    self.effect_type = self.effect_type.min(EFFECT_NAMES.len() as u32 - 1);
   }
 
   pub fn adjust_frequency(&mut self, delta: f32) {
@@ -303,36 +336,44 @@ impl ShaderParams {
   }
 
   pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+    Self::load_from_file_over(path, &Self::default())
+  }
+
+  /// Load a config file, keeping `base` values for fields the file omits.
+  pub fn load_from_file_over<P: AsRef<Path>>(path: P, base: &Self) -> Result<Self> {
     let content = fs::read_to_string(path.as_ref()).context(format!(
       "Failed to read config file: {}",
       path.as_ref().display()
     ))?;
 
-    Self::load_from_str(&content)
+    Self::load_from_str_over(&content, base)
   }
 
   /// Load shader params from a TOML string, merging with defaults for missing fields.
   pub fn load_from_str(content: &str) -> Result<Self> {
-    // Start with defaults, then deserialize on top (missing fields keep defaults)
-    let default_params = Self::default();
-    let default_toml = toml::to_string(&default_params)?;
-    let mut default_value: toml::Value = toml::from_str(&default_toml)?;
+    Self::load_from_str_over(content, &Self::default())
+  }
+
+  /// Load shader params from a TOML string, keeping `base` values for missing fields.
+  pub fn load_from_str_over(content: &str, base: &Self) -> Result<Self> {
+    let base_toml = toml::to_string(base)?;
+    let mut base_value: toml::Value = toml::from_str(&base_toml)?;
 
     // Parse the loaded config
     let loaded_value: toml::Value =
       toml::from_str(content).context("Failed to parse config as TOML")?;
 
-    // Merge loaded config into defaults (only overwrites present fields)
-    if let (toml::Value::Table(ref mut default_table), toml::Value::Table(loaded_table)) =
-      (&mut default_value, loaded_value)
+    // Merge loaded config into the base (only overwrites present fields)
+    if let (toml::Value::Table(ref mut base_table), toml::Value::Table(loaded_table)) =
+      (&mut base_value, loaded_value)
     {
       for (key, value) in loaded_table {
-        default_table.insert(key, value);
+        base_table.insert(key, value);
       }
     }
 
     // Deserialize merged config
-    let mut params: ShaderParams = toml::from_str(&toml::to_string(&default_value)?)?;
+    let mut params: ShaderParams = toml::from_str(&toml::to_string(&base_value)?)?;
 
     params.clamp_all();
 

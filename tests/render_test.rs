@@ -166,3 +166,90 @@ fn test_ascii_palette_has_range() {
     "Palette doesn't vary between dark and bright"
   );
 }
+
+async fn gpu_pipeline_or_skip(
+  width: u32,
+  height: u32,
+  custom_shader: Option<String>,
+) -> Option<ShaderPipeline> {
+  let mut debug_sink = std::io::sink();
+
+  match ShaderPipeline::new(width, height, custom_shader, &mut debug_sink).await {
+    Ok(pipeline) => Some(pipeline),
+    Err(e) => {
+      eprintln!("Skipping GPU test: {}", e);
+      None
+    }
+  }
+}
+
+#[ignore = "requires GPU hardware and driver availability"]
+#[pollster::test]
+async fn test_invalid_custom_shader_returns_error_instead_of_panicking() {
+  if gpu_pipeline_or_skip(4, 4, None).await.is_none() {
+    return;
+  }
+
+  let mut debug_sink = std::io::sink();
+  let result =
+    ShaderPipeline::new(4, 4, Some("this is not wgsl".to_string()), &mut debug_sink).await;
+
+  assert!(result.is_err());
+}
+
+#[ignore = "requires GPU hardware and driver availability"]
+#[pollster::test]
+async fn test_pipeline_resize_reuses_device_and_rejects_zero_dimensions() {
+  let Some(mut pipeline) = gpu_pipeline_or_skip(4, 4, None).await else {
+    return;
+  };
+
+  assert!(pipeline.resize(0, 4).is_err());
+  assert!(pipeline.resize(4, 0).is_err());
+
+  pipeline.resize(12, 3).expect("resize should succeed");
+
+  let mut params = ShaderParams::default();
+  params.set_resolution(12, 3);
+  let pixel_data = pipeline
+    .render(&ShaderUniforms::from_params(&params))
+    .expect("Failed to render after resize");
+
+  assert_eq!(pixel_data.len(), 12 * 3 * 4);
+}
+
+#[ignore = "requires GPU hardware and driver availability"]
+#[pollster::test]
+async fn test_color_adjustments_preserve_magenta_hues() {
+  let shader = format!(
+    "{}\n{}\n{}",
+    include_str!("../src/shader_common/uniforms.wgsl"),
+    include_str!("../src/shader_common/color_utils.wgsl"),
+    r#"
+@compute @workgroup_size(1, 1)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    output_buffer[0] = vec4<f32>(apply_color_adjustments(vec3<f32>(1.0, 0.2, 0.6)), 1.0);
+}
+"#
+  );
+  let Some(pipeline) = gpu_pipeline_or_skip(1, 1, Some(shader)).await else {
+    return;
+  };
+  let params = ShaderParams {
+    brightness: 1.0,
+    contrast: 1.0,
+    saturation: 1.0,
+    gamma: 1.0,
+    hue: 0.0,
+    ..ShaderParams::default()
+  };
+
+  let pixel = pipeline
+    .render(&ShaderUniforms::from_params(&params))
+    .expect("Failed to render");
+
+  // Neutral adjustments must leave the color unchanged (255, 51, 153).
+  assert!(pixel[0] >= 253, "red was {}", pixel[0]);
+  assert!((49..=53).contains(&pixel[1]), "green was {}", pixel[1]);
+  assert!((151..=155).contains(&pixel[2]), "blue was {}", pixel[2]);
+}

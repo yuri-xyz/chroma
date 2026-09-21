@@ -15,6 +15,7 @@ const PATTERN_WEIGHTS: &[(PatternType, u32)] = &[
   (PatternType::Waves, 3),
   (PatternType::Ripples, 3),
   (PatternType::Vortex, 3),
+  (PatternType::VortexCorner, 2),
   (PatternType::Geometric, 2),
   (PatternType::Voronoi, 2),
   (PatternType::Truchet, 2),

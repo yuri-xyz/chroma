@@ -77,6 +77,6 @@ fn test_effect_names_contents() {
   assert_eq!(EFFECT_NAMES[2], "Diamond");
   assert_eq!(EFFECT_NAMES[3], "Star");
   assert_eq!(EFFECT_NAMES[4], "Grid");
-  assert_eq!(EFFECT_NAMES[5], "Wave");
-  assert_eq!(EFFECT_NAMES[6], "Octgrams");
+  assert_eq!(EFFECT_NAMES[5], "Octgrams");
+  assert_eq!(EFFECT_NAMES[6], "Wave");
 }

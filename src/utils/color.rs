@@ -59,6 +59,15 @@ pub fn calculate_brightness(r: u8, g: u8, b: u8) -> u8 {
 pub fn parse_hex_color(hex: &str) -> Result<(f32, f32, f32), String> {
   let hex = hex.trim_start_matches('#');
 
+  // The slicing below counts bytes, so reject non-hex input up front instead
+  // of panicking on multi-byte characters.
+  if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+    return Err(format!(
+      "Invalid hex color format: '{}' (expected 3 or 6 hex digits)",
+      hex
+    ));
+  }
+
   let (r_str, g_str, b_str) = match hex.len() {
     3 => {
       let chars: Vec<char> = hex.chars().collect();
@@ -153,6 +162,13 @@ mod tests {
       assert!(g >= 89, "Pastel colors should have minimum brightness");
       assert!(b >= 89, "Pastel colors should have minimum brightness");
     }
+  }
+
+  #[test]
+  fn test_parse_hex_color_rejects_multibyte_input_without_panicking() {
+    assert!(parse_hex_color("aébcd").is_err());
+    assert!(parse_hex_color("#é1").is_err());
+    assert!(parse_hex_color("GG0000").is_err());
   }
 
   #[test]

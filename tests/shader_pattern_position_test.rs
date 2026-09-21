@@ -1,62 +1,76 @@
-use chroma::params::PatternType;
-
-fn scaled_pattern_position(position: [f32; 2], scale: f32, pattern_type: PatternType) -> [f32; 2] {
-  if pattern_type == PatternType::Sphere
-    || pattern_type == PatternType::World
-    || pattern_type == PatternType::Pyramid
-    || pattern_type == PatternType::Infinity
-  {
-    [
-      (position[0] - 0.5) * scale + 0.5,
-      (position[1] - 0.5) * scale + 0.5,
-    ]
-  } else {
-    [position[0] * scale, position[1] * scale]
-  }
+/// Mirrors `pattern_position_for_scale` in `src/shader_common/main.wgsl`.
+fn scaled_pattern_position(position: [f32; 2], scale: f32) -> [f32; 2] {
+  [
+    (position[0] - 0.5) * scale + 0.5,
+    (position[1] - 0.5) * scale + 0.5,
+  ]
 }
 
 #[test]
-fn test_globe_patterns_scale_around_center() {
+fn test_patterns_scale_around_screen_center() {
   let center = [0.5, 0.5];
 
-  for pattern_type in [
-    PatternType::Sphere,
-    PatternType::World,
-    PatternType::Pyramid,
-    PatternType::Infinity,
-  ] {
-    assert_eq!(scaled_pattern_position(center, 2.0, pattern_type), center);
-    assert_eq!(
-      scaled_pattern_position([0.25, 0.75], 2.0, pattern_type),
-      [0.0, 1.0]
-    );
+  for scale in [0.5, 2.0, 3.0] {
+    assert_eq!(scaled_pattern_position(center, scale), center);
   }
+
+  assert_eq!(scaled_pattern_position([0.25, 0.75], 2.0), [0.0, 1.0]);
 }
 
 #[test]
-fn test_tiled_patterns_keep_origin_based_scaling() {
-  assert_eq!(
-    scaled_pattern_position([0.5, 0.5], 2.0, PatternType::Plasma),
-    [1.0, 1.0]
-  );
-}
-
-#[test]
-fn test_shader_centering_uses_current_globe_pattern_ids() {
-  assert_eq!(PatternType::Sphere.to_u32(), 16);
-  assert_eq!(PatternType::World.to_u32(), 22);
-  assert_eq!(PatternType::Pyramid.to_u32(), 24);
-  assert_eq!(PatternType::Infinity.to_u32(), 25);
-
+fn test_shader_scales_every_pattern_around_screen_center() {
   let shader_main = include_str!("../src/shader_common/main.wgsl");
 
-  assert!(shader_main.contains("fn pattern_position_for_scale"));
-  assert!(shader_main.contains(
-    "pattern_type == 16u || pattern_type == 22u || pattern_type == 24u || pattern_type == 25u"
-  ));
-  assert!(
-    shader_main.contains("return (position - vec2<f32>(0.5, 0.5)) * scale + vec2<f32>(0.5, 0.5);")
-  );
+  assert!(shader_main.contains("const PATTERN_CENTER: vec2<f32> = vec2<f32>(0.5, 0.5);"));
+  assert!(shader_main.contains("return (position - PATTERN_CENTER) * scale + PATTERN_CENTER;"));
+  // Origin-based scaling put hard-coded 0.5 pattern centres off-screen-centre.
+  assert!(!shader_main.contains("return position * scale;"));
+}
+
+/// Patterns that tile the plane have to apply frequency to centre-relative
+/// coordinates. Audio reactivity changes frequency every frame, and scaling raw
+/// `uv` makes that look like a zoom into the top-left corner.
+#[test]
+fn test_tiled_patterns_apply_frequency_to_centered_coordinates() {
+  let tiled_patterns = [
+    ("plasma", include_str!("../src/shader_patterns/plasma.wgsl")),
+    ("waves", include_str!("../src/shader_patterns/waves.wgsl")),
+    ("noise", include_str!("../src/shader_patterns/noise.wgsl")),
+    (
+      "geometric",
+      include_str!("../src/shader_patterns/geometric.wgsl"),
+    ),
+    (
+      "voronoi",
+      include_str!("../src/shader_patterns/voronoi.wgsl"),
+    ),
+    (
+      "truchet",
+      include_str!("../src/shader_patterns/truchet.wgsl"),
+    ),
+    (
+      "hexagonal",
+      include_str!("../src/shader_patterns/hexagonal.wgsl"),
+    ),
+    ("glitch", include_str!("../src/shader_patterns/glitch.wgsl")),
+    ("grid", include_str!("../src/shader_patterns/grid.wgsl")),
+    (
+      "diamonds",
+      include_str!("../src/shader_patterns/diamonds.wgsl"),
+    ),
+    (
+      "warped_fbm",
+      include_str!("../src/shader_patterns/warped_fbm.wgsl"),
+    ),
+    ("fluid", include_str!("../src/shader_patterns/fluid.wgsl")),
+  ];
+
+  for (name, source) in tiled_patterns {
+    assert!(
+      source.contains("centered_uv(uv)"),
+      "{name} scales raw uv by frequency"
+    );
+  }
 }
 
 #[test]

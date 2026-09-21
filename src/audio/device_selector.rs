@@ -79,14 +79,15 @@ fn is_microphone(name: &str) -> bool {
 }
 
 /// Check if a device can actually be configured for input
-/// On macOS 14.2+, output devices can also be used as loopback inputs
+/// On macOS 14.2+ and Windows (WASAPI), output devices can also be used as loopback inputs
 fn is_device_usable(device: &Device) -> bool {
   // First try input config (normal input devices)
   if device.default_input_config().is_ok() {
     return true;
   }
-  // On macOS, output devices can be used for loopback (cpal 0.17+ on macOS 14.2+)
-  #[cfg(target_os = "macos")]
+  // Output devices can be used for loopback: CoreAudio taps (cpal 0.17+ on macOS 14.2+)
+  // and WASAPI loopback, which cpal enables for input streams built on a render device
+  #[cfg(any(target_os = "macos", target_os = "windows"))]
   if device.default_output_config().is_ok() {
     return true;
   }
@@ -100,6 +101,35 @@ fn is_dummy_device(name: &str) -> bool {
     || name.contains("dummy")
     || name.contains("null")
     || name.contains("zero samples")
+}
+
+/// WASAPI loopback on the default output device follows whatever the user is
+/// actually listening on (USB, HDMI, Bluetooth). "Stereo Mix" style inputs only
+/// hear the onboard codec and are disabled by default, so loopback comes first.
+#[cfg(target_os = "windows")]
+fn find_windows_loopback_device(host: &Host) -> Option<Device> {
+  let device = host.default_output_device()?;
+  let name = get_device_name(&device).unwrap_or_else(|| "<unnamed-output>".to_string());
+
+  if !is_device_usable(&device) {
+    append_debug_line(
+      "audio",
+      format!(
+        "Default output device '{name}' on host {:?} is not usable for WASAPI loopback",
+        host.id()
+      ),
+    );
+    return None;
+  }
+
+  append_debug_line(
+    "audio",
+    format!(
+      "Selected default output device '{name}' on host {:?} for WASAPI loopback capture",
+      host.id()
+    ),
+  );
+  Some(device)
 }
 
 /// Try to get the best host for system audio capture
@@ -230,6 +260,7 @@ pub fn find_device_by_name_auto(device_name: &str) -> anyhow::Result<(Host, Devi
 
 /// Automatically find the best system audio device
 /// Priority: monitor sources > loopback devices > non-microphone inputs
+/// (Windows tries default-output WASAPI loopback before any of these)
 pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
   let devices: Vec<(Device, String)> = host
     .input_devices()
@@ -251,6 +282,11 @@ pub fn find_system_audio_device(host: &Host) -> anyhow::Result<Device> {
 
   #[cfg(target_os = "linux")]
   if let Some(device) = find_linux_default_monitor_device(&devices) {
+    return Ok(device);
+  }
+
+  #[cfg(target_os = "windows")]
+  if let Some(device) = find_windows_loopback_device(host) {
     return Ok(device);
   }
 
@@ -391,6 +427,14 @@ pub fn find_system_audio_auto() -> anyhow::Result<(Host, Device)> {
     }
   }
 
+  #[cfg(target_os = "windows")]
+  {
+    let host = cpal::default_host();
+    if let Some(device) = find_windows_loopback_device(&host) {
+      return Ok((host, device));
+    }
+  }
+
   // First, try all available hosts to find a dedicated monitor source
   // (e.g., PipeWire monitor on Linux, BlackHole on macOS)
   for host_id in cpal::available_hosts() {
@@ -418,6 +462,7 @@ pub fn find_system_audio_auto() -> anyhow::Result<(Host, Device)> {
   // No dedicated monitor source found - use platform-specific fallback
   // On macOS: uses output device for loopback (cpal 0.17+ on macOS 14.2+)
   // On Linux: uses default input device
+  // On Windows: only reached when default-output WASAPI loopback was unusable
   let host = get_best_host();
   log_host_devices(&host, "Falling back to best");
   let device = find_system_audio_device(&host)?;
@@ -488,9 +533,9 @@ pub fn list_devices(host: &Host) -> anyhow::Result<()> {
       for device in &devices {
         if let Some(name) = get_device_name(device) {
           let is_default = default_output_name.as_ref() == Some(&name);
-          #[cfg(target_os = "macos")]
+          #[cfg(any(target_os = "macos", target_os = "windows"))]
           let loopback_marker = if is_default { " [LOOPBACK SOURCE]" } else { "" };
-          #[cfg(not(target_os = "macos"))]
+          #[cfg(not(any(target_os = "macos", target_os = "windows")))]
           let loopback_marker = "";
           let default_marker = if is_default { " ← DEFAULT" } else { "" };
           println!("  • {}{}{}", name, loopback_marker, default_marker);
@@ -506,10 +551,10 @@ pub fn list_devices(host: &Host) -> anyhow::Result<()> {
       .any(|n| is_monitor_source(&n))
   });
 
-  // On macOS, output device loopback is available even without monitor sources
-  #[cfg(target_os = "macos")]
+  // On macOS and Windows, output device loopback is available even without monitor sources
+  #[cfg(any(target_os = "macos", target_os = "windows"))]
   let has_loopback = default_output_name.is_some();
-  #[cfg(not(target_os = "macos"))]
+  #[cfg(not(any(target_os = "macos", target_os = "windows")))]
   let has_loopback = false;
 
   if !has_monitor && !has_loopback {

@@ -1,25 +1,33 @@
 // Pattern: Plasma
 // Enhanced plasma effect with multiple layers, distortions, and color variation
 
+// Audio reactivity rests frequency at 8.0 when there is no mid-range energy
+// (`apply_audio_reactivity` in src/app/audio.rs), so the drift keeps its size there.
+const PLASMA_DRIFT_FREQUENCY: f32 = 8.0;
+
 fn plasma_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let freq = uniforms.frequency;
     let distort = uniforms.distort_amplitude;
     
-    // Base moving coordinates with circular motion
-    let cx = uv.x + 0.5 * sin(time * 0.2) * distort;
-    let cy = uv.y + 0.5 * cos(time * 0.15) * distort;
+    // Base moving coordinates with circular motion. The drift is added after the
+    // frequency product: inside it, the bass-driven drift would pull the point that
+    // frequency changes zoom about away from the screen centre on every beat.
+    let scaled = centered_uv(uv) * freq;
+    let drift = vec2<f32>(sin(time * 0.2), cos(time * 0.15)) * 0.5 * distort * PLASMA_DRIFT_FREQUENCY;
+    let cx = scaled.x + drift.x;
+    let cy = scaled.y + drift.y;
     
     // Layer 1: Classic plasma wave
-    let v1 = sin(uv.x * freq + time);
+    let v1 = sin(scaled.x + time);
     
     // Layer 2: Warped coordinate plasma with rotation
     let angle = time * 0.1;
     let rotated_x = cx * cos(angle) - cy * sin(angle);
     let rotated_y = cx * sin(angle) + cy * cos(angle);
-    let v2 = sin(freq * (rotated_x * sin(time * 0.5) + rotated_y * cos(time * 0.33)) + time);
+    let v2 = sin(rotated_x * sin(time * 0.5) + rotated_y * cos(time * 0.33) + time);
     
     // Layer 3: Diagonal plasma flow
-    let v3 = sin((cx + cy) * freq * 0.5 + time * 0.7);
+    let v3 = sin((cx + cy) * 0.5 + time * 0.7);
     
     // Layer 4: Radial plasma from center
     let center = vec2<f32>(0.5, 0.5);

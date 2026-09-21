@@ -22,12 +22,24 @@ fn write_cleanup_sequence<W: Write>(writer: &mut W) -> Result<()> {
 
 /// Setup terminal for rendering
 pub fn setup() -> Result<()> {
+  install_panic_cleanup();
   terminal::enable_raw_mode()?;
 
   let mut out = stdout();
   write_setup_sequence(&mut out)?;
 
   Ok(())
+}
+
+/// Restore the terminal before the panic message is printed, so a panic does
+/// not leave the shell in raw mode on the alternate screen.
+fn install_panic_cleanup() {
+  let previous_hook = std::panic::take_hook();
+
+  std::panic::set_hook(Box::new(move |info| {
+    let _ = cleanup();
+    previous_hook(info);
+  }));
 }
 
 /// Restore terminal to normal state
