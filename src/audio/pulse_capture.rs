@@ -199,10 +199,13 @@ fn read_pulse_samples(
     }
 
     samples.clear();
-    samples.extend(bytes.chunks_exact(4).map(|chunk| {
-      let bytes = [chunk[0], chunk[1], chunk[2], chunk[3]];
-      f32::from_ne_bytes(bytes)
-    }));
+    samples.extend(
+      bytes
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| f32::from_ne_bytes(*chunk)),
+    );
 
     if let Some(summary) = buffer
       .lock()

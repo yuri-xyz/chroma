@@ -38,14 +38,14 @@
 nix run github:yuri-xyz/chroma
 
 # Install the CLI into your profile
-nix profile install github:yuri-xyz/chroma
+nix profile add github:yuri-xyz/chroma
 
 # Develop locally with Rust, Vulkan, and audio dependencies
 nix develop
 ```
 
 Chroma always builds with audio support. Vulkan still requires a working host GPU driver/ICD.
-See [NIX.md](./notes/NIX.md) for the flake outputs, pinned Rust toolchains, and validation checks.
+See [Nix](./docs/NIX.md) for the flake outputs, pinned Rust toolchains, and validation checks.
 
 ### Cargo
 
@@ -85,13 +85,15 @@ Stream mode skips terminal setup, the status bar, and interactive input. By defa
 - `Q` or `Esc` - Quit application
 - `R` - **Randomize parameters** ⭐ (Discover new effects!)
 - `S` - **Save configuration** 💾 (Creates `config_<hash>.toml` in current directory)
-- `P`/`O` - **Cycle palettes** 🎨 (16 different character sets!)
-- `↑`/`↓` - Adjust frequency
-- `→`/`←` - Adjust speed
-- `+`/`-` - Adjust amplitude
-- `[`/`]` - Adjust scale
+- `T` - **Cycle patterns**
+- `C` - **Cycle color modes**
+- `P` - **Cycle palettes** 🎨 (16 different character sets!)
+- `N` - Cycle the effect triggered by bass drops
+- `[`/`]` - Zoom in and out
 
-See [CONTROLS.md](./notes/CONTROLS.md) and [PALETTES.md](./notes/PALETTES.md) for more details.
+Frequency, speed, and amplitude are driven by the music, so they have no keys; set them with flags or a config file.
+
+See [Controls](./docs/CONTROLS.md) and [Palettes](./docs/PALETTES.md) for more details, or browse the [full documentation](./docs/README.md).
 
 ## 🎨 Configuration & Ricing
 

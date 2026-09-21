@@ -11,7 +11,7 @@ Chroma is a Rust terminal audio visualizer. It renders GPU-generated WGSL shader
 - `src/shader_common/` and `src/shader_patterns/` for WGSL uniforms, effects, pattern dispatch, and shader pattern implementations
 - `src/audio/` for PulseAudio/PipeWire and CPAL capture, device selection, buffering, and FFT analysis
 - `src/ascii/` and `src/render/` for RGBA-to-ASCII conversion and terminal frame construction
-- `notes/` and `README.md` for user-facing docs that should be updated when behavior changes
+- `docs/` and `README.md` for user-facing docs that should be updated when behavior changes
 
 ## Current Facts
 
@@ -22,6 +22,9 @@ Chroma is a Rust terminal audio visualizer. It renders GPU-generated WGSL shader
 - Third-party embedders rely on `--stream WIDTHxHEIGHT`, `--preset NUM`, `--bass-influence FLOAT`, `--audio-device DEVICE`, and `-c/--config FILE` retaining their names and compatible behavior. Do not rename, remove, or repurpose these flags, and preserve plain `--stream` compatibility unless there is an intentional migration plan for existing embedders.
 - Built-in presets are numbered `0..25` and live in `src/presets/`.
 - The empty `audio` Cargo feature is intentional backwards compatibility: audio is always built in, and the feature only exists so `cargo install --features audio` from older instructions keeps working. Do not gate code behind it or remove it.
+- The package version is CalVer, `YYYY.MM.DD` with unpadded date segments (`2026.9.21`, never `2026.09.21`, because Cargo's SemVer parser rejects leading zeros). It lives in `Cargo.toml`, and `flake.nix` reads it from there. When cutting a version, set it to that day's UTC date and run `cargo check` to refresh `Cargo.lock`. The version records a date and promises nothing about compatibility, so do not bump it to signal a breaking change; the embedder flag contract above is the compatibility promise. The `v=1` field in the framed stream header is a separate protocol version and must not be switched to CalVer.
+- The Rust toolchains are pinned twice and must stay equal: `packageRustVersion` and `devNightlyDate` in `flake.nix`, and `RUST_STABLE_VERSION` and `RUST_NIGHTLY_VERSION` in `.github/workflows/test.yml`. CI must not track floating `stable`, because a new release can add lints that fail `-D warnings` without any code change.
+- Third-party GitHub Actions in `.github/workflows/` are pinned to a full commit SHA with the version in a trailing comment, never to a branch or a moving tag such as `@master` or `@v4`. Look the SHA up from the upstream repository when updating one. Jobs run on a named runner image (`ubuntu-24.04`), not `ubuntu-latest`, and any tool downloaded in a step is verified with `sha256sum --check` against the checksum published with that release.
 - `CLAUDE.md` and `CONTRIBUTING.md` should remain symlinks to `AGENTS.md`.
 
 ## Runtime Output Rule
@@ -100,12 +103,17 @@ Running `cargo test` outside the dev shell may fail to link Linux PulseAudio lib
 Update user-facing docs when behavior, dependencies, commands, or defaults change:
 
 - `README.md` for installation, dependencies, and high-level behavior
-- `notes/USAGE.md` for CLI usage and runtime behavior
-- `notes/AUDIO_SETUP.md` for audio dependencies and capture behavior
-- `notes/ARCHITECTURE.md` for render-loop or pipeline-level changes
+- `docs/USAGE.md` for CLI usage and runtime behavior
+- `docs/CONTROLS.md` for keyboard shortcuts and the status bar
+- `docs/PARAMETERS.md` for parameter ranges, defaults, and flags
+- `docs/AUDIO_SETUP.md` for audio dependencies and capture behavior
+- `docs/ARCHITECTURE.md` for render-loop or pipeline-level changes
+- `docs/README.md` when a page is added, renamed, or removed
 - this file for contributor/agent rules that should stay prominent
 
 Prefer exact command names and current defaults over broad claims. Avoid long architecture snapshots that duplicate source files and go stale quickly.
+
+Pages in `docs/` share one layout: a single `#` title, a short introduction, then flat `###` sections with no nested headings. Write in plain prose, link related pages to each other, and use tables for reference material.
 
 ## Pull Request Standard
 

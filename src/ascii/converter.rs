@@ -34,10 +34,7 @@ impl AsciiConverter {
       let mut row = Vec::with_capacity(width as usize);
       let row_pixels = rows.next().unwrap_or(&[]);
 
-      for pixel in row_pixels.chunks_exact(4) {
-        let red = pixel[0];
-        let green = pixel[1];
-        let blue = pixel[2];
+      for &[red, green, blue, _alpha] in row_pixels.as_chunks::<4>().0 {
         let brightness = Self::calculate_brightness(red, green, blue);
         let character = self.palette.get_character_for_brightness(brightness);
 

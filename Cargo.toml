@@ -1,6 +1,6 @@
 [package]
 name = "chroma"
-version = "0.1.0"
+version = "2026.9.21"
 edition = "2021"
 description = "🌈 Shader-based audio visualizer for the terminal."
 license = "GPL-3.0-only"
