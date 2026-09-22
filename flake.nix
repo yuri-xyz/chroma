@@ -2,7 +2,7 @@
   description = "Chroma - GPU-accelerated ASCII art audio visualizer for the terminal";
 
   inputs = {
-    flake-utils.url = "github:numtide/flake-utils";
+    crane.url = "github:ipetkov/crane";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
@@ -12,203 +12,198 @@
 
   outputs =
     {
-      flake-utils,
+      self,
+      crane,
       nixpkgs,
       rust-overlay,
-      ...
     }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (
-      system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ rust-overlay.overlays.default ];
-        };
+    let
+      inherit (nixpkgs) lib;
 
-        inherit (pkgs) lib;
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
 
-        # Keep these pins explicit. The package build uses stable Rust while
-        # the dev shell uses nightly rustfmt for rustfmt.toml's unstable
-        # import-grouping options.
-        packageRustVersion = "1.98.1";
-        devNightlyDate = "2026-09-22";
+      # Everything per-system is defined once here and the flake outputs
+      # below pick from it, so no helper flake is needed to fan out.
+      perSystem = lib.genAttrs systems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          # mkRustBin reuses the shared nixpkgs instance instead of importing
+          # a second copy with rust-overlay applied.
+          rustBin = rust-overlay.lib.mkRustBin { } pkgs;
 
-        rustToolchain = pkgs.rust-bin.stable.${packageRustVersion}.default;
-        clippyToolchain = pkgs.rust-bin.stable.${packageRustVersion}.default.override {
-          extensions = [ "clippy" ];
-        };
-        devRustToolchain = pkgs.rust-bin.nightly.${devNightlyDate}.default.override {
-          extensions = [
-            "rust-src"
-            "rustfmt"
-            "clippy"
+          # Keep these pins explicit. The package build uses stable Rust while
+          # the dev shell uses nightly rustfmt for rustfmt.toml's unstable
+          # import-grouping options.
+          packageRustVersion = "1.98.1";
+          devNightlyDate = "2026-09-22";
+
+          rustToolchain = rustBin.stable.${packageRustVersion}.minimal.override {
+            extensions = [ "clippy" ];
+          };
+          devRustToolchain = rustBin.nightly.${devNightlyDate}.default.override {
+            extensions = [
+              "rust-src"
+              "rustfmt"
+              "clippy"
+            ];
+          };
+
+          craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+          craneLibNightly = (crane.mkLib pkgs).overrideToolchain devRustToolchain;
+
+          # crane's cleanCargoSource would drop the WGSL modules that build.rs
+          # concatenates and the tests include, so list the build inputs
+          # explicitly instead. Docs, examples, and CI files stay out so
+          # editing them does not invalidate the Rust builds.
+          src = lib.fileset.toSource {
+            root = ./.;
+            fileset = lib.fileset.unions [
+              ./Cargo.toml
+              ./Cargo.lock
+              ./build.rs
+              ./rustfmt.toml
+              ./src
+              ./tests
+              ./benches
+            ];
+          };
+
+          runtimeLibraries = [
+            pkgs.vulkan-loader
+            pkgs.alsa-lib
+            pkgs.libpulseaudio
           ];
-        };
+          runtimeLibraryPath = lib.makeLibraryPath runtimeLibraries;
 
-        rustPlatform = pkgs.makeRustPlatform {
-          cargo = rustToolchain;
-          rustc = rustToolchain;
-        };
-        clippyRustPlatform = pkgs.makeRustPlatform {
-          cargo = clippyToolchain;
-          rustc = clippyToolchain;
-        };
+          commonArgs = {
+            inherit src;
+            strictDeps = true;
+            nativeBuildInputs = [ pkgs.pkg-config ];
+            buildInputs = runtimeLibraries;
+          };
 
-        src = lib.cleanSourceWith {
-          name = "chroma-source";
-          src = ./.;
-          filter =
-            path: type:
-            let
-              baseName = baseNameOf path;
-            in
-            lib.cleanSourceFilter path type
-            && !(
-              type == "directory"
-              && lib.elem baseName [
-                "target"
-                ".direnv"
-                ".devenv"
-              ]
+          # Dependencies are compiled once here and reused by the package,
+          # test, and clippy derivations, so source edits only rebuild Chroma.
+          cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+          chroma = craneLib.buildPackage (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              nativeBuildInputs = commonArgs.nativeBuildInputs ++ [ pkgs.makeWrapper ];
+
+              # The default package build stays focused on producing the
+              # binary. The flake checks below expose fmt, tests, clippy, and
+              # workflow linting explicitly for CI and local validation.
+              doCheck = false;
+
+              postInstall = ''
+                wrapProgram "$out/bin/chroma" \
+                  --prefix LD_LIBRARY_PATH : "${runtimeLibraryPath}" \
+                  --set-default WGPU_BACKEND vulkan
+              '';
+
+              meta = {
+                description = "Rust-based ASCII art shader audio visualizer for the terminal";
+                homepage = "https://github.com/yuri-xyz/chroma";
+                license = lib.licenses.gpl3Only;
+                mainProgram = "chroma";
+                platforms = lib.platforms.linux;
+              };
+            }
+          );
+        in
+        {
+          inherit pkgs chroma;
+
+          app = {
+            type = "app";
+            program = lib.getExe chroma;
+            meta.description = "Run Chroma with audio support";
+          };
+
+          checks = {
+            package = chroma;
+            test = craneLib.cargoTest (
+              commonArgs
+              // {
+                inherit cargoArtifacts;
+                cargoTestExtraArgs = "--all-targets";
+              }
             );
-        };
+            clippy = craneLib.cargoClippy (
+              commonArgs
+              // {
+                inherit cargoArtifacts;
+                cargoClippyExtraArgs = "--all-targets -- -D warnings";
+              }
+            );
+            fmt = craneLibNightly.cargoFmt { inherit src; };
+            actionlint =
+              pkgs.runCommand "chroma-actionlint-check" { nativeBuildInputs = [ pkgs.actionlint ]; }
+                ''
+                  actionlint -color ${./.github/workflows}/*.yml
+                  touch "$out"
+                '';
+            nixfmt = pkgs.runCommand "chroma-nixfmt-check" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
+              nixfmt --check ${./flake.nix}
+              touch "$out"
+            '';
+          };
 
-        cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-        version = cargoToml.package.version;
-
-        runtimeLibraries = [
-          pkgs.vulkan-loader
-          pkgs.alsa-lib
-          pkgs.libpulseaudio
-        ];
-        runtimeLibraryPath = lib.makeLibraryPath runtimeLibraries;
-
-        commonRustBuildArgs = {
-          pname = "chroma";
-          inherit src version;
-
-          cargoLock.lockFile = ./Cargo.lock;
-
-          strictDeps = true;
-          nativeBuildInputs = [ pkgs.pkg-config ];
-          buildInputs = runtimeLibraries;
-        };
-
-        chroma = rustPlatform.buildRustPackage (
-          commonRustBuildArgs
-          // {
-            nativeBuildInputs = commonRustBuildArgs.nativeBuildInputs ++ [
-              pkgs.makeWrapper
+          devShell = pkgs.mkShell {
+            packages = runtimeLibraries ++ [
+              devRustToolchain
+              pkgs.rust-analyzer
+              pkgs.actionlint
+              pkgs.just
+              pkgs.nixfmt
+              pkgs.pkg-config
+              pkgs.vulkan-tools
+              pkgs.pipewire
             ];
 
-            # The default package build stays focused on producing the binary.
-            # The flake checks below expose fmt, tests, clippy, and workflow
-            # linting explicitly for CI and local validation.
-            doCheck = false;
+            LD_LIBRARY_PATH = runtimeLibraryPath;
+            WGPU_BACKEND = "vulkan";
 
-            postInstall = ''
-              wrapProgram "$out/bin/chroma" \
-                --prefix LD_LIBRARY_PATH : "${runtimeLibraryPath}" \
-                --set-default WGPU_BACKEND vulkan
+            # `nix develop github:yuri-xyz/chroma` has no justfile in the
+            # working tree, so a missing one must not fail the shell.
+            shellHook = ''
+              just --list 2>/dev/null || true
             '';
+          };
+        }
+      );
 
-            meta = {
-              description = "Rust-based ASCII art shader audio visualizer for the terminal";
-              homepage = "https://github.com/yuri-xyz/chroma";
-              license = lib.licenses.gpl3Only;
-              mainProgram = "chroma";
-              platforms = lib.platforms.linux;
-            };
-          }
-        );
+      forAllSystems = f: lib.mapAttrs (_: f) perSystem;
+    in
+    {
+      packages = forAllSystems (s: {
+        inherit (s) chroma;
+        default = s.chroma;
+      });
 
-        mkApp = drv: {
-          type = "app";
-          program = lib.getExe drv;
-          meta.description = "Run Chroma with audio support";
-        };
-      in
-      rec {
-        packages = {
-          inherit chroma;
-          default = chroma;
-        };
+      apps = forAllSystems (s: {
+        chroma = s.app;
+        default = s.app;
+      });
 
-        apps = {
-          chroma = mkApp chroma;
-          default = apps.chroma;
-        };
+      checks = forAllSystems (s: s.checks);
 
-        checks = {
-          package = chroma;
-          test = rustPlatform.buildRustPackage (
-            commonRustBuildArgs
-            // {
-              pname = "chroma-test";
-              doCheck = true;
-              cargoTestFlags = [
-                "--all-targets"
-                "--frozen"
-              ];
-              installPhase = "touch $out";
-            }
-          );
-          clippy = clippyRustPlatform.buildRustPackage (
-            commonRustBuildArgs
-            // {
-              pname = "chroma-clippy";
-              doCheck = false;
-              buildPhase = ''
-                runHook preBuild
-                cargo clippy --all-targets --offline --frozen -- -D warnings
-                runHook postBuild
-              '';
-              installPhase = "touch $out";
-            }
-          );
-          fmt = pkgs.runCommand "chroma-fmt-check" { nativeBuildInputs = [ devRustToolchain ]; } ''
-            cd ${src}
-            cargo fmt --all -- --check
-            touch "$out"
-          '';
-          actionlint =
-            pkgs.runCommand "chroma-actionlint-check" { nativeBuildInputs = [ pkgs.actionlint ]; }
-              ''
-                actionlint -color ${src}/.github/workflows/*.yml
-                touch "$out"
-              '';
-          nixfmt = pkgs.runCommand "chroma-nixfmt-check" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
-            nixfmt --check ${./flake.nix}
-            touch "$out"
-          '';
-        };
+      formatter = forAllSystems (s: s.pkgs.nixfmt-tree);
 
-        formatter = pkgs.nixfmt;
+      devShells = forAllSystems (s: {
+        default = s.devShell;
+      });
 
-        devShells.default = pkgs.mkShell {
-          packages = runtimeLibraries ++ [
-            devRustToolchain
-            pkgs.rust-analyzer
-            pkgs.actionlint
-            pkgs.nixfmt
-            pkgs.pkg-config
-            pkgs.vulkan-tools
-            pkgs.pipewire
-          ];
-
-          LD_LIBRARY_PATH = runtimeLibraryPath;
-          WGPU_BACKEND = "vulkan";
-
-          shellHook = ''
-            echo "Chroma dev shell"
-            echo "  cargo run"
-            echo "  cargo fmt --all -- --check"
-            echo "  cargo test"
-            echo "  cargo clippy --all-targets -- -D warnings"
-            echo "  actionlint -color"
-            echo "  nix flake check"
-          '';
-        };
-      }
-    );
+      # Lets NixOS and Home Manager configurations use `pkgs.chroma` by
+      # applying this overlay instead of reaching into `packages`.
+      overlays.default = final: _prev: {
+        inherit (self.packages.${final.stdenv.hostPlatform.system}) chroma;
+      };
+    };
 }

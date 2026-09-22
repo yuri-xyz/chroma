@@ -51,6 +51,8 @@ nix --extra-experimental-features 'nix-command flakes' develop -c cargo clippy -
 nix --extra-experimental-features 'nix-command flakes' develop -c actionlint -color
 ```
 
+The `justfile` wraps these for use inside the dev shell: `just check` runs fmt, clippy, tests, and actionlint, and `just` lists the other recipes (`test-gpu`, `bench-save`, `bench-compare`, `nix-check`, and more). Keep its recipes in sync with the commands above.
+
 Useful focused checks:
 
 ```bash

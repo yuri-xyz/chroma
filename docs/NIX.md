@@ -25,9 +25,10 @@ nix develop
 | --- | --- |
 | `packages.<system>.default` | The wrapped `chroma` binary |
 | `apps.<system>.default` | The same binary, for `nix run` |
-| `devShells.<system>.default` | Rust, rust-analyzer, actionlint, nixfmt, Vulkan tools, and the audio libraries |
+| `devShells.<system>.default` | Rust, rust-analyzer, just, actionlint, nixfmt, Vulkan tools, and the audio libraries |
 | `checks.<system>` | The package build, Rust tests, clippy, rustfmt, actionlint, and nixfmt |
-| `formatter.<system>` | `nixfmt`, so `nix fmt` formats Nix files consistently |
+| `formatter.<system>` | `nixfmt-tree`, so a bare `nix fmt` formats every Nix file in the repository |
+| `overlays.default` | Adds `chroma` to a nixpkgs instance, for NixOS or Home Manager configurations |
 
 ### Toolchains
 
@@ -39,7 +40,13 @@ Two Rust toolchains are pinned in `flake.nix`, and the split is deliberate.
 
 The GitHub Actions workflow pins the same two versions through `RUST_STABLE_VERSION` and `RUST_NIGHTLY_VERSION` in `.github/workflows/test.yml`. When you update a pin, change it in both files. Keeping them equal means a new Rust release cannot fail CI through a freshly added lint, and that CI and `nix flake check` agree.
 
-`rust-overlay` follows the repository's `nixpkgs` input, so the lockfile carries a single nixpkgs revision.
+`rust-overlay` follows the repository's `nixpkgs` input, so the lockfile carries a single nixpkgs revision. The flake builds its toolchains with `rust-overlay.lib.mkRustBin` on top of `nixpkgs.legacyPackages`, so each system evaluates nixpkgs only once.
+
+### Incremental builds
+
+The flake builds Rust through [crane](https://github.com/ipetkov/crane). All crate dependencies are compiled once in a dependencies-only derivation, and the package, test, and clippy checks reuse those artifacts. Only Chroma itself is rebuilt after a source edit, and the dependencies are rebuilt only when `Cargo.toml` or `Cargo.lock` change.
+
+The Rust source handed to these builds is limited to `Cargo.toml`, `Cargo.lock`, `build.rs`, `rustfmt.toml`, `src/`, `tests/`, and `benches/`. Editing docs, examples, or workflows does not trigger a rebuild. If a build step starts reading a new file outside that set, add it to the `src` fileset in `flake.nix`.
 
 ### Runtime libraries
 
@@ -49,9 +56,10 @@ The package wraps `chroma` with an `LD_LIBRARY_PATH` containing `vulkan-loader`,
 
 `nix flake check` runs the complete set of checks and is what to run before proposing a change to the flake itself. It builds everything in the sandbox, so it is slow.
 
-While iterating, run the underlying tools directly inside the dev shell instead:
+While iterating, run the underlying tools directly inside the dev shell instead. The `justfile` wraps them: `just check` runs every check required before review, and `just` lists the other recipes.
 
 ```bash
+nix develop -c just check
 nix develop -c cargo fmt --all -- --check
 nix develop -c cargo test
 nix develop -c cargo clippy --all-targets -- -D warnings
