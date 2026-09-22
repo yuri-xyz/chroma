@@ -13,25 +13,25 @@ const EFFECT_TYPE_COUNT: u32 = chroma::constants::EFFECT_NAMES.len() as u32;
 const FIRST_ACTIVE_EFFECT_TYPE: u32 = 2;
 const PARAMETER_STEP: f32 = 0.1;
 
-/// Handle keyboard input events
+/// Handle every keyboard event queued since the last frame. Reading only one
+/// per frame falls behind on Windows, where each key also reports a release
+/// event, so a held key would keep acting after it is let go.
 pub fn handle_input(
   params: &mut ShaderParams,
   converter: &mut AsciiConverter,
   running: &mut bool,
   debug_log: &mut DebugLog,
 ) -> Result<()> {
-  if !event::poll(Duration::from_millis(0))? {
-    return Ok(());
-  }
-
-  if let Event::Key(KeyEvent {
-    code,
-    modifiers,
-    kind: KeyEventKind::Press,
-    ..
-  }) = event::read()?
-  {
-    handle_key_press(code, modifiers, params, converter, running, debug_log)?;
+  while *running && event::poll(Duration::from_millis(0))? {
+    if let Event::Key(KeyEvent {
+      code,
+      modifiers,
+      kind: KeyEventKind::Press,
+      ..
+    }) = event::read()?
+    {
+      handle_key_press(code, modifiers, params, converter, running, debug_log)?;
+    }
   }
 
   Ok(())

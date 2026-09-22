@@ -6,6 +6,8 @@ use super::AudioFeatures;
 
 pub const ANALYSIS_WINDOW_SIZE: usize = 2_048;
 pub const ANALYSIS_HOP_SIZE: usize = 512;
+/// The window and hop sizes above are tuned for this rate.
+pub const ANALYSIS_REFERENCE_SAMPLE_RATE: f32 = 48_000.0;
 
 const BASS_HISTORY_SIZE: usize = 30;
 const ENERGY_HISTORY_SIZE: usize = 60;
@@ -76,6 +78,16 @@ impl RollingHistory {
   }
 }
 
+/// How many times larger than the reference rate a capture rate is, as a power
+/// of two. WASAPI and CoreAudio capture at the device mix rate, often 96 or
+/// 192 kHz; scaling the analysis window by this keeps the bass band's frequency
+/// resolution and the beat timing the same as at 48 kHz.
+pub fn sample_rate_scale(sample_rate: f32) -> usize {
+  ((sample_rate / ANALYSIS_REFERENCE_SAMPLE_RATE).round() as usize)
+    .max(1)
+    .next_power_of_two()
+}
+
 pub struct AudioAnalyzer {
   sample_rate: f32,
   window_size: usize,
@@ -102,7 +114,12 @@ pub struct AudioAnalyzer {
 
 impl AudioAnalyzer {
   pub fn new(sample_rate: f32) -> Self {
-    Self::with_window(sample_rate, ANALYSIS_WINDOW_SIZE, ANALYSIS_HOP_SIZE)
+    let scale = sample_rate_scale(sample_rate);
+    Self::with_window(
+      sample_rate,
+      ANALYSIS_WINDOW_SIZE * scale,
+      ANALYSIS_HOP_SIZE * scale,
+    )
   }
 
   pub fn with_window(sample_rate: f32, window_size: usize, hop_size: usize) -> Self {
@@ -584,5 +601,28 @@ mod tests {
     let energy = AudioAnalyzer::get_band_energy(&buffer, &(0..10));
 
     assert!((0.0..=1.0).contains(&energy));
+  }
+
+  #[test]
+  fn test_sample_rate_scale_keeps_reference_rates_unscaled() {
+    assert_eq!(sample_rate_scale(44_100.0), 1);
+    assert_eq!(sample_rate_scale(48_000.0), 1);
+    assert_eq!(sample_rate_scale(96_000.0), 2);
+    assert_eq!(sample_rate_scale(192_000.0), 4);
+    assert_eq!(sample_rate_scale(0.0), 1);
+  }
+
+  #[test]
+  fn test_high_capture_rates_keep_reference_band_resolution_and_timing() {
+    let reference = AudioAnalyzer::new(48_000.0);
+    let high_rate = AudioAnalyzer::new(192_000.0);
+
+    assert_eq!(high_rate.window_size, ANALYSIS_WINDOW_SIZE * 4);
+    assert_eq!(high_rate.hop_size, ANALYSIS_HOP_SIZE * 4);
+    assert_eq!(high_rate.bass_bin_range, reference.bass_bin_range);
+    assert_eq!(
+      high_rate.hop_size as f32 / high_rate.sample_rate,
+      reference.hop_size as f32 / reference.sample_rate
+    );
   }
 }

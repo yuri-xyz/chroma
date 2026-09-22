@@ -17,6 +17,20 @@ pub struct ShaderPipeline {
   height: u32,
 }
 
+async fn request_adapter(
+  instance: &wgpu::Instance,
+  force_fallback_adapter: bool,
+) -> Result<wgpu::Adapter, wgpu::RequestAdapterError> {
+  instance
+    .request_adapter(&wgpu::RequestAdapterOptions {
+      power_preference: wgpu::PowerPreference::HighPerformance,
+      compatible_surface: None,
+      force_fallback_adapter,
+      ..Default::default()
+    })
+    .await
+}
+
 impl ShaderPipeline {
   pub async fn new<W: Write>(
     width: u32,
@@ -26,18 +40,26 @@ impl ShaderPipeline {
   ) -> Result<Self> {
     ensure_non_empty_dimensions(width, height)?;
 
+    // WGPU_BACKEND and the other WGPU_* variables override these defaults, for
+    // example to choose between DX12 and Vulkan on Windows.
     let mut instance_descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
     instance_descriptor.backends = wgpu::Backends::PRIMARY;
-    let instance = wgpu::Instance::new(instance_descriptor);
+    let instance = wgpu::Instance::new(instance_descriptor.with_env());
 
-    let adapter = instance
-      .request_adapter(&wgpu::RequestAdapterOptions {
-        power_preference: wgpu::PowerPreference::HighPerformance,
-        compatible_surface: None,
-        force_fallback_adapter: false,
-      })
-      .await
-      .map_err(|_| anyhow::anyhow!("Failed to find adapter"))?;
+    let adapter = match request_adapter(&instance, false).await {
+      Ok(adapter) => adapter,
+      Err(error) => {
+        // Machines without a usable GPU driver, such as Windows VMs, still have
+        // a software adapter (WARP on DX12, lavapipe on Vulkan).
+        writeln!(
+          debug_log,
+          "DEBUG: No hardware adapter ({error}), trying a software adapter"
+        )?;
+        request_adapter(&instance, true)
+          .await
+          .map_err(|error| anyhow::anyhow!("Failed to find a GPU or software adapter: {error}"))?
+      }
+    };
 
     let (device, queue) = adapter
       .request_device(&wgpu::DeviceDescriptor {
@@ -265,7 +287,7 @@ impl ShaderPipeline {
 
     receiver.recv()??;
 
-    let data = buffer_slice.get_mapped_range();
+    let data = buffer_slice.get_mapped_range()?;
     let float_data: &[f32] = bytemuck::cast_slice(&data);
     rgba_data.clear();
     rgba_data.reserve(float_data.len());

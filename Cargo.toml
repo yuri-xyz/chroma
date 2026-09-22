@@ -8,28 +8,28 @@ repository = "https://github.com/yuri-xyz/chroma"
 
 [dependencies]
 # GPU/Graphics
-wgpu = "29.0.1"
-pollster = "0.4.0"
-bytemuck = { version = "1.25.0", features = ["derive"] }
+wgpu = "30.0.1"
+pollster = "1.0.1"
+bytemuck = { version = "1.25.2", features = ["derive"] }
 
 # Terminal/UI
 crossterm = "0.29.0"
 
 # Audio
 # NOTE: cpal 0.17+ required for macOS loopback audio support (macOS 14.6+)
-cpal = "0.17.3"
+cpal = "0.18.2"
 rustfft = "6.4.1"
 
 # Utilities
-anyhow = "1.0.102"
-serde = { version = "1.0.228", features = ["derive"] }
-toml = "1.1.2"
+anyhow = "1.0.104"
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.1.6"
 flume = "0.12.0"
-rand = "0.10.1"
+rand = "0.10.3"
 unicode-width = "0.2.2"
-clap = { version = "4.6.1", features = ["derive"] }
+clap = { version = "4.6.7", features = ["derive"] }
 sha2 = "0.11.0"
-notify = "9.0.0-rc.3"
+notify = "9.0.0-rc.5"
 
 [features]
 # Audio is always built in. This empty feature is kept intentionally so build
@@ -43,7 +43,7 @@ libpulse-simple-binding = "2.29.0"
 
 [dev-dependencies]
 criterion = "0.8.2"
-pollster = { version = "0.4.0", features = ["macro"] }
+pollster = { version = "1.0.1", features = ["macro"] }
 
 [[bench]]
 name = "frame_render"

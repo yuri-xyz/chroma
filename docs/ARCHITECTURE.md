@@ -73,7 +73,7 @@ Preset cycling and reloading share a gate. While the render loop switches preset
 
 Capture runs on its own thread and pushes samples into a bounded ring buffer; the render loop drains it once per frame. On Linux, `src/audio/pulse_capture.rs` records the default output's monitor through libpulse and reconnects if the sound server restarts. Elsewhere, and as the Linux fallback, `src/audio/capture.rs` uses CPAL, with `src/audio/device_selector.rs` choosing a monitor or loopback device.
 
-`src/audio/analyzer.rs` runs a Hann-windowed FFT over 2048-sample windows and produces bass, mid, treble, overall level, beat strength, and bass-drop detection. `src/app/audio.rs` maps those features onto parameters. Its smoothing factors are scaled by the real frame time, so the response is the same at any `--fps`. [Audio Setup](./AUDIO_SETUP.md) describes the mapping from the user's point of view.
+`src/audio/analyzer.rs` runs a Hann-windowed FFT over 2048-sample windows (scaled up for capture rates above 48 kHz) and produces bass, mid, treble, overall level, beat strength, and bass-drop detection. `src/app/audio.rs` maps those features onto parameters. Its smoothing factors are scaled by the real frame time, so the response is the same at any `--fps`. [Audio Setup](./AUDIO_SETUP.md) describes the mapping from the user's point of view.
 
 ### Output
 

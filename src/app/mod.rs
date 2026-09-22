@@ -295,7 +295,7 @@ impl App {
 
     let features = audio::update_audio_reactive(
       &mut self.params,
-      &self.audio_capture,
+      &mut self.audio_capture,
       &mut self.audio_analyzer,
       delta_time,
       &mut self.debug_log,

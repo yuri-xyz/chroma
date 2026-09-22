@@ -1,22 +1,36 @@
 use std::{
   collections::VecDeque,
-  sync::{Arc, Mutex, MutexGuard, PoisonError},
+  sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex, MutexGuard, PoisonError,
+  },
+  time::{Duration, Instant},
 };
 
 use cpal::{
   traits::{DeviceTrait, StreamTrait},
-  FromSample, Sample, Stream, StreamConfig,
+  FromSample, Sample, Stream, StreamConfig, I24,
 };
 
-use super::device_selector;
 #[cfg(target_os = "linux")]
 use super::pulse_capture;
+use super::{analyzer::sample_rate_scale, device_selector};
 use crate::debug::append_debug_line;
 
 const MAX_PENDING_SAMPLES: usize = 8_192;
 const EMPTY_DRAIN_LOG_INTERVAL: u64 = 120;
 const POPULATED_DRAIN_LOG_INTERVAL: u64 = 60;
 const SILENT_CALLBACK_WARNING_THRESHOLD: u64 = 180;
+/// How often a stream the backend invalidated is rebuilt while rebuilding fails.
+const RECOVERY_RETRY_INTERVAL: Duration = Duration::from_secs(1);
+/// Why output-device loopback can deliver only zeros, and what to do about it.
+#[cfg(target_os = "macos")]
+const SILENT_LOOPBACK_HINT: &str = "CoreAudio loopback stays silent on some output devices; install/select BlackHole or another loopback-capable source.";
+#[cfg(target_os = "windows")]
+const SILENT_LOOPBACK_HINT: &str = "WASAPI loopback hears only shared-mode playback, so the playing applications are outputting silence or hold the device in exclusive mode.";
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+const SILENT_LOOPBACK_HINT: &str =
+  "The selected output device is not providing system-audio loopback.";
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct CallbackLogSummary {
@@ -35,6 +49,7 @@ pub(super) struct SharedSampleBuffer {
   total_samples_drained: u64,
   all_zero_callback_streak: u64,
   emitted_silence_warning: bool,
+  last_samples_at: Instant,
 }
 
 impl SharedSampleBuffer {
@@ -48,6 +63,7 @@ impl SharedSampleBuffer {
       total_samples_drained: 0,
       all_zero_callback_streak: 0,
       emitted_silence_warning: false,
+      last_samples_at: Instant::now(),
     }
   }
 
@@ -100,12 +116,15 @@ impl SharedSampleBuffer {
     })
   }
 
-  fn drain_samples(&mut self) -> (Vec<f32>, u64, u64, u64) {
+  fn drain_samples(&mut self, now: Instant) -> (Vec<f32>, u64, u64, u64) {
     self.drain_count += 1;
     let drain_count = self.drain_count;
     let callback_count = self.callback_count;
     let drained = self.samples.drain(..).collect::<Vec<_>>();
     self.total_samples_drained += drained.len() as u64;
+    if !drained.is_empty() {
+      self.last_samples_at = now;
+    }
 
     (
       drained,
@@ -113,6 +132,12 @@ impl SharedSampleBuffer {
       callback_count,
       self.total_samples_received,
     )
+  }
+
+  /// WASAPI loopback delivers no packets at all while nothing is playing, so a
+  /// stretch without samples means silence rather than a slow callback.
+  fn time_without_samples(&self, now: Instant) -> Duration {
+    now.saturating_duration_since(self.last_samples_at)
   }
 
   fn take_silence_warning(&mut self) -> bool {
@@ -125,6 +150,18 @@ impl SharedSampleBuffer {
 
     false
   }
+}
+
+/// Errors after which the stream delivers nothing until it is rebuilt: the
+/// device was unplugged, or WASAPI saw the default device change (it never
+/// moves an existing stream to the new default).
+fn invalidates_stream(kind: cpal::ErrorKind) -> bool {
+  matches!(
+    kind,
+    cpal::ErrorKind::StreamInvalidated
+      | cpal::ErrorKind::DeviceNotAvailable
+      | cpal::ErrorKind::HostUnavailable
+  )
 }
 
 /// A panic while the buffer was locked leaves at worst a partial batch of
@@ -142,6 +179,9 @@ pub struct AudioCapture {
   buffer: Arc<Mutex<SharedSampleBuffer>>,
   pub sample_rate: f32,
   using_output_config_fallback: bool,
+  requested_device: Option<String>,
+  stream_invalidated: Arc<AtomicBool>,
+  last_recovery_attempt: Option<Instant>,
 }
 
 impl AudioCapture {
@@ -164,6 +204,7 @@ impl AudioCapture {
   /// Create audio capture with optional device name
   pub fn new(device_name: Option<&str>) -> anyhow::Result<Self> {
     append_debug_line("audio", "=== Audio Capture Initialization ===");
+    let requested_device = device_name;
 
     #[cfg(target_os = "linux")]
     match Self::new_pulse(device_name) {
@@ -263,23 +304,25 @@ impl AudioCapture {
     if using_output_config_fallback {
       append_debug_line(
         "audio",
-        format!(
-          "Using output-config fallback for '{device_name}' (loopback capture). On macOS this may still produce silent buffers unless the device truly supports loopback."
-        ),
+        format!("Capturing output device '{device_name}' through loopback with its output config"),
       );
     }
 
     let sample_rate = config.sample_rate() as f32;
     let buffer = Arc::new(Mutex::new(SharedSampleBuffer::with_max_len(
-      MAX_PENDING_SAMPLES,
+      MAX_PENDING_SAMPLES * sample_rate_scale(sample_rate),
     )));
-    let buffer_clone = Arc::clone(&buffer);
+    let stream_invalidated = Arc::new(AtomicBool::new(false));
+    let shared = (Arc::clone(&buffer), Arc::clone(&stream_invalidated));
+    let stream_config = config.into();
 
     let stream = match config.sample_format() {
-      cpal::SampleFormat::F32 => Self::build_stream::<f32>(&device, &config.into(), buffer_clone)?,
-      cpal::SampleFormat::I16 => Self::build_stream::<i16>(&device, &config.into(), buffer_clone)?,
-      cpal::SampleFormat::U16 => Self::build_stream::<u16>(&device, &config.into(), buffer_clone)?,
-      _ => return Err(anyhow::anyhow!("Unsupported sample format")),
+      cpal::SampleFormat::F32 => Self::build_stream::<f32>(&device, stream_config, shared)?,
+      cpal::SampleFormat::I32 => Self::build_stream::<i32>(&device, stream_config, shared)?,
+      cpal::SampleFormat::I24 => Self::build_stream::<I24>(&device, stream_config, shared)?,
+      cpal::SampleFormat::I16 => Self::build_stream::<i16>(&device, stream_config, shared)?,
+      cpal::SampleFormat::U16 => Self::build_stream::<u16>(&device, stream_config, shared)?,
+      format => return Err(anyhow::anyhow!("Unsupported sample format {format:?}")),
     };
 
     stream.play()?;
@@ -293,6 +336,9 @@ impl AudioCapture {
       buffer,
       sample_rate,
       using_output_config_fallback,
+      requested_device: requested_device.map(str::to_string),
+      stream_invalidated,
+      last_recovery_attempt: None,
     })
   }
 
@@ -323,13 +369,16 @@ impl AudioCapture {
       buffer,
       sample_rate,
       using_output_config_fallback: false,
+      requested_device: device_name.map(str::to_string),
+      stream_invalidated: Arc::new(AtomicBool::new(false)),
+      last_recovery_attempt: None,
     })
   }
 
   fn build_stream<T>(
     device: &cpal::Device,
-    config: &StreamConfig,
-    buffer: Arc<Mutex<SharedSampleBuffer>>,
+    config: StreamConfig,
+    (buffer, stream_invalidated): (Arc<Mutex<SharedSampleBuffer>>, Arc<AtomicBool>),
   ) -> anyhow::Result<Stream>
   where
     T: Sample + cpal::SizedSample,
@@ -368,10 +417,14 @@ impl AudioCapture {
           );
         }
       },
-      move |err| {
+      move |err: cpal::Error| {
+        let invalidated = invalidates_stream(err.kind());
+        if invalidated {
+          stream_invalidated.store(true, Ordering::Relaxed);
+        }
         append_debug_line(
           "audio",
-          format!("Audio stream error for '{error_device_name}': {err}"),
+          format!("Audio stream error for '{error_device_name}' (needs rebuild: {invalidated}): {err}"),
         );
       },
       None,
@@ -383,7 +436,8 @@ impl AudioCapture {
   pub fn drain_samples(&self) -> Vec<f32> {
     let (samples, drain_count, callback_count, total_samples_received, should_warn_zero_stream) = {
       let mut buffer = lock_samples(&self.buffer);
-      let (samples, drain_count, callback_count, total_samples_received) = buffer.drain_samples();
+      let (samples, drain_count, callback_count, total_samples_received) =
+        buffer.drain_samples(Instant::now());
       let should_warn_zero_stream = buffer.take_silence_warning();
 
       (
@@ -398,7 +452,9 @@ impl AudioCapture {
     if should_warn_zero_stream && self.using_output_config_fallback {
       append_debug_line(
         "audio",
-        "WARNING: received a long run of all-zero callbacks while using output-config loopback fallback. Either nothing is playing, or the selected output device is not providing real system-audio loopback. On macOS, install/select BlackHole or another loopback-capable source.",
+        format!(
+          "WARNING: received a long run of all-zero callbacks from output-device loopback. Either nothing is playing, or: {SILENT_LOOPBACK_HINT}"
+        ),
       );
     }
 
@@ -426,11 +482,46 @@ impl AudioCapture {
 
     samples
   }
+
+  /// How long capture has gone without delivering a sample.
+  pub fn time_without_samples(&self) -> Duration {
+    lock_samples(&self.buffer).time_without_samples(Instant::now())
+  }
+
+  /// Rebuild the stream after the backend invalidated it, for example when a
+  /// Windows user switches the default output or unplugs the captured device.
+  /// Auto-detection runs again, so the rebuilt stream follows the new default.
+  /// Returns whether a new stream replaced the old one; failed attempts are
+  /// retried at most once per `RECOVERY_RETRY_INTERVAL`.
+  pub fn recover_if_invalidated(&mut self) -> anyhow::Result<bool> {
+    if !self.stream_invalidated.load(Ordering::Relaxed) {
+      return Ok(false);
+    }
+
+    let now = Instant::now();
+    if self
+      .last_recovery_attempt
+      .is_some_and(|attempt| now.duration_since(attempt) < RECOVERY_RETRY_INTERVAL)
+    {
+      return Ok(false);
+    }
+    self.last_recovery_attempt = Some(now);
+
+    append_debug_line("audio", "Rebuilding invalidated audio stream");
+    let requested_device = self.requested_device.clone();
+    // Release the old endpoint first so the rebuild does not race it for the device.
+    self._stream = None;
+    *self = Self::new(requested_device.as_deref())?;
+
+    Ok(true)
+  }
 }
 
 #[cfg(test)]
 mod tests {
-  use super::SharedSampleBuffer;
+  use std::time::{Duration, Instant};
+
+  use super::{invalidates_stream, SharedSampleBuffer};
 
   #[test]
   fn test_shared_sample_buffer_accumulates_across_pushes() {
@@ -439,7 +530,7 @@ mod tests {
     buffer.push_interleaved(&[0.2_f32, 0.4_f32, 0.6_f32, 0.8_f32], 2);
     buffer.push_interleaved(&[1.0_f32, 0.0_f32, 0.5_f32, 0.5_f32], 2);
 
-    let (samples, ..) = buffer.drain_samples();
+    let (samples, ..) = buffer.drain_samples(Instant::now());
     let expected = [0.3_f32, 0.7, 0.5, 0.5];
 
     assert_eq!(samples.len(), expected.len());
@@ -454,7 +545,7 @@ mod tests {
 
     buffer.push_interleaved(&[0.1_f32, 0.2_f32, 0.3_f32, 0.4_f32], 1);
 
-    assert_eq!(buffer.drain_samples().0, vec![0.2, 0.3, 0.4]);
+    assert_eq!(buffer.drain_samples(Instant::now()).0, vec![0.2, 0.3, 0.4]);
   }
 
   #[test]
@@ -462,7 +553,31 @@ mod tests {
     let mut buffer = SharedSampleBuffer::with_max_len(4);
 
     buffer.push_interleaved(&[0.25_f32, 0.75_f32], 1);
-    assert_eq!(buffer.drain_samples().0, vec![0.25, 0.75]);
-    assert!(buffer.drain_samples().0.is_empty());
+    assert_eq!(buffer.drain_samples(Instant::now()).0, vec![0.25, 0.75]);
+    assert!(buffer.drain_samples(Instant::now()).0.is_empty());
+  }
+
+  #[test]
+  fn test_time_without_samples_resets_only_when_samples_arrive() {
+    let mut buffer = SharedSampleBuffer::with_max_len(4);
+    let start = Instant::now();
+    let later = start + Duration::from_millis(500);
+
+    buffer.drain_samples(start);
+    buffer.drain_samples(later);
+    assert!(buffer.time_without_samples(later) >= Duration::from_millis(500));
+
+    buffer.push_interleaved(&[0.5_f32], 1);
+    buffer.drain_samples(later);
+    assert_eq!(buffer.time_without_samples(later), Duration::ZERO);
+  }
+
+  #[test]
+  fn test_only_lost_streams_need_a_rebuild() {
+    assert!(invalidates_stream(cpal::ErrorKind::StreamInvalidated));
+    assert!(invalidates_stream(cpal::ErrorKind::DeviceNotAvailable));
+    assert!(invalidates_stream(cpal::ErrorKind::HostUnavailable));
+    assert!(!invalidates_stream(cpal::ErrorKind::DeviceChanged));
+    assert!(!invalidates_stream(cpal::ErrorKind::Xrun));
   }
 }

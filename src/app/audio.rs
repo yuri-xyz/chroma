@@ -1,6 +1,9 @@
 // Audio-reactive update logic
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+  sync::atomic::{AtomicUsize, Ordering},
+  time::Duration,
+};
 
 use chroma::{
   audio::{AudioAnalyzer, AudioCapture, AudioFeatures},
@@ -23,6 +26,10 @@ const REGULAR_BEAT_INTENSITY: f32 = 1.0;
 /// Smoothing factors below were tuned per frame at this rate; they are scaled
 /// by the real frame time so `--fps` does not change how fast visuals react.
 const REFERENCE_FPS: f32 = 60.0;
+/// Capture callbacks arrive every few milliseconds while audio flows, so a gap
+/// this long is silence. WASAPI loopback, for one, sends nothing at all while
+/// no application is playing, instead of a stream of zeros.
+const SAMPLE_STARVATION_TIMEOUT: Duration = Duration::from_millis(250);
 static EMPTY_SAMPLE_BATCH_COUNT: AtomicUsize = AtomicUsize::new(0);
 static FEATURE_LOG_COUNT: AtomicUsize = AtomicUsize::new(0);
 static SILENCE_DECAY_LOG_COUNT: AtomicUsize = AtomicUsize::new(0);
@@ -84,12 +91,14 @@ fn trigger_beat_visuals(params: &mut chroma::params::ShaderParams, intensity: f3
 /// Update shader parameters based on audio input
 pub fn update_audio_reactive(
   params: &mut chroma::params::ShaderParams,
-  audio_capture: &Option<AudioCapture>,
+  audio_capture: &mut Option<AudioCapture>,
   audio_analyzer: &mut Option<AudioAnalyzer>,
   delta_time: f32,
   debug_log: &mut DebugLog,
 ) -> AudioFeatures {
   params.audio_enabled = true;
+
+  recover_audio_capture(audio_capture, audio_analyzer, debug_log);
 
   let has_capture = audio_capture.is_some();
   let has_analyzer = audio_analyzer.is_some();
@@ -106,7 +115,11 @@ pub fn update_audio_reactive(
           empty_count
         );
       }
-      return AudioFeatures::default();
+      let features = AudioFeatures::default();
+      if capture.time_without_samples() >= SAMPLE_STARVATION_TIMEOUT {
+        apply_silence_decay(params, &features, delta_time, debug_log);
+      }
+      return features;
     }
 
     EMPTY_SAMPLE_BATCH_COUNT.store(0, Ordering::Relaxed);
@@ -168,6 +181,33 @@ pub fn update_audio_reactive(
   );
 
   AudioFeatures::default()
+}
+
+/// Rebuild a capture stream the audio backend invalidated, with a fresh
+/// analyzer because the new device may run at a different sample rate.
+fn recover_audio_capture(
+  audio_capture: &mut Option<AudioCapture>,
+  audio_analyzer: &mut Option<AudioAnalyzer>,
+  debug_log: &mut DebugLog,
+) {
+  let Some(capture) = audio_capture else {
+    return;
+  };
+
+  match capture.recover_if_invalidated() {
+    Ok(false) => {}
+    Ok(true) => {
+      *audio_analyzer = Some(AudioAnalyzer::new(capture.sample_rate));
+      let _ = debug_logln!(
+        debug_log,
+        "AUDIO: capture rebuilt at {} Hz",
+        capture.sample_rate
+      );
+    }
+    Err(error) => {
+      let _ = debug_logln!(debug_log, "AUDIO: capture rebuild failed: {error:#}");
+    }
+  }
 }
 
 /// Apply decay to parameters when audio is silent
@@ -388,7 +428,7 @@ mod tests {
 
     let features = update_audio_reactive(
       &mut params,
-      &None,
+      &mut None,
       &mut analyzer,
       1.0 / 30.0,
       &mut debug_log,
@@ -417,7 +457,7 @@ mod tests {
 
     let features = update_audio_reactive(
       &mut params,
-      &None,
+      &mut None,
       &mut analyzer,
       1.0 / 30.0,
       &mut debug_log,

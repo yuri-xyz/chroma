@@ -23,7 +23,7 @@ Older instructions used `cargo build --release --features audio`. That command s
 | Platform | Capture method |
 | --- | --- |
 | Linux | Records the monitor of the default PulseAudio or PipeWire output through libpulse. If no sound server is reachable, falls back to CPAL device selection. If the sound server restarts, Chroma reconnects on its own. |
-| Windows | WASAPI loopback of the default output device. No "Stereo Mix" input has to be enabled. |
+| Windows | WASAPI loopback of the default output device. No "Stereo Mix" input has to be enabled. If you switch the default output or unplug the captured device, Chroma rebuilds the capture on the new default within about a second. |
 | macOS | CPAL loopback capture of the output device on recent macOS releases. Older systems can use a virtual loopback driver such as BlackHole, which Chroma recognises by name. |
 
 To capture a different device, list what Chroma can see and pass a name:
@@ -43,7 +43,7 @@ Reactivity follows the level of the captured signal. Very quiet playback produce
 
 ### What Chroma hears
 
-Each frame, the captured samples are run through a Hann-windowed FFT (2048 samples, advancing 512 at a time) and reduced to a handful of features:
+Each frame, the captured samples are run through a Hann-windowed FFT (2048 samples, advancing 512 at a time, at 48 kHz) and reduced to a handful of features. Devices captured at 96 or 192 kHz, common on Windows, use a proportionally larger window so the bands and beat timing stay the same:
 
 | Feature | Meaning |
 | --- | --- |
@@ -85,6 +85,8 @@ When the signal falls below 2% of full scale, Chroma winds the animation down in
 In practice the picture visibly slows and dims within about two seconds and is almost still after three or four. The moment audio returns it springs back, because the reactive values are recomputed from the very next frame.
 
 A single stray click does not count as sound: both the peak and the average level of a batch of samples must rise above the threshold.
+
+Capture that delivers no samples at all for a quarter of a second also counts as silence. Windows loopback behaves this way whenever no application is playing.
 
 ### Knowing that audio is detected
 

@@ -30,8 +30,8 @@
         # Keep these pins explicit. The package build uses stable Rust while
         # the dev shell uses nightly rustfmt for rustfmt.toml's unstable
         # import-grouping options.
-        packageRustVersion = "1.95.0";
-        devNightlyDate = "2026-04-29";
+        packageRustVersion = "1.98.1";
+        devNightlyDate = "2026-09-22";
 
         rustToolchain = pkgs.rust-bin.stable.${packageRustVersion}.default;
         clippyToolchain = pkgs.rust-bin.stable.${packageRustVersion}.default.override {

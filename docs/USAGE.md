@@ -99,7 +99,9 @@ Because the uniforms carry the audio-driven values (`frequency`, `amplitude`, `s
 
 ### Troubleshooting
 
-**No GPU found.** Chroma needs a GPU backend that wgpu supports: Vulkan, Metal, or DX12. On Linux, install the Vulkan loader and the Vulkan driver for your card, and confirm that `vulkaninfo` works.
+**No GPU found.** Chroma needs a GPU backend that wgpu supports: Vulkan, Metal, or DX12. On Linux, install the Vulkan loader and the Vulkan driver for your card, and confirm that `vulkaninfo` works. Without a hardware adapter Chroma falls back to a software one, such as WARP on Windows or lavapipe on Linux, which works but is slow.
+
+**Choosing a GPU backend.** Chroma tries every native backend and picks the high-performance adapter. Set `WGPU_BACKEND` to force one, for example `WGPU_BACKEND=dx12` or `WGPU_BACKEND=vulkan` on Windows when a driver misbehaves on the other.
 
 **The visuals do not react to sound.** Run `chroma --list-audio-devices` and work through [Audio Setup](./AUDIO_SETUP.md). With no audio the animation deliberately slows to a stop and dims.
 
