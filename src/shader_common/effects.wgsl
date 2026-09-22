@@ -1,7 +1,7 @@
 // Visual effects system
 
 fn apply_effect(position: vec2<f32>, uv: vec2<f32>, color: vec3<f32>, time: f32) -> vec3<f32> {
-    let elapsed = time - uniforms.effect_time;
+    let elapsed = uniforms.real_time - uniforms.effect_time;
     
     if elapsed < 0.0 || elapsed > 3.0 {
         return color;

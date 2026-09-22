@@ -1,6 +1,6 @@
 use rand::{Rng, RngExt};
 
-use super::{PaletteType, PatternType, ShaderParams};
+use super::{ColorMode, PaletteType, PatternType, ShaderParams};
 
 /// Probability of applying vignette effect during randomization
 const VIGNETTE_PROBABILITY: f64 = 0.3;
@@ -35,7 +35,6 @@ const PATTERN_WEIGHTS: &[(PatternType, u32)] = &[
   (PatternType::Metaballs, 2),
   (PatternType::World, 2),
   (PatternType::Fluid, 2),
-  (PatternType::Pyramid, 2),
   (PatternType::Infinity, 2),
   // Simpler patterns get lower weight
   (PatternType::Noise, 1),
@@ -82,6 +81,7 @@ pub fn randomize(params: &mut ShaderParams) {
 pub fn randomize_with_rng(params: &mut ShaderParams, rng: &mut impl Rng) {
   params.pattern_type = select_weighted(PATTERN_WEIGHTS, rng);
   params.palette = select_weighted(PALETTE_WEIGHTS, rng);
+  params.color_mode = ColorMode::all()[rng.random_range(0..ColorMode::all().len())];
 
   params.effect_type = rng.random_range(2..=6);
 
@@ -141,6 +141,27 @@ mod tests {
         "missing randomizer weight for pattern {:?}",
         pattern
       );
+    }
+  }
+
+  #[test]
+  fn randomization_reaches_every_color_mode() {
+    use rand::SeedableRng;
+
+    let mut rng = rand::rngs::StdRng::seed_from_u64(11);
+    let mut seen = Vec::new();
+
+    for _ in 0..1_000 {
+      let mut params = ShaderParams::default();
+      randomize_with_rng(&mut params, &mut rng);
+
+      if !seen.contains(&params.color_mode) {
+        seen.push(params.color_mode);
+      }
+    }
+
+    for mode in ColorMode::all() {
+      assert!(seen.contains(mode), "randomization never picked {mode:?}");
     }
   }
 }

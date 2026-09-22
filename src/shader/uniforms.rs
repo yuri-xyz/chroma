@@ -6,7 +6,8 @@ use crate::params::ShaderParams;
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 pub struct ShaderUniforms {
   pub time: f32,
-  _padding1: u32,
+  /// Wall-clock seconds; `effect_time` and `beat_distortion_time` are on this clock.
+  pub real_time: f32,
   pub resolution: [f32; 2],
 
   pub frequency: f32,
@@ -48,7 +49,7 @@ impl ShaderUniforms {
   pub fn from_params(params: &ShaderParams) -> Self {
     Self {
       time: params.time,
-      _padding1: 0,
+      real_time: params.real_time,
       resolution: [
         params.resolution_width as f32,
         params.resolution_height as f32,
@@ -82,8 +83,8 @@ impl ShaderUniforms {
       effect_type: params.effect_type,
 
       beat_distortion_time: params.beat_distortion_time,
-      beat_distortion_strength: params.beat_distortion_strength,
-      beat_zoom_strength: params.beat_zoom_strength,
+      beat_distortion_strength: params.beat_distortion_strength * params.beat_intensity,
+      beat_zoom_strength: params.beat_zoom_strength * params.beat_intensity,
       _padding2: [0; 3],
       background_tint: [
         params.background_tint_r,
@@ -186,5 +187,22 @@ mod tests {
     assert_eq!(mem::size_of::<ShaderUniforms>(), 144);
     assert_eq!(mem::align_of::<ShaderUniforms>(), 4);
     assert_eq!(mem::size_of::<ShaderUniforms>() % 16, 0);
+  }
+
+  #[test]
+  fn test_beat_strengths_scale_with_beat_intensity() {
+    let params = ShaderParams {
+      real_time: 3.0,
+      beat_distortion_strength: 0.5,
+      beat_zoom_strength: 0.0,
+      beat_intensity: 1.4,
+      ..ShaderParams::default()
+    };
+    let uniforms = ShaderUniforms::from_params(&params);
+
+    assert_eq!(uniforms.real_time, 3.0);
+    assert!((uniforms.beat_distortion_strength - 0.7).abs() < 1e-6);
+    // A zoom the user turned off stays off even on a drop.
+    assert_eq!(uniforms.beat_zoom_strength, 0.0);
   }
 }

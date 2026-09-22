@@ -74,26 +74,6 @@ fn test_tiled_patterns_apply_frequency_to_centered_coordinates() {
 }
 
 #[test]
-fn test_pyramid_rotation_uses_continuous_drift() {
-  let pyramid_shader = include_str!("../src/shader_patterns/pyramid.wgsl");
-
-  assert!(pyramid_shader.contains("fn pyramid_drift"));
-  assert!(pyramid_shader.contains("fn pyramid_rotation_angles"));
-  assert!(!pyramid_shader.contains("floor(time"));
-}
-
-#[test]
-fn test_pyramid_rotates_around_model_center() {
-  let pyramid_shader = include_str!("../src/shader_patterns/pyramid.wgsl");
-
-  assert!(pyramid_shader.contains("fn pyramid_center_for_rotation"));
-  assert!(pyramid_shader.contains("let rotation_center = pyramid_center_for_rotation();"));
-  assert!(pyramid_shader.contains("vec3<f32>(0.0, 0.58, 0.0) - rotation_center"));
-  assert!(pyramid_shader.contains("vec3<f32>(-0.52, -0.36, -0.52) - rotation_center"));
-  assert!(pyramid_shader.contains("vec3<f32>(0.52, -0.36, 0.52) - rotation_center"));
-}
-
-#[test]
 fn test_infinity_pattern_uses_centered_continuous_3d_motion() {
   let infinity_shader = include_str!("../src/shader_patterns/infinity.wgsl");
 

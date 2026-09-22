@@ -36,7 +36,7 @@ A bass drop triggers a burst effect that spreads across the pattern. `N` chooses
 
 ### Saving
 
-`S` writes every parameter to `config_<hash>.toml` in the directory Chroma was started from. The name is derived from the contents, so saving the same look twice does not create a duplicate. Load the file again with `chroma -c <file>`. See [Configuration](./CONFIG_SAVE_LOAD.md).
+`S` writes every parameter to `config_<hash>.toml` in the directory Chroma was started from. The name is a hash of the contents, and because the animation time and audio-driven values change constantly, each press normally writes a new file. Load the file again with `chroma -c <file>`. See [Configuration](./CONFIG_SAVE_LOAD.md).
 
 ### What the keyboard does not control
 

@@ -142,21 +142,37 @@ impl AudioAnalyzer {
     }
   }
 
+  /// Analyze newly captured samples. One call can cover several analysis
+  /// windows: the band levels come from the newest window, while a beat or drop
+  /// detected in any of them is reported once. A call that completes no new
+  /// window reports the latest levels without repeating their beat or drop.
   pub fn analyze(&mut self, samples: &[f32], _delta_time: f32) -> AudioFeatures {
-    if samples.is_empty() {
-      return self.latest_features;
-    }
-
     self.sample_buffer.extend_from_slice(samples);
+
+    let mut batch: Option<AudioFeatures> = None;
 
     while self.available_sample_count() >= self.window_size {
       self.populate_fft_buffer_from_samples();
-      self.latest_features = self.analyze_window();
+      let window = self.analyze_window();
+      self.latest_features = window;
       self.processed_windows += 1;
       self.advance_sample_buffer();
+
+      batch = Some(match batch {
+        Some(previous) => AudioFeatures {
+          beat_strength: previous.beat_strength.max(window.beat_strength),
+          is_drop: previous.is_drop || window.is_drop,
+          ..window
+        },
+        None => window,
+      });
     }
 
-    self.latest_features
+    batch.unwrap_or(AudioFeatures {
+      beat_strength: 0.0,
+      is_drop: false,
+      ..self.latest_features
+    })
   }
 
   fn populate_fft_buffer_from_samples(&mut self) {
@@ -498,7 +514,7 @@ mod tests {
   }
 
   #[test]
-  fn test_analyze_empty_samples_returns_latest_features() {
+  fn test_analyze_empty_samples_returns_silent_features_before_first_window() {
     let mut analyzer = AudioAnalyzer::new(44_100.0);
 
     let features = analyzer.analyze(&[], 0.016);

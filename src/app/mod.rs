@@ -93,6 +93,11 @@ fn prepare_reloaded_params(
   mut new_params: ShaderParams,
 ) -> ShaderParams {
   new_params.time = current_params.time;
+  new_params.real_time = current_params.real_time;
+  // A running effect or beat keeps going; saved files carry no timestamps.
+  new_params.effect_time = current_params.effect_time;
+  new_params.beat_distortion_time = current_params.beat_distortion_time;
+  new_params.beat_intensity = current_params.beat_intensity;
   new_params.audio_enabled = true;
   new_params.set_resolution(
     current_params.resolution_width,
@@ -106,6 +111,7 @@ pub struct App {
   params: ShaderParams,
   pipeline: ShaderPipeline,
   converter: AsciiConverter,
+  frame_buffers: rendering::FrameBuffers,
   running: bool,
   show_status_bar: bool,
   stream_mode: bool,
@@ -212,6 +218,7 @@ impl App {
       params,
       pipeline,
       converter,
+      frame_buffers: rendering::FrameBuffers::default(),
       running: true,
       show_status_bar,
       stream_mode,
@@ -356,6 +363,7 @@ impl App {
         &uniforms,
         self.stream_format,
         self.stream_frame_index,
+        &mut self.frame_buffers,
         &mut self.debug_log,
       )?;
 
@@ -388,6 +396,7 @@ impl App {
       &uniforms,
       status_bar,
       terminal_background_color(&self.params),
+      &mut self.frame_buffers,
       &mut self.debug_log,
     )?;
 
@@ -633,6 +642,9 @@ mod tests {
   fn test_prepare_reloaded_params_preserves_runtime_state() {
     let current = ShaderParams {
       time: 12.5,
+      real_time: 30.0,
+      effect_time: 29.5,
+      beat_distortion_time: 29.8,
       resolution_width: 120,
       resolution_height: 40,
       palette: PaletteType::Braille,
@@ -640,6 +652,8 @@ mod tests {
     };
     let incoming = ShaderParams {
       time: 1.0,
+      effect_time: 99.0,
+      beat_distortion_time: 99.0,
       resolution_width: 10,
       resolution_height: 10,
       palette: PaletteType::Lines,
@@ -650,6 +664,9 @@ mod tests {
     let prepared = prepare_reloaded_params(&current, incoming);
 
     assert_eq!(prepared.time, current.time);
+    assert_eq!(prepared.real_time, current.real_time);
+    assert_eq!(prepared.effect_time, current.effect_time);
+    assert_eq!(prepared.beat_distortion_time, current.beat_distortion_time);
     assert_eq!(prepared.resolution_width, current.resolution_width);
     assert_eq!(prepared.resolution_height, current.resolution_height);
     assert_eq!(prepared.palette, PaletteType::Lines);

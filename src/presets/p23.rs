@@ -32,7 +32,6 @@ pub fn preset() -> ShaderParams {
     beat_sensitivity: 1.315,
     beat_distortion_strength: 0.85,
     beat_zoom_strength: 0.7,
-    effect_time: 3.69,
     effect_type: 4,
     ..ShaderParams::default()
   }

@@ -211,8 +211,18 @@ fn preset_cycler(
   Some(PresetCycler {
     cycle: PresetCycle::new(interval_seconds as f32, preset.order, preset.index),
     loader: Box::new(move |index: u32| {
-      layers.set_base(chroma::presets::get_preset(index))?;
-      layers.load(config_path.as_deref().map(Path::new))
+      let base = chroma::presets::get_preset(index);
+      // Only commit the new preset layer once it loads, so a failed switch
+      // does not surface later through a config reload.
+      let params = layered_params(
+        &base,
+        config_path.as_deref().map(Path::new),
+        &layers.cli_args,
+      )?;
+
+      layers.set_base(base)?;
+
+      Ok(params)
     }),
   })
 }
@@ -457,6 +467,36 @@ mod tests {
       assert_eq!(params.brightness, 0.9);
       assert_eq!(params.bass_influence, 0.8);
     }
+
+    let _ = fs::remove_file(path);
+  }
+
+  #[test]
+  fn test_failed_preset_switch_keeps_the_previous_preset_layer() {
+    let path = write_temp_config("cycle-fail", "brightness = 0.9\n");
+    let cli = parse_cli(&[
+      "--preset",
+      "3",
+      "--preset-interval",
+      "30",
+      "-c",
+      path.to_str().unwrap(),
+    ]);
+    let preset = preset_selection(&cli).unwrap();
+    let layers = Arc::new(ParamLayers::new(base_params(&cli, preset), &cli));
+    let loader = config_loader(Arc::clone(&layers));
+    let cycler = preset_cycler(layers, &cli, preset).expect("expected a preset cycler");
+
+    fs::write(&path, "not = [valid").unwrap();
+    assert!((cycler.loader)(4).is_err());
+
+    fs::write(&path, "brightness = 0.9\n").unwrap();
+    let reloaded = loader(&path).unwrap();
+
+    assert_eq!(
+      reloaded.pattern_type,
+      chroma::presets::get_preset(3).pattern_type
+    );
 
     let _ = fs::remove_file(path);
   }

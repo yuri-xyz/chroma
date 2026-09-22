@@ -7,6 +7,7 @@
 // IMPORTANT: Must match src/shader_common/uniforms.wgsl exactly (WGSL handles alignment automatically)
 struct Uniforms {
     time: f32,
+    real_time: f32,
     resolution: vec2<f32>,
     frequency: f32,
     amplitude: f32,

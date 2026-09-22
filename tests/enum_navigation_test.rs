@@ -26,9 +26,8 @@ fn test_pattern_type_to_u32_all_variants() {
   assert_eq!(PatternType::Metaballs.to_u32(), 21);
   assert_eq!(PatternType::World.to_u32(), 22);
   assert_eq!(PatternType::Fluid.to_u32(), 23);
-  assert_eq!(PatternType::Pyramid.to_u32(), 24);
-  assert_eq!(PatternType::Infinity.to_u32(), 25);
-  assert_eq!(PatternType::VortexCorner.to_u32(), 26);
+  assert_eq!(PatternType::Infinity.to_u32(), 24);
+  assert_eq!(PatternType::VortexCorner.to_u32(), 25);
 }
 
 #[test]
@@ -57,7 +56,6 @@ fn test_pattern_type_name_all_variants() {
   assert_eq!(PatternType::Metaballs.name(), "Metaball");
   assert_eq!(PatternType::World.name(), "World");
   assert_eq!(PatternType::Fluid.name(), "Fluid");
-  assert_eq!(PatternType::Pyramid.name(), "Pyramid");
   assert_eq!(PatternType::Infinity.name(), "Infinity");
   assert_eq!(PatternType::VortexCorner.name(), "VortexTL");
 }

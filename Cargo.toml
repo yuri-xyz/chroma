@@ -45,6 +45,18 @@ libpulse-simple-binding = "2.29.0"
 criterion = "0.8.2"
 pollster = { version = "0.4.0", features = ["macro"] }
 
+[[bench]]
+name = "frame_render"
+harness = false
+
+[[bench]]
+name = "audio_analysis"
+harness = false
+
+[[bench]]
+name = "gpu_render"
+harness = false
+
 [[bin]]
 name = "chroma"
 path = "src/main.rs"

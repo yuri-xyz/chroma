@@ -29,7 +29,6 @@ pub fn preset() -> ShaderParams {
     bass_influence: 0.5,
     mid_influence: 0.3,
     treble_influence: 0.2,
-    effect_time: 49.12,
     ..ShaderParams::default()
   }
 }

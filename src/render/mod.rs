@@ -1,15 +1,17 @@
-use std::fmt::Write as _;
-
 use crossterm::style::Color;
 use unicode_width::UnicodeWidthChar;
 
 use crate::{constants::MIN_BRIGHTNESS_THRESHOLD, utils::color::calculate_brightness};
 
+mod digits;
 mod stream;
 
 pub use stream::StreamFormat;
 
 pub type RgbColor = (u8, u8, u8);
+
+const FOREGROUND_SGR: &str = "\x1b[38;2;";
+const BACKGROUND_SGR: &str = "\x1b[48;2;";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RenderedCell {
@@ -106,8 +108,16 @@ impl RenderedFrame {
   }
 
   pub fn to_terminal_string(&self) -> String {
-    let mut buffer =
-      String::with_capacity(self.height * self.width * 25 + self.status_bar_width() * 25);
+    let mut buffer = String::new();
+    self.write_terminal_string(&mut buffer);
+    buffer
+  }
+
+  /// Serialize into `buffer`, replacing its contents. The render loop passes
+  /// the same buffer every frame so its capacity is reused.
+  pub fn write_terminal_string(&self, buffer: &mut String) {
+    buffer.clear();
+    buffer.reserve(self.height * self.width * 25 + self.status_bar_width() * 25);
     let mut style_state = StyleState {
       foreground: None,
       background: self.terminal_background,
@@ -115,15 +125,15 @@ impl RenderedFrame {
 
     buffer.push_str("\x1b[?25l\x1b[H\x1b[0m");
 
-    if let Some((r, g, b)) = self.terminal_background {
-      let _ = write!(buffer, "\x1b[48;2;{};{};{}m", r, g, b);
+    if let Some(background) = self.terminal_background {
+      digits::push_rgb_sequence(buffer, BACKGROUND_SGR, background);
     } else {
       buffer.push_str("\x1b[49m");
     }
 
     for (row_idx, row) in self.rows.iter().enumerate() {
       push_cells(
-        &mut buffer,
+        buffer,
         row,
         &mut style_state,
         StyleState {
@@ -134,7 +144,7 @@ impl RenderedFrame {
 
       if row_idx < self.rows.len() - 1 || self.status_bar.is_some() {
         reset_to_base_style(
-          &mut buffer,
+          buffer,
           &mut style_state,
           StyleState {
             foreground: None,
@@ -161,7 +171,7 @@ impl RenderedFrame {
         background: None,
       };
       push_cells(
-        &mut buffer,
+        buffer,
         status_bar,
         &mut style_state,
         StyleState {
@@ -170,7 +180,7 @@ impl RenderedFrame {
         },
       );
       reset_to_base_style(
-        &mut buffer,
+        buffer,
         &mut style_state,
         StyleState {
           foreground: None,
@@ -178,12 +188,18 @@ impl RenderedFrame {
         },
       );
     }
-
-    buffer
   }
 
   pub fn to_stream_string(&self, format: StreamFormat, frame_index: u64) -> String {
-    stream::to_stream_string(self, format, frame_index)
+    let mut buffer = String::new();
+    self.write_stream_string(format, frame_index, &mut buffer);
+    buffer
+  }
+
+  /// Serialize a stream frame into `buffer`, replacing its contents, so the
+  /// render loop can reuse one allocation across frames.
+  pub fn write_stream_string(&self, format: StreamFormat, frame_index: u64, buffer: &mut String) {
+    stream::write_stream_string(self, format, frame_index, buffer);
   }
 
   fn status_bar_width(&self) -> usize {
@@ -287,9 +303,7 @@ fn write_style_transition(
 ) {
   if style_state.background != background {
     match background {
-      Some((r, g, b)) => {
-        let _ = write!(buffer, "\x1b[48;2;{};{};{}m", r, g, b);
-      }
+      Some(color) => digits::push_rgb_sequence(buffer, BACKGROUND_SGR, color),
       None => buffer.push_str("\x1b[49m"),
     }
     style_state.background = background;
@@ -297,9 +311,7 @@ fn write_style_transition(
 
   if style_state.foreground != foreground {
     match foreground {
-      Some((r, g, b)) => {
-        let _ = write!(buffer, "\x1b[38;2;{};{};{}m", r, g, b);
-      }
+      Some(color) => digits::push_rgb_sequence(buffer, FOREGROUND_SGR, color),
       None => buffer.push_str("\x1b[39m"),
     }
     style_state.foreground = foreground;

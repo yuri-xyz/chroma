@@ -211,6 +211,14 @@ impl ShaderPipeline {
   }
 
   pub fn render(&self, uniforms: &ShaderUniforms) -> Result<Vec<u8>> {
+    let mut rgba_data = Vec::new();
+    self.render_into(uniforms, &mut rgba_data)?;
+    Ok(rgba_data)
+  }
+
+  /// Render into `rgba_data`, replacing its contents, so the render loop can
+  /// reuse one pixel buffer across frames.
+  pub fn render_into(&self, uniforms: &ShaderUniforms, rgba_data: &mut Vec<u8>) -> Result<()> {
     self
       .queue
       .write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(uniforms));
@@ -259,19 +267,23 @@ impl ShaderPipeline {
 
     let data = buffer_slice.get_mapped_range();
     let float_data: &[f32] = bytemuck::cast_slice(&data);
-    let mut rgba_data = Vec::with_capacity((self.width * self.height * 4) as usize);
-
-    for chunk in float_data.chunks(4) {
-      rgba_data.push((chunk[0] * 255.0).min(255.0) as u8);
-      rgba_data.push((chunk[1] * 255.0).min(255.0) as u8);
-      rgba_data.push((chunk[2] * 255.0).min(255.0) as u8);
-      rgba_data.push(255);
-    }
+    rgba_data.clear();
+    rgba_data.reserve(float_data.len());
+    rgba_data.extend(float_data.as_chunks::<4>().0.iter().flat_map(
+      |&[red, green, blue, _alpha]| {
+        [
+          float_channel_to_byte(red),
+          float_channel_to_byte(green),
+          float_channel_to_byte(blue),
+          255,
+        ]
+      },
+    ));
 
     drop(data);
     self.staging_buffer.unmap();
 
-    Ok(rgba_data)
+    Ok(())
   }
 
   pub fn width(&self) -> u32 {
@@ -281,6 +293,11 @@ impl ShaderPipeline {
   pub fn height(&self) -> u32 {
     self.height
   }
+}
+
+/// Truncating conversion; `as` saturates, so negative and NaN channels map to 0.
+fn float_channel_to_byte(channel: f32) -> u8 {
+  (channel * 255.0).min(255.0) as u8
 }
 
 fn ensure_non_empty_dimensions(width: u32, height: u32) -> Result<()> {

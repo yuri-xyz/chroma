@@ -146,11 +146,11 @@ pub struct CliArgs {
   #[arg(short = 'H', long, value_name = "DEGREES")]
   pub hue: Option<f32>,
 
-  /// Pattern type: plasma, waves, ripples, vortex, noise, geometric, voronoi, truchet, hexagonal, interference, fractal, glitch, spiral, rings, grid, diamonds, sphere, octgrams, warped, kaleidoscope, tunnel, metaballs, world, fluid, pyramid, infinity, vortex-corner
+  /// Pattern type: plasma, waves, ripples, vortex, noise, geometric, voronoi, truchet, hexagonal, interference, fractal, glitch, spiral, rings, grid, diamonds, sphere, octgrams, warped, kaleidoscope, tunnel, metaballs, world, fluid, infinity, vortex-corner
   #[arg(short = 'p', long, value_name = "PATTERN")]
   pub pattern: Option<String>,
 
-  /// Color scheme: rainbow, monochrome, duotone, warm, cool, neon, pastel, cyberpunk, warped, chromatic
+  /// Color scheme: rainbow, monochrome, duotone, warm, cool, neon, pastel, cyberpunk, warped, fire, ocean, aurora, galaxy, chromatic
   #[arg(short = 'm', long, value_name = "MODE")]
   pub color_mode: Option<String>,
 

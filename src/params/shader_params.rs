@@ -14,10 +14,26 @@ use crate::constants::EFFECT_NAMES;
 /// Octave bounds for fbm patterns; the shader loops this many times per sample.
 const MIN_OCTAVES: u32 = 1;
 const MAX_OCTAVES: u32 = 8;
+/// Upper bound for the user-set beat distortion and zoom strengths.
+const MAX_BEAT_STRENGTH: f32 = 2.0;
+/// Timestamp far enough in the past that no effect or beat is running.
+const NEVER_TRIGGERED: f32 = -100.0;
+
+fn never_triggered() -> f32 {
+  NEVER_TRIGGERED
+}
+
+fn full_beat_intensity() -> f32 {
+  1.0
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShaderParams {
   pub time: f32,
+  /// Wall-clock seconds since start. Unlike `time` it does not follow `speed`,
+  /// so effects and beats keep their real duration when the animation slows.
+  #[serde(skip)]
+  pub real_time: f32,
   pub resolution_width: u32,
   pub resolution_height: u32,
 
@@ -61,18 +77,27 @@ pub struct ShaderParams {
   pub treble_influence: f32,
   pub beat_sensitivity: f32,
 
+  /// `real_time` when the current effect fired. Runtime state, never saved.
+  #[serde(skip, default = "never_triggered")]
   pub effect_time: f32,
   pub effect_type: u32,
 
+  /// `real_time` of the latest beat. Runtime state, never saved.
+  #[serde(skip, default = "never_triggered")]
   pub beat_distortion_time: f32,
   pub beat_distortion_strength: f32,
   pub beat_zoom_strength: f32,
+  /// How hard the latest beat hits, scaling both beat strengths: 1 for a
+  /// regular beat, more for a bass drop. Runtime state, never saved.
+  #[serde(skip, default = "full_beat_intensity")]
+  pub beat_intensity: f32,
 }
 
 impl Default for ShaderParams {
   fn default() -> Self {
     Self {
       time: 0.0,
+      real_time: 0.0,
       resolution_width: 80,
       resolution_height: 24,
 
@@ -116,12 +141,13 @@ impl Default for ShaderParams {
       treble_influence: 0.2,
       beat_sensitivity: 1.0, // Default balanced sensitivity
 
-      effect_time: -100.0,
+      effect_time: NEVER_TRIGGERED,
       effect_type: 0,
 
-      beat_distortion_time: -100.0,
+      beat_distortion_time: NEVER_TRIGGERED,
       beat_distortion_strength: 0.85,
       beat_zoom_strength: 0.7,
+      beat_intensity: 1.0,
     }
   }
 }
@@ -178,21 +204,18 @@ impl ShaderParams {
   /// Starts nearly still and dimmed, waiting for audio to bring it to life
   pub fn with_audio_reactive_defaults() -> Self {
     Self {
-      speed: 0.05,                   // Nearly still (vs default 1.0)
-      brightness: 0.6,               // Dimmed (vs default 1.2)
-      contrast: 0.8,                 // Softer (vs default 1.0)
-      amplitude: 0.4,                // Minimal (vs default 1.0)
-      frequency: 6.0,                // Lower detail (vs default 10.0)
-      audio_enabled: true,           // Audio reactive mode ON
-      effect_time: -100.0,           // Far in past to prevent startup wave
-      beat_distortion_time: -100.0,  // Far in past to prevent startup distortion
-      beat_distortion_strength: 0.8, // Default beat pop strength
-      beat_zoom_strength: 0.0,       // Zoom strength (set per-beat)
+      speed: 0.05,         // Nearly still (vs default 0.5)
+      brightness: 0.6,     // Dimmed (vs default 1.2)
+      contrast: 0.8,       // Softer (vs default 1.0)
+      amplitude: 0.4,      // Minimal (vs default 1.0)
+      frequency: 6.0,      // Lower detail (vs default 10.0)
+      audio_enabled: true, // Audio reactive mode ON
       ..Default::default()
     }
   }
 
   pub fn update_time(&mut self, delta_time: f32) {
+    self.real_time += delta_time;
     self.time += delta_time * self.speed;
   }
 
@@ -216,6 +239,11 @@ impl ShaderParams {
     self.frequency = Self::clamp_finite(self.frequency, defaults.frequency, 3.0, 18.0);
     self.amplitude = Self::clamp_finite(self.amplitude, defaults.amplitude, 0.0, 2.0);
     self.speed = Self::clamp_finite(self.speed, defaults.speed, 0.0, 1.0);
+    self.color_shift = if self.color_shift.is_finite() {
+      self.color_shift.rem_euclid(std::f32::consts::TAU)
+    } else {
+      defaults.color_shift
+    };
     self.scale = Self::clamp_finite(self.scale, defaults.scale, 0.1, 5.0);
     self.octaves = self.octaves.clamp(MIN_OCTAVES, MAX_OCTAVES);
 
@@ -261,6 +289,19 @@ impl ShaderParams {
       Self::clamp_finite(self.treble_influence, defaults.treble_influence, 0.0, 1.0);
     self.beat_sensitivity =
       Self::clamp_finite(self.beat_sensitivity, defaults.beat_sensitivity, 0.1, 3.0);
+
+    self.beat_distortion_strength = Self::clamp_finite(
+      self.beat_distortion_strength,
+      defaults.beat_distortion_strength,
+      0.0,
+      MAX_BEAT_STRENGTH,
+    );
+    self.beat_zoom_strength = Self::clamp_finite(
+      self.beat_zoom_strength,
+      defaults.beat_zoom_strength,
+      0.0,
+      MAX_BEAT_STRENGTH,
+    );
 
     self.effect_type = self.effect_type.min(EFFECT_NAMES.len() as u32 - 1);
   }

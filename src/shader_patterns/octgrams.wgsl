@@ -67,7 +67,7 @@ fn octgrams_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let aspect = uniforms.resolution.x / uniforms.resolution.y;
     let p = vec2<f32>(screen_pos.x * aspect, screen_pos.y);
     
-    let ray_origin = vec3<f32>(0.0, -0.2, time * uniforms.speed * 4.0);
+    let ray_origin = vec3<f32>(0.0, -0.2, time * 4.0);
     var ray_dir = normalize(vec3<f32>(p.x, p.y, 1.5));
     
     let rot_xy = rot2d_octgrams(sin(time * 0.03) * 5.0) * ray_dir.xy;

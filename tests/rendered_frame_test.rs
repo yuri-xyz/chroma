@@ -236,3 +236,49 @@ fn test_pipeline_fixture_terminal_output_matches_semantic_cells() {
     "\x1b[?25l\x1b[H\x1b[0m\x1b[49m\x1b[38;2;255;255;255m@\x1b[39m "
   );
 }
+
+#[test]
+fn test_reused_output_buffer_is_replaced_not_appended() {
+  let large = frame_from_pixels(&[200; 4 * 6], 3, 2, AsciiPalette::standard(), true);
+  let small = frame_from_pixels(&[255, 255, 255, 255], 1, 1, AsciiPalette::simple(), true);
+  let mut buffer = String::new();
+
+  large.write_terminal_string(&mut buffer);
+  small.write_terminal_string(&mut buffer);
+  assert_eq!(buffer, small.to_terminal_string());
+
+  for format in [
+    StreamFormat::Legacy,
+    StreamFormat::Ansi,
+    StreamFormat::Cells,
+  ] {
+    large.write_stream_string(format, 1, &mut buffer);
+    small.write_stream_string(format, 2, &mut buffer);
+    assert_eq!(buffer, small.to_stream_string(format, 2), "format {format}");
+  }
+}
+
+#[test]
+fn test_terminal_string_encodes_every_channel_value_like_format_macro() {
+  // One cell per value of the red channel covers 1-, 2- and 3-digit numbers.
+  let ascii_frame = vec![(0..=255_u8)
+    .map(|red| {
+      (
+        '#',
+        Color::Rgb {
+          r: red,
+          g: 255,
+          b: 9,
+        },
+      )
+    })
+    .collect::<Vec<_>>()];
+  let frame = RenderedFrame::from_ascii_frame(&ascii_frame, 256, 1, None, Some((1, 20, 255)));
+
+  let mut expected = String::from("\x1b[?25l\x1b[H\x1b[0m\x1b[48;2;1;20;255m");
+  for red in 0..=255_u8 {
+    expected.push_str(&format!("\x1b[38;2;{red};255;9m#"));
+  }
+
+  assert_eq!(frame.to_terminal_string(), expected);
+}

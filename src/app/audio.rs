@@ -16,10 +16,10 @@ const SILENT_FREQUENCY_BASELINE: f32 = 6.0;
 const SILENT_BRIGHTNESS_BASELINE: f32 = 0.6;
 const SILENT_CONTRAST_BASELINE: f32 = 0.8;
 const REGULAR_BEAT_THRESHOLD_BASE: f32 = 0.18;
-const DROP_BEAT_DISTORTION_STRENGTH: f32 = 1.2;
-const DROP_BEAT_ZOOM_STRENGTH: f32 = 1.0;
-const REGULAR_BEAT_DISTORTION_STRENGTH: f32 = 0.85;
-const REGULAR_BEAT_ZOOM_STRENGTH: f32 = 0.7;
+/// Bass drops hit harder than regular beats; the user-set beat distortion and
+/// zoom strengths apply to regular beats and are scaled by this on a drop.
+const DROP_BEAT_INTENSITY: f32 = 1.4;
+const REGULAR_BEAT_INTENSITY: f32 = 1.0;
 /// Smoothing factors below were tuned per frame at this rate; they are scaled
 /// by the real frame time so `--fps` does not change how fast visuals react.
 const REFERENCE_FPS: f32 = 60.0;
@@ -77,14 +77,9 @@ fn samples_have_audio(activity: SampleActivity) -> bool {
   activity.peak >= AUDIO_SAMPLE_THRESHOLD && activity.rms >= AUDIO_SAMPLE_THRESHOLD * 0.5
 }
 
-fn trigger_beat_visuals(
-  params: &mut chroma::params::ShaderParams,
-  distortion_strength: f32,
-  zoom_strength: f32,
-) {
-  params.beat_distortion_time = params.time;
-  params.beat_distortion_strength = distortion_strength;
-  params.beat_zoom_strength = zoom_strength;
+fn trigger_beat_visuals(params: &mut chroma::params::ShaderParams, intensity: f32) {
+  params.beat_distortion_time = params.real_time;
+  params.beat_intensity = intensity;
 }
 /// Update shader parameters based on audio input
 pub fn update_audio_reactive(
@@ -236,14 +231,10 @@ fn apply_audio_reactivity(
 
   // Bass drop triggers major effect AND full-strength distortion + zoom (check first for priority)
   if features.is_drop {
-    params.effect_time = params.time;
+    params.effect_time = params.real_time;
 
     // Trigger full-strength beat distortion + zoom for maximum impact
-    trigger_beat_visuals(
-      params,
-      DROP_BEAT_DISTORTION_STRENGTH,
-      DROP_BEAT_ZOOM_STRENGTH,
-    );
+    trigger_beat_visuals(params, DROP_BEAT_INTENSITY);
     let _ = debug_logln!(
       debug_log,
       "BASS DROP detected! Triggering effect + FULL distortion + ZOOM"
@@ -257,11 +248,7 @@ fn apply_audio_reactivity(
       params.noise_strength = features.beat_strength * (0.3 + features.treble * 0.7);
 
       // Trigger beat distortion pop effect (visible but not overwhelming for regular beats)
-      trigger_beat_visuals(
-        params,
-        REGULAR_BEAT_DISTORTION_STRENGTH,
-        REGULAR_BEAT_ZOOM_STRENGTH,
-      );
+      trigger_beat_visuals(params, REGULAR_BEAT_INTENSITY);
 
       let _ = debug_logln!(
         debug_log,
@@ -475,7 +462,10 @@ mod tests {
   #[test]
   fn test_apply_audio_reactivity_drop_triggers_full_strength_beat_visuals() {
     let mut params = ShaderParams {
-      time: 42.0,
+      time: 7.0,
+      real_time: 42.0,
+      beat_distortion_strength: 0.6,
+      beat_zoom_strength: 0.3,
       bass_influence: 0.7,
       mid_influence: 0.5,
       treble_influence: 0.4,
@@ -493,19 +483,21 @@ mod tests {
 
     apply_audio_reactivity(&mut params, &features, 1.0 / REFERENCE_FPS, &mut debug_log);
 
+    // Effects are stamped on the wall clock, not the speed-scaled shader time.
     assert_eq!(params.effect_time, 42.0);
     assert_eq!(params.beat_distortion_time, 42.0);
-    assert_eq!(
-      params.beat_distortion_strength,
-      DROP_BEAT_DISTORTION_STRENGTH
-    );
-    assert_eq!(params.beat_zoom_strength, DROP_BEAT_ZOOM_STRENGTH);
+    assert_eq!(params.beat_intensity, DROP_BEAT_INTENSITY);
+    // The user-set strengths survive the beat.
+    assert_eq!(params.beat_distortion_strength, 0.6);
+    assert_eq!(params.beat_zoom_strength, 0.3);
   }
 
   #[test]
   fn test_apply_audio_reactivity_regular_beat_uses_configured_threshold() {
     let mut params = ShaderParams {
-      time: 12.0,
+      real_time: 12.0,
+      beat_intensity: DROP_BEAT_INTENSITY,
+      beat_zoom_strength: 0.0,
       beat_sensitivity: 2.0,
       bass_influence: 0.5,
       mid_influence: 0.3,
@@ -525,11 +517,9 @@ mod tests {
     apply_audio_reactivity(&mut params, &features, 1.0 / REFERENCE_FPS, &mut debug_log);
 
     assert_eq!(params.beat_distortion_time, 12.0);
-    assert_eq!(
-      params.beat_distortion_strength,
-      REGULAR_BEAT_DISTORTION_STRENGTH
-    );
-    assert_eq!(params.beat_zoom_strength, REGULAR_BEAT_ZOOM_STRENGTH);
+    assert_eq!(params.beat_intensity, REGULAR_BEAT_INTENSITY);
+    // A zoom the user switched off stays off.
+    assert_eq!(params.beat_zoom_strength, 0.0);
     assert!(params.noise_strength > 0.0);
   }
 }

@@ -32,12 +32,17 @@ pub fn setup() -> Result<()> {
 }
 
 /// Restore the terminal before the panic message is printed, so a panic does
-/// not leave the shell in raw mode on the alternate screen.
+/// not leave the shell in raw mode on the alternate screen. Only a panic on the
+/// thread that set the terminal up ends the program; one on a background thread
+/// (audio capture) leaves rendering running, so the terminal stays as it is.
 fn install_panic_cleanup() {
   let previous_hook = std::panic::take_hook();
+  let render_thread = std::thread::current().id();
 
   std::panic::set_hook(Box::new(move |info| {
-    let _ = cleanup();
+    if std::thread::current().id() == render_thread {
+      let _ = cleanup();
+    }
     previous_hook(info);
   }));
 }

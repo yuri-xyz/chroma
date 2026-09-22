@@ -2,8 +2,8 @@
 
 /// Apply beat-reactive zoom pulse
 /// Creates smooth zoom in/out effect synchronized with beats
-fn apply_beat_zoom(uv: vec2<f32>, time: f32) -> vec2<f32> {
-    let elapsed = time - uniforms.beat_distortion_time;
+fn apply_beat_zoom(uv: vec2<f32>) -> vec2<f32> {
+    let elapsed = uniforms.real_time - uniforms.beat_distortion_time;
     
     // Only apply zoom for 0.6 seconds after beat
     if elapsed < 0.0 || elapsed > 0.6 || uniforms.beat_zoom_strength < 0.01 {
@@ -39,8 +39,8 @@ fn apply_beat_zoom(uv: vec2<f32>, time: f32) -> vec2<f32> {
 
 /// Apply beat-reactive distortion to UV coordinates
 /// Creates expanding ripple waves or diagonal waves that distort the underlying pattern
-fn apply_beat_distortion(uv: vec2<f32>, time: f32) -> vec2<f32> {
-    let elapsed = time - uniforms.beat_distortion_time;
+fn apply_beat_distortion(uv: vec2<f32>) -> vec2<f32> {
+    let elapsed = uniforms.real_time - uniforms.beat_distortion_time;
     
     // Only apply distortion for 0.8 seconds after beat
     if elapsed < 0.0 || elapsed > 0.8 {
@@ -97,8 +97,8 @@ fn apply_beat_distortion(uv: vec2<f32>, time: f32) -> vec2<f32> {
 
 /// Apply beat-reactive color flash/boost
 /// Adds visual emphasis to beats through brightness/color changes
-fn apply_beat_flash(color: vec3<f32>, position: vec2<f32>, time: f32) -> vec3<f32> {
-    let elapsed = time - uniforms.beat_distortion_time;
+fn apply_beat_flash(color: vec3<f32>, position: vec2<f32>) -> vec3<f32> {
+    let elapsed = uniforms.real_time - uniforms.beat_distortion_time;
     
     if elapsed < 0.0 || elapsed > 0.5 {
         return color;

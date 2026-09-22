@@ -29,5 +29,4 @@ audio_enabled = true
 bass_influence = 0.3829224109649658
 mid_influence = 0.5281829237937927
 treble_influence = 0.4963507652282715
-effect_time = -100.0
 effect_type = 5

@@ -95,7 +95,7 @@ Start from [`examples/custom_shader.wgsl`](../examples/custom_shader.wgsl), whic
 - The two bindings: the uniforms at `@group(0) @binding(0)` and the `output_buffer` storage array at `@group(0) @binding(1)`.
 - A `@compute @workgroup_size(8, 8)` entry point named `main` that writes one RGBA colour per pixel into `output_buffer`.
 
-Because the uniforms carry the audio-driven values (`frequency`, `amplitude`, `speed`, `brightness`, and the beat timers), a custom shader reacts to music as soon as it uses them. If the file fails to compile, Chroma exits with the WGSL error instead of starting.
+Because the uniforms carry the audio-driven values (`frequency`, `amplitude`, `speed`, `brightness`, and the beat timers), a custom shader reacts to music as soon as it uses them. `time` already advances at `speed`, so animate with `time` directly rather than multiplying it by `speed`. The beat timers `effect_time` and `beat_distortion_time` are wall-clock stamps: measure them against `real_time`, not `time`. If the file fails to compile, Chroma exits with the WGSL error instead of starting.
 
 ### Troubleshooting
 

@@ -62,14 +62,14 @@ A strong vignette makes a pattern look as if it sits inside an oval. Presets `18
 | `treble_influence` | `-T, --treble-influence` | 0.0 to 1.0 | 0.2 | How strongly treble boosts the animation speed. |
 | `beat_sensitivity` | `--beat-sensitivity` | 0.1 to 3.0 | 1.0 | Higher values register subtler beats. |
 | `effect_type` | | 0 to 6 | 0 | The effect fired by a bass drop: Circle, Cross, Diamond, Star, Grid, Octgrams, or Wave. Change it with the `N` key. |
-| `beat_distortion_strength` | `-D, --beat-distortion` | 0.0 to 2.0 | 0.8 | Strength of the distortion "pop" on a beat. |
-| `beat_zoom_strength` | `-z, --beat-zoom` | 0.0 to 2.0 | 0.0 | Strength of the zoom pulse on a beat. |
+| `beat_distortion_strength` | `-D, --beat-distortion` | 0.0 to 2.0 | 0.85 | Strength of the distortion "pop" on a beat. `0` turns it off. |
+| `beat_zoom_strength` | `-z, --beat-zoom` | 0.0 to 2.0 | 0.7 | Strength of the zoom pulse on a beat. `0` turns it off. |
 
-The last two only set an initial value. Chroma assigns both on every detected beat, using a moderate strength for ordinary beats and a stronger one for bass drops.
+The last two apply to ordinary beats. A bass drop hits 1.4 times as hard.
 
 ### Runtime fields
 
-A saved config also contains `time`, `resolution_width`, `resolution_height`, `audio_enabled`, `effect_time`, and `beat_distortion_time`. These record the state of the running program rather than the look. The resolution is always replaced by the current terminal size and `audio_enabled` is always on, so there is no reason to edit them by hand.
+A saved config also contains `time`, `resolution_width`, `resolution_height`, and `audio_enabled`. These record the state of the running program rather than the look. The resolution is always replaced by the current terminal size and `audio_enabled` is always on, so there is no reason to edit them by hand.
 
 ### Example looks
 

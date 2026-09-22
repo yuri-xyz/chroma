@@ -17,6 +17,14 @@ pub enum StreamRenderStatus {
   ConsumerClosed,
 }
 
+/// Per-frame scratch space kept across frames so the render loop does not
+/// allocate a fresh pixel buffer and output string every frame.
+#[derive(Debug, Default)]
+pub struct FrameBuffers {
+  pixels: Vec<u8>,
+  output: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StdoutWriteStatus {
   Written,
@@ -82,15 +90,16 @@ pub fn render_frame(
   uniforms: &ShaderUniforms,
   status_bar: Option<Vec<RenderedCell>>,
   terminal_bg_color: Option<(u8, u8, u8)>,
+  buffers: &mut FrameBuffers,
   debug_log: &mut DebugLog,
 ) -> Result<()> {
-  let ascii_frame = render_ascii_frame(pipeline, converter, uniforms, debug_log)?;
+  let ascii_frame = render_ascii_frame(pipeline, converter, uniforms, buffers, debug_log)?;
   let frame = build_rendered_frame(pipeline, &ascii_frame, status_bar, terminal_bg_color);
-  let frame_buffer = frame.to_terminal_string();
+  frame.write_terminal_string(&mut buffers.output);
 
-  log_frame_stats(&frame, &ascii_frame, &frame_buffer, debug_log)?;
+  log_frame_stats(&frame, &ascii_frame, &buffers.output, debug_log)?;
 
-  write_stdout(&frame_buffer)?;
+  write_stdout(&buffers.output)?;
 
   Ok(())
 }
@@ -99,13 +108,15 @@ fn render_ascii_frame(
   pipeline: &ShaderPipeline,
   converter: &AsciiConverter,
   uniforms: &ShaderUniforms,
+  buffers: &mut FrameBuffers,
   debug_log: &mut DebugLog,
 ) -> Result<Vec<Vec<(char, Color)>>> {
-  let pixel_data = pipeline.render(uniforms)?;
+  let pixel_data = &mut buffers.pixels;
+  pipeline.render_into(uniforms, pixel_data)?;
 
-  log_pixel_data(&pixel_data, pipeline, debug_log)?;
+  log_pixel_data(pixel_data, pipeline, debug_log)?;
 
-  let ascii_frame = converter.convert_frame(&pixel_data, pipeline.width(), pipeline.height());
+  let ascii_frame = converter.convert_frame(pixel_data, pipeline.width(), pipeline.height());
 
   log_ascii_frame(&ascii_frame, debug_log)?;
 
@@ -228,12 +239,14 @@ pub fn render_stream_frame(
   uniforms: &ShaderUniforms,
   stream_format: StreamFormat,
   stream_frame_index: u64,
+  buffers: &mut FrameBuffers,
   debug_log: &mut DebugLog,
 ) -> Result<StreamRenderStatus> {
-  let ascii_frame = render_ascii_frame(pipeline, converter, uniforms, debug_log)?;
+  let ascii_frame = render_ascii_frame(pipeline, converter, uniforms, buffers, debug_log)?;
   let frame = build_rendered_frame(pipeline, &ascii_frame, None, None);
+  frame.write_stream_string(stream_format, stream_frame_index, &mut buffers.output);
 
-  write_stream_stdout(&frame.to_stream_string(stream_format, stream_frame_index))
+  write_stream_stdout(&buffers.output)
 }
 
 #[cfg(test)]

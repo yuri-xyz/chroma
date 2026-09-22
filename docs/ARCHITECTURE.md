@@ -42,7 +42,7 @@ Each pass through `App::run` in `src/app/mod.rs` does the following.
 6. Dispatch the compute shader with one invocation per character cell, in workgroups of 8×8.
 7. Copy the output buffer into a staging buffer, map it, and convert the float RGBA values to bytes.
 8. Map each pixel's brightness to a palette character and keep its colour.
-9. Build a `RenderedFrame`, add the status bar, serialise it to one string, and write it to stdout in a single write.
+9. Build a `RenderedFrame`, add the status bar, serialise it to one string, and write it to stdout in a single write. The pixel bytes and the output string live in buffers that are reused from frame to frame.
 10. Sleep for whatever remains of the frame budget set by `--fps`.
 
 The shader resolution is the terminal size in cells, less one row when the status bar is visible. An 80×24 terminal therefore renders just 1,840 pixels per frame, which is why the GPU work is rarely the bottleneck; terminal output usually is.
@@ -96,6 +96,7 @@ Stream mode uses the same pipeline and only changes the last step. A closed pipe
 | `src/ascii/`, `src/render/` | Pixel-to-glyph conversion and frame serialisation |
 | `src/terminal.rs`, `src/debug.rs`, `src/constants.rs` | Terminal setup, teardown, and the panic hook; the debug log; shared constants |
 | `tests/` | Integration tests; the GPU tests are ignored by default |
+| `benches/` | Criterion benchmarks for frame serialisation, GPU render and readback, and audio analysis |
 | `examples/` | Preset configs as TOML files and the custom shader template |
 
 ### Failure handling

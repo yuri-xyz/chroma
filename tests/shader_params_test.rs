@@ -82,8 +82,9 @@ fn test_audio_reactive_defaults() {
   assert_eq!(params.amplitude, 0.4);
   assert_eq!(params.frequency, 6.0);
   assert_eq!(params.beat_distortion_time, -100.0);
-  assert_eq!(params.beat_distortion_strength, 0.8);
-  assert_eq!(params.beat_zoom_strength, 0.0);
+  // The strengths every beat used before they became user-configurable.
+  assert_eq!(params.beat_distortion_strength, 0.85);
+  assert_eq!(params.beat_zoom_strength, 0.7);
 }
 
 #[test]
@@ -322,4 +323,59 @@ fn test_config_accepts_cli_enum_names_and_saved_variant_names() {
   }
 
   assert!(ShaderParams::load_from_str("pattern_type = \"nope\"\n").is_err());
+}
+
+#[test]
+fn test_clamp_all_bounds_beat_strengths_and_color_shift() {
+  let mut params = ShaderParams {
+    beat_distortion_strength: 100.0,
+    beat_zoom_strength: f32::NAN,
+    color_shift: -1.0,
+    ..ShaderParams::default()
+  };
+
+  params.clamp_all();
+
+  assert_eq!(params.beat_distortion_strength, 2.0);
+  assert_eq!(
+    params.beat_zoom_strength,
+    ShaderParams::default().beat_zoom_strength
+  );
+  assert!((params.color_shift - (std::f32::consts::TAU - 1.0)).abs() < 1e-5);
+}
+
+#[test]
+fn test_saved_config_omits_runtime_beat_timestamps() {
+  let params = ShaderParams {
+    effect_time: 12.0,
+    beat_distortion_time: 13.0,
+    real_time: 14.0,
+    ..ShaderParams::default()
+  };
+
+  let saved = toml::to_string(&params).unwrap();
+
+  assert!(!saved.contains("effect_time"));
+  assert!(!saved.contains("beat_distortion_time"));
+  assert!(!saved.contains("real_time"));
+
+  // Old saved files still carry timestamps; they must not schedule an effect.
+  let loaded =
+    ShaderParams::load_from_str("effect_time = 5.0\nbeat_distortion_time = 6.0\n").unwrap();
+
+  assert_eq!(loaded.effect_time, -100.0);
+  assert_eq!(loaded.beat_distortion_time, -100.0);
+}
+
+#[test]
+fn test_update_time_advances_wall_clock_regardless_of_speed() {
+  let mut params = ShaderParams {
+    speed: 0.0,
+    ..ShaderParams::default()
+  };
+
+  params.update_time(0.5);
+
+  assert_eq!(params.time, 0.0);
+  assert_eq!(params.real_time, 0.5);
 }

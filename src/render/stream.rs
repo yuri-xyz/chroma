@@ -1,6 +1,8 @@
-use std::{fmt, fmt::Write as _, str::FromStr};
+use std::{fmt, str::FromStr};
 
-use super::{push_cells, reset_to_base_style, RenderedCell, RenderedFrame, RgbColor, StyleState};
+use super::{
+  digits, push_cells, reset_to_base_style, RenderedCell, RenderedFrame, RgbColor, StyleState,
+};
 
 const STREAM_PROTOCOL_MAGIC: &str = "CHROMA_FRAME";
 const STREAM_PROTOCOL_VERSION: u8 = 1;
@@ -39,23 +41,28 @@ impl FromStr for StreamFormat {
   }
 }
 
-pub(super) fn to_stream_string(
+pub(super) fn write_stream_string(
   frame: &RenderedFrame,
   format: StreamFormat,
   frame_index: u64,
-) -> String {
-  if format == StreamFormat::Legacy {
-    return to_legacy_stream_string(frame);
+  buffer: &mut String,
+) {
+  buffer.clear();
+
+  match format {
+    StreamFormat::Legacy => {
+      write_ansi_stream_payload(frame, buffer);
+      buffer.push('\n');
+      return;
+    }
+    StreamFormat::Ansi => write_ansi_stream_payload(frame, buffer),
+    StreamFormat::Cells => write_cells_stream_payload(frame, buffer),
   }
 
-  let payload = to_stream_payload(frame, format);
-  let header = stream_frame_header(frame, format, frame_index, payload.len());
-  let mut buffer = String::with_capacity(header.len() + payload.len());
+  let header = stream_frame_header(frame, format, frame_index, buffer.len());
 
-  buffer.push_str(&header);
-  buffer.push_str(&payload);
-
-  buffer
+  // Shifting the payload in place avoids a second frame-sized allocation.
+  buffer.insert_str(0, &header);
 }
 
 fn stream_frame_header(
@@ -70,21 +77,8 @@ fn stream_frame_header(
   )
 }
 
-fn to_stream_payload(frame: &RenderedFrame, format: StreamFormat) -> String {
-  match format {
-    StreamFormat::Legacy | StreamFormat::Ansi => to_ansi_stream_payload(frame),
-    StreamFormat::Cells => to_cells_stream_payload(frame),
-  }
-}
-
-fn to_legacy_stream_string(frame: &RenderedFrame) -> String {
-  let mut buffer = to_ansi_stream_payload(frame);
-  buffer.push('\n');
-  buffer
-}
-
-fn to_ansi_stream_payload(frame: &RenderedFrame) -> String {
-  let mut buffer = String::with_capacity(frame.height * frame.width * 25);
+fn write_ansi_stream_payload(frame: &RenderedFrame, buffer: &mut String) {
+  buffer.reserve(frame.height * frame.width * 25);
   let mut style_state = StyleState {
     foreground: None,
     background: None,
@@ -92,7 +86,7 @@ fn to_ansi_stream_payload(frame: &RenderedFrame) -> String {
 
   for row in &frame.rows {
     push_cells(
-      &mut buffer,
+      buffer,
       row,
       &mut style_state,
       StyleState {
@@ -101,7 +95,7 @@ fn to_ansi_stream_payload(frame: &RenderedFrame) -> String {
       },
     );
     reset_to_base_style(
-      &mut buffer,
+      buffer,
       &mut style_state,
       StyleState {
         foreground: None,
@@ -110,31 +104,30 @@ fn to_ansi_stream_payload(frame: &RenderedFrame) -> String {
     );
     buffer.push('\n');
   }
-
-  buffer
 }
 
-fn to_cells_stream_payload(frame: &RenderedFrame) -> String {
-  let mut buffer = String::with_capacity(frame.height * frame.width * 32);
+fn write_cells_stream_payload(frame: &RenderedFrame, buffer: &mut String) {
+  buffer.reserve(frame.height * frame.width * 32);
 
   for (y, row) in frame.rows.iter().enumerate() {
     let mut x = 0;
 
     for cell in row {
-      push_cell_record(&mut buffer, x, y, cell);
+      push_cell_record(buffer, x, y, cell);
       x += cell.display_width;
     }
   }
-
-  buffer
 }
 
 fn push_cell_record(buffer: &mut String, x: usize, y: usize, cell: &RenderedCell) {
-  let _ = write!(
-    buffer,
-    "{}\t{}\t{}\tU+{:04X}\t",
-    x, y, cell.display_width, cell.character as u32
-  );
+  digits::push_decimal(buffer, x);
+  buffer.push('\t');
+  digits::push_decimal(buffer, y);
+  buffer.push('\t');
+  digits::push_decimal(buffer, cell.display_width);
+  buffer.push_str("\tU+");
+  digits::push_hex(buffer, cell.character as u32, 4);
+  buffer.push('\t');
   push_optional_rgb(buffer, cell.foreground);
   buffer.push('\t');
   push_optional_rgb(buffer, cell.background);
@@ -143,9 +136,7 @@ fn push_cell_record(buffer: &mut String, x: usize, y: usize, cell: &RenderedCell
 
 fn push_optional_rgb(buffer: &mut String, color: Option<RgbColor>) {
   match color {
-    Some((r, g, b)) => {
-      let _ = write!(buffer, "{:02X}{:02X}{:02X}", r, g, b);
-    }
+    Some((r, g, b)) => digits::push_hex(buffer, u32::from_be_bytes([0, r, g, b]), 6),
     None => buffer.push('-'),
   }
 }

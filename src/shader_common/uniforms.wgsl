@@ -2,6 +2,8 @@
 
 struct Uniforms {
     time: f32,
+    // Wall-clock seconds since start; effect and beat timestamps use this clock.
+    real_time: f32,
     resolution: vec2<f32>,
     frequency: f32,
     amplitude: f32,

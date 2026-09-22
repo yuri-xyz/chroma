@@ -124,3 +124,42 @@ fn test_post_drop_silence_clears_residual_energy_and_drop_state() {
     "cooldown segment should not keep reporting drop detection"
   );
 }
+
+fn total_drop_frames(fixture: &support::audio_fixtures::AuthoredFixture, chunk: usize) -> usize {
+  analyze_fixture(fixture, chunk)
+    .iter()
+    .filter(|frame| frame.features.is_drop)
+    .count()
+}
+
+#[test]
+fn test_drops_are_reported_once_whatever_the_chunk_size() {
+  let fixture = FixtureBuilder::new()
+    .silence("warmup", 4)
+    .kick_pulses("first_drop", 4, ANALYSIS_WINDOW, 224, 1.0, 70.0)
+    .silence("rearm_gap", 24)
+    .kick_pulses("second_drop", 4, ANALYSIS_WINDOW, 224, 1.0, 70.0)
+    .silence("rearm_gap_2", 24)
+    .kick_pulses("third_drop", 4, ANALYSIS_WINDOW, 224, 1.0, 70.0)
+    .build();
+
+  let one_window_per_call = total_drop_frames(&fixture, ANALYSIS_HOP);
+
+  assert!(one_window_per_call > 0, "fixture should produce drops");
+
+  // Several windows per call (PulseAudio delivers two hops at a time) must not
+  // lose a drop found in an earlier window, and calls that complete no window
+  // must not repeat the previous one.
+  for chunk in [
+    ANALYSIS_HOP / 4,
+    ANALYSIS_HOP * 2,
+    ANALYSIS_HOP * 3,
+    ANALYSIS_HOP * 4,
+  ] {
+    assert_eq!(
+      total_drop_frames(&fixture, chunk),
+      one_window_per_call,
+      "drop count changed for chunk size {chunk}"
+    );
+  }
+}

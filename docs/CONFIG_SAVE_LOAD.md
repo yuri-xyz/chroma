@@ -6,7 +6,7 @@ A configuration is a plain TOML file of [parameters](./PARAMETERS.md). Chroma ca
 
 Press `S` while Chroma is running. It writes every current parameter to a file named `config_<hash>.toml` in the directory Chroma was started from.
 
-The hash is the first 12 hex characters of a SHA-256 digest of the parameter values. Different looks therefore get different names, and saving an identical look a second time reuses the existing file instead of creating a duplicate.
+The hash is the first 12 hex characters of a SHA-256 digest of the parameter values, so a file is never overwritten by a different look. The saved values include the animation time and the audio-driven `frequency`, `speed`, and `brightness`, which change on every frame, so each press normally writes a new file.
 
 ```bash
 chroma

@@ -50,19 +50,19 @@ fn caustics(p: vec2<f32>, time: f32) -> f32 {
 
     // Layer 1: Primary caustic pattern
     let p1 = p * scale;
-    let t1 = time * uniforms.speed * 0.5;
+    let t1 = time * 0.5;
     c += pow(abs(sin(p1.x + sin(p1.y + t1) * 2.0) *
                sin(p1.y + sin(p1.x + t1 * 1.3) * 2.0)), 0.5);
 
     // Layer 2: Secondary caustic at different scale and speed
     let p2 = p * scale * 1.7 + vec2<f32>(3.14, 1.57);
-    let t2 = time * uniforms.speed * 0.7;
+    let t2 = time * 0.7;
     c += pow(abs(sin(p2.x + cos(p2.y * 0.7 + t2) * 1.5) *
                sin(p2.y + cos(p2.x * 0.9 + t2 * 0.8) * 1.5)), 0.6) * 0.5;
 
     // Layer 3: Fine detail caustics
     let p3 = p * scale * 3.2;
-    let t3 = time * uniforms.speed * 0.3;
+    let t3 = time * 0.3;
     c += pow(abs(sin(p3.x * 0.8 + sin(p3.y * 1.1 + t3) * 1.2) *
                sin(p3.y * 0.9 + sin(p3.x * 0.8 + t3 * 1.1) * 1.3)), 0.7) * 0.25;
 
@@ -100,20 +100,19 @@ fn foam_cells(p: vec2<f32>, time: f32) -> f32 {
 // Layered wave interference pattern
 fn water_waves(p: vec2<f32>, time: f32) -> f32 {
     let freq = uniforms.frequency;
-    let spd = uniforms.speed;
 
     // Multiple wave sources with different directions
-    let wave1 = sin(p.x * freq * 2.0 + p.y * freq * 0.5 + time * spd);
-    let wave2 = sin(p.x * freq * 1.5 - p.y * freq * 1.2 + time * spd * 0.8 + 1.0);
-    let wave3 = sin((p.x + p.y) * freq * 1.8 + time * spd * 0.6 + 2.0);
-    let wave4 = cos((p.x - p.y) * freq * 2.2 - time * spd * 0.9);
+    let wave1 = sin(p.x * freq * 2.0 + p.y * freq * 0.5 + time);
+    let wave2 = sin(p.x * freq * 1.5 - p.y * freq * 1.2 + time * 0.8 + 1.0);
+    let wave3 = sin((p.x + p.y) * freq * 1.8 + time * 0.6 + 2.0);
+    let wave4 = cos((p.x - p.y) * freq * 2.2 - time * 0.9);
 
     // Circular ripples from animated points
     let ripple_center1 = vec2<f32>(0.3 + sin(time * 0.2) * 0.2, 0.5 + cos(time * 0.3) * 0.2);
     let ripple_center2 = vec2<f32>(0.7 + cos(time * 0.25) * 0.15, 0.4 + sin(time * 0.35) * 0.15);
 
-    let ripple1 = sin(length(p - ripple_center1) * freq * 5.0 - time * spd * 1.5) * 0.3;
-    let ripple2 = sin(length(p - ripple_center2) * freq * 6.0 - time * spd * 1.3) * 0.25;
+    let ripple1 = sin(length(p - ripple_center1) * freq * 5.0 - time * 1.5) * 0.3;
+    let ripple2 = sin(length(p - ripple_center2) * freq * 6.0 - time * 1.3) * 0.25;
 
     return (wave1 * 0.3 + wave2 * 0.25 + wave3 * 0.2 + wave4 * 0.15 + ripple1 + ripple2) * 0.5 + 0.5;
 }
@@ -137,7 +136,7 @@ fn fluid_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let amp = uniforms.amplitude;
 
     // Flow-distorted coordinates for organic motion
-    let flow_time = time * uniforms.speed * 0.3;
+    let flow_time = time * 0.3;
     let flow_distort = vec2<f32>(
         fluid_fbm(uv * 2.0, flow_time) * 0.08,
         fluid_fbm(uv * 2.0 + vec2<f32>(5.0, 3.0), flow_time) * 0.08

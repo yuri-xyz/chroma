@@ -54,8 +54,8 @@ fn infinity_drift(time: f32) -> vec4<f32> {
     );
 }
 
-fn infinity_beat_glow(time: f32) -> f32 {
-    let elapsed = time - uniforms.beat_distortion_time;
+fn infinity_beat_glow() -> f32 {
+    let elapsed = uniforms.real_time - uniforms.beat_distortion_time;
 
     if elapsed < 0.0 || elapsed > 1.15 {
         return 0.0;
@@ -91,7 +91,7 @@ fn infinity_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
     var p = (uv - center) * 2.15;
     p.x *= uniforms.resolution.x / uniforms.resolution.y;
 
-    let beat_glow = infinity_beat_glow(time);
+    let beat_glow = infinity_beat_glow();
     let motion_time = infinity_motion_time(time);
     let drift = infinity_drift(motion_time);
     let size = infinity_size_variation() * (0.88 + drift.w * 0.20);

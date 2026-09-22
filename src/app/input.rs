@@ -58,7 +58,7 @@ fn next_effect_type(effect_type: u32) -> u32 {
 
 fn cycle_effect(params: &mut ShaderParams, debug_log: &mut DebugLog) -> Result<()> {
   params.effect_type = next_effect_type(params.effect_type);
-  params.effect_time = params.time;
+  params.effect_time = params.real_time;
 
   debug_logln!(
     debug_log,
@@ -542,7 +542,8 @@ mod tests {
   fn test_effect_key_skips_disabled_effect_slots_and_syncs_effect_time() {
     let mut params = ShaderParams {
       effect_type: 0,
-      time: 42.5,
+      time: 3.0,
+      real_time: 42.5,
       ..ShaderParams::default()
     };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);
@@ -562,7 +563,7 @@ mod tests {
     assert_eq!(params.effect_time, 42.5);
 
     params.effect_type = 6;
-    params.time = 99.0;
+    params.real_time = 99.0;
 
     invoke_key(
       KeyCode::Char('n'),
@@ -610,7 +611,7 @@ mod tests {
   fn test_uppercase_effect_key_cycles_effects() {
     let mut params = ShaderParams {
       effect_type: 5,
-      time: 12.0,
+      real_time: 12.0,
       ..ShaderParams::default()
     };
     let mut converter = AsciiConverter::new(AsciiPalette::from(params.palette), true);

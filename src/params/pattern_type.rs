@@ -124,11 +124,6 @@ define_named_enum!(
       display: "Fluid",
       aliases: ["water", "caustics"]
     },
-    Pyramid => {
-      full: "pyramid",
-      display: "Pyramid",
-      aliases: ["pyr", "obelisk"]
-    },
     Infinity => {
       full: "infinity",
       display: "Infinity",

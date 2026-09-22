@@ -17,7 +17,7 @@ fn tunnel_pattern(uv: vec2<f32>, time: f32) -> vec2<f32> {
 
     // Tunnel coordinates
     let tunnel_x = angle / 3.14159265; // -1 to 1 around the tunnel
-    let tunnel_y = depth * 0.5 - time * uniforms.speed * 2.0; // Moving through tunnel
+    let tunnel_y = depth * 0.5 - time * 2.0; // Moving through tunnel
 
     let freq = uniforms.frequency * 0.3;
 

@@ -1,6 +1,6 @@
 use std::{
   collections::VecDeque,
-  sync::{Arc, Mutex},
+  sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
 
 use cpal::{
@@ -125,6 +125,14 @@ impl SharedSampleBuffer {
 
     false
   }
+}
+
+/// A panic while the buffer was locked leaves at worst a partial batch of
+/// samples, so keep capturing instead of cascading the panic into rendering.
+pub(super) fn lock_samples(
+  buffer: &Mutex<SharedSampleBuffer>,
+) -> MutexGuard<'_, SharedSampleBuffer> {
+  buffer.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 pub struct AudioCapture {
@@ -347,7 +355,7 @@ impl AudioCapture {
     let stream = device.build_input_stream(
       config,
       move |data: &[T], _: &cpal::InputCallbackInfo| {
-        if let Some(summary) = buffer.lock().unwrap().push_interleaved(data, channels) {
+        if let Some(summary) = lock_samples(&buffer).push_interleaved(data, channels) {
           append_debug_line(
             "audio",
             format!(
@@ -374,7 +382,7 @@ impl AudioCapture {
 
   pub fn drain_samples(&self) -> Vec<f32> {
     let (samples, drain_count, callback_count, total_samples_received, should_warn_zero_stream) = {
-      let mut buffer = self.buffer.lock().unwrap();
+      let mut buffer = lock_samples(&self.buffer);
       let (samples, drain_count, callback_count, total_samples_received) = buffer.drain_samples();
       let should_warn_zero_stream = buffer.take_silence_warning();
 

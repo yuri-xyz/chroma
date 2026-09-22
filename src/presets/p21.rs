@@ -31,7 +31,6 @@ pub fn preset() -> ShaderParams {
     treble_influence: 0.200,
     beat_distortion_strength: 0.6,
     beat_zoom_strength: 0.5,
-    effect_time: 21.42,
     effect_type: 4,
     ..ShaderParams::default()
   }

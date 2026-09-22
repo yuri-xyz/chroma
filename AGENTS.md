@@ -59,6 +59,13 @@ nix --extra-experimental-features 'nix-command flakes' develop -c cargo test --t
 nix --extra-experimental-features 'nix-command flakes' develop -c cargo test --test pattern_zoom_test -- --ignored --test-threads=1
 ```
 
+Benchmarks use Criterion and cover the CPU frame path (`frame_render`), GPU render and readback (`gpu_render`, which skips itself without an adapter), and audio analysis (`audio_analysis`). Save a baseline before a performance change and compare against it afterwards:
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' develop -c cargo bench -- --save-baseline before
+nix --extra-experimental-features 'nix-command flakes' develop -c cargo bench -- --baseline-lenient before
+```
+
 Running `cargo test` outside the dev shell may fail to link Linux PulseAudio libraries even when the Rust code is correct.
 
 ## Implementation Guidelines

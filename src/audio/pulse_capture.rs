@@ -20,7 +20,7 @@ use pulse::{
   stream::Direction,
 };
 
-use super::capture::SharedSampleBuffer;
+use super::capture::{lock_samples, SharedSampleBuffer};
 use crate::debug::append_debug_line;
 
 const PULSE_APP_NAME: &str = "Chroma";
@@ -207,11 +207,7 @@ fn read_pulse_samples(
         .map(|chunk| f32::from_ne_bytes(*chunk)),
     );
 
-    if let Some(summary) = buffer
-      .lock()
-      .unwrap()
-      .push_interleaved(samples.as_slice(), channels)
-    {
+    if let Some(summary) = lock_samples(&buffer).push_interleaved(samples.as_slice(), channels) {
       append_debug_line(
         "audio",
         format!(
