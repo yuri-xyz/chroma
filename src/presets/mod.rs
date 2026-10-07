@@ -23,6 +23,7 @@ mod p22;
 mod p23;
 mod p24;
 mod p25;
+mod p26;
 mod p3;
 mod p4;
 mod p5;
@@ -64,6 +65,7 @@ const PRESETS: &[fn() -> ShaderParams] = &[
   p23::preset,
   p24::preset,
   p25::preset,
+  p26::preset,
 ];
 
 /// Get a preset by index. Wraps around if index exceeds the number of presets.
@@ -101,7 +103,7 @@ mod tests {
 
   #[test]
   fn test_preset_count() {
-    assert_eq!(preset_count(), 26);
+    assert_eq!(preset_count(), 27);
   }
 
   #[test]
@@ -145,6 +147,29 @@ mod tests {
     assert_eq!(full_screen.scale, bubble.scale);
     assert_eq!(full_screen.color_mode, bubble.color_mode);
     assert_eq!(full_screen.palette, bubble.palette);
+  }
+
+  /// The docs promise each preset as an editable file in `examples/`.
+  #[test]
+  fn test_examples_mirror_every_preset() {
+    for index in 0..preset_count() as u32 {
+      let path = format!("{}/examples/{index}.toml", env!("CARGO_MANIFEST_DIR"));
+      let example = ShaderParams::load_from_file(&path)
+        .unwrap_or_else(|error| panic!("preset {index} has no usable {path}: {error:#}"));
+      let preset = get_preset(index);
+
+      assert_eq!(example.pattern_type, preset.pattern_type, "preset {index}");
+      assert_eq!(example.color_mode, preset.color_mode, "preset {index}");
+      assert_eq!(example.palette, preset.palette, "preset {index}");
+      assert!(
+        (example.vignette - preset.vignette).abs() < 1e-3,
+        "preset {index}"
+      );
+      assert!(
+        (example.scale - preset.scale).abs() < 1e-3,
+        "preset {index}"
+      );
+    }
   }
 
   #[test]

@@ -133,6 +133,11 @@ define_named_enum!(
       full: "vortex-corner",
       display: "VortexTL",
       aliases: ["corner-vortex", "vortex-tl"]
+    },
+    Borealis => {
+      full: "borealis",
+      display: "Borealis",
+      aliases: ["northern-lights", "curtains"]
     }
   },
   error_label: "pattern type"

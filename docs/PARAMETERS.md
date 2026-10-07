@@ -38,7 +38,7 @@ Audio may push `speed`, `frequency`, and `brightness` beyond these ranges for a 
 | --- | --- | --- | --- | --- |
 | `color_mode` | `-m, --color-mode` | see `--list-color-modes` | `chromatic` | The colour scheme applied to the pattern. |
 | `hue` | `-H, --hue` | 0 to 360 | 0 | Rotates every colour around the colour wheel, in degrees. Values outside the range wrap around. |
-| `saturation` | `-t, --saturation` | 0.0 to 2.0 | 1.0 | `0` is greyscale and `2` is very vivid. While audio plays it is held between `0.7` and `1.2`, rising with bass and beats. |
+| `saturation` | `-t, --saturation` | 0.0 to 2.0 | 1.0 | `0` is greyscale and `2` is very vivid. While audio plays it is held between `0.7` and `1.2`, rising with bass and beats and easing back down between them. |
 | `gamma` | | 0.5 to 2.0 | 1.0 | Below `1.0` brightens midtones; above darkens them. |
 
 ### Framing

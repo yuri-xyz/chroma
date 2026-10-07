@@ -18,6 +18,8 @@ fn test_pattern_type_parses_aliases_and_round_trips_full_names() {
     ("loop", PatternType::Infinity),
     ("vortex-corner", PatternType::VortexCorner),
     ("vortex-tl", PatternType::VortexCorner),
+    ("borealis", PatternType::Borealis),
+    ("northern-lights", PatternType::Borealis),
   ];
 
   for (alias, expected) in aliases {

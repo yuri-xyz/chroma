@@ -107,7 +107,7 @@ chroma -c examples/0.toml
 
 **Live reloading**: Edit your config file while Chroma is running and see changes applied instantly. This makes it easy to tweak parameters and visualize your adjustments in real time. Reloads keep your `--preset` underneath and your CLI parameters on top, just like at startup.
 
-**Built-in presets**: `--preset NUM` (0-25) or `--preset random` starts from a preset embedded in the binary. Add `--preset-interval SECONDS` to keep switching while Chroma runs: a number steps through the presets in order, `random` keeps picking random ones.
+**Built-in presets**: `--preset NUM` (0-26) or `--preset random` starts from a preset embedded in the binary. Add `--preset-interval SECONDS` to keep switching while Chroma runs: a number steps through the presets in order, `random` keeps picking random ones.
 
 ```
 chroma --preset random --preset-interval 30

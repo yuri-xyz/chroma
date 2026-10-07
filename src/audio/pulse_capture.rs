@@ -4,7 +4,7 @@ use std::{
     Arc, Mutex,
   },
   thread::{self, JoinHandle},
-  time::Duration,
+  time::{Duration, Instant},
 };
 
 use anyhow::Context as _;
@@ -31,6 +31,10 @@ const PULSE_READ_FRAMES: usize = 1_024;
 const PULSE_BUFFER_FRAGMENTS: u32 = 4;
 const RECONNECT_INITIAL_DELAY: Duration = Duration::from_millis(250);
 const RECONNECT_MAX_DELAY: Duration = Duration::from_secs(5);
+/// How often auto-detected capture checks whether the default output changed.
+/// The stream records one named monitor, so switching outputs (speakers to
+/// headphones, say) would otherwise leave it listening to the old one.
+const DEFAULT_SINK_POLL_INTERVAL: Duration = Duration::from_secs(2);
 
 pub(super) struct PulseCapture {
   _reader: JoinHandle<()>,
@@ -81,6 +85,12 @@ fn open_source(device_name: Option<&str>) -> anyhow::Result<(Simple, String)> {
     })?,
   };
 
+  let stream = open_named_source(&source_name)?;
+
+  Ok((stream, source_name))
+}
+
+fn open_named_source(source_name: &str) -> anyhow::Result<Simple> {
   append_debug_line(
     "audio",
     format!("Opening PulseAudio/PipeWire source '{source_name}'"),
@@ -115,7 +125,7 @@ fn open_source(device_name: Option<&str>) -> anyhow::Result<(Simple, String)> {
     None,
     PULSE_APP_NAME,
     Direction::Record,
-    Some(&source_name),
+    Some(source_name),
     PULSE_STREAM_NAME,
     &spec,
     None,
@@ -129,7 +139,7 @@ fn open_source(device_name: Option<&str>) -> anyhow::Result<(Simple, String)> {
     );
   }
 
-  Ok((stream, source_name))
+  Ok(stream)
 }
 
 fn pulse_fragment_size_bytes() -> u32 {
@@ -178,8 +188,18 @@ fn read_pulse_samples(
   let byte_count = PULSE_READ_FRAMES * channels * std::mem::size_of::<f32>();
   let mut bytes = vec![0_u8; byte_count];
   let mut samples = Vec::with_capacity(PULSE_READ_FRAMES * channels);
+  let mut last_default_check = Instant::now();
 
   while !stop.load(Ordering::Relaxed) {
+    if requested_device.is_none() && last_default_check.elapsed() >= DEFAULT_SINK_POLL_INTERVAL {
+      last_default_check = Instant::now();
+
+      if let Some((new_stream, new_source_name)) = follow_default_monitor(&source_name) {
+        stream = new_stream;
+        source_name = new_source_name;
+      }
+    }
+
     if let Err(error) = stream.read(&mut bytes) {
       append_debug_line(
         "audio",
@@ -220,6 +240,45 @@ fn read_pulse_samples(
       );
     }
   }
+}
+
+/// Open the default sink's monitor if it is no longer `current_source`. Errors
+/// keep the current stream: a sound server that went away surfaces as a read
+/// error, which reconnects.
+fn follow_default_monitor(current_source: &str) -> Option<(Simple, String)> {
+  let default_monitor = match default_monitor_source_name() {
+    Ok(name) => name,
+    Err(error) => {
+      append_debug_line(
+        "audio",
+        format!("PulseAudio default sink check failed: {error:#}"),
+      );
+      return None;
+    }
+  };
+  let new_source = switch_target(current_source, default_monitor.as_deref())?.to_string();
+
+  match open_named_source(&new_source) {
+    Ok(stream) => {
+      append_debug_line(
+        "audio",
+        format!("Default output changed; capture moved from '{current_source}' to '{new_source}'"),
+      );
+      Some((stream, new_source))
+    }
+    Err(error) => {
+      append_debug_line(
+        "audio",
+        format!("Could not follow the default output to '{new_source}': {error:#}"),
+      );
+      None
+    }
+  }
+}
+
+/// The monitor to move capture to, if the default one differs from the current.
+fn switch_target<'a>(current_source: &str, default_monitor: Option<&'a str>) -> Option<&'a str> {
+  default_monitor.filter(|default_monitor| *default_monitor != current_source)
 }
 
 /// Retry opening the source with exponential backoff until it succeeds or
@@ -476,6 +535,19 @@ mod tests {
   #[test]
   fn pulse_sample_byte_count_matches_interleaved_f32_layout() {
     assert_eq!(pulse_fragment_size_bytes(), 8_192);
+  }
+
+  #[test]
+  fn capture_moves_only_when_the_default_monitor_changes() {
+    assert_eq!(
+      switch_target("speakers.monitor", Some("headphones.monitor")),
+      Some("headphones.monitor")
+    );
+    assert_eq!(
+      switch_target("speakers.monitor", Some("speakers.monitor")),
+      None
+    );
+    assert_eq!(switch_target("speakers.monitor", None), None);
   }
 
   #[test]

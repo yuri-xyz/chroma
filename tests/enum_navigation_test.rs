@@ -28,6 +28,7 @@ fn test_pattern_type_to_u32_all_variants() {
   assert_eq!(PatternType::Fluid.to_u32(), 23);
   assert_eq!(PatternType::Infinity.to_u32(), 24);
   assert_eq!(PatternType::VortexCorner.to_u32(), 25);
+  assert_eq!(PatternType::Borealis.to_u32(), 26);
 }
 
 #[test]
@@ -58,6 +59,7 @@ fn test_pattern_type_name_all_variants() {
   assert_eq!(PatternType::Fluid.name(), "Fluid");
   assert_eq!(PatternType::Infinity.name(), "Infinity");
   assert_eq!(PatternType::VortexCorner.name(), "VortexTL");
+  assert_eq!(PatternType::Borealis.name(), "Borealis");
 }
 
 #[test]

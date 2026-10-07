@@ -30,6 +30,27 @@ fn test_shader_scales_every_pattern_around_screen_center() {
 /// Patterns that tile the plane have to apply frequency to centre-relative
 /// coordinates. Audio reactivity changes frequency every frame, and scaling raw
 /// `uv` makes that look like a zoom into the top-left corner.
+/// The dispatcher's final `else` catches the last pattern, so every earlier ID
+/// needs its own branch; a missing one silently draws the last pattern instead.
+#[test]
+fn test_shader_dispatches_every_pattern_id() {
+  let shader_main = include_str!("../src/shader_common/main.wgsl");
+  let (last, earlier) = chroma::params::PatternType::all()
+    .split_last()
+    .expect("at least one pattern");
+
+  for pattern in earlier {
+    assert!(
+      shader_main.contains(&format!("pattern_type == {}u", pattern.to_u32())),
+      "main.wgsl has no dispatch branch for {pattern:?}"
+    );
+  }
+  assert!(
+    !shader_main.contains(&format!("pattern_type == {}u", last.to_u32() + 1)),
+    "main.wgsl dispatches a pattern ID past {last:?}"
+  );
+}
+
 #[test]
 fn test_tiled_patterns_apply_frequency_to_centered_coordinates() {
   let tiled_patterns = [
@@ -63,6 +84,10 @@ fn test_tiled_patterns_apply_frequency_to_centered_coordinates() {
       include_str!("../src/shader_patterns/warped_fbm.wgsl"),
     ),
     ("fluid", include_str!("../src/shader_patterns/fluid.wgsl")),
+    (
+      "borealis",
+      include_str!("../src/shader_patterns/borealis.wgsl"),
+    ),
   ];
 
   for (name, source) in tiled_patterns {

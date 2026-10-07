@@ -23,6 +23,11 @@ const REGULAR_BEAT_THRESHOLD_BASE: f32 = 0.18;
 /// zoom strengths apply to regular beats and are scaled by this on a drop.
 const DROP_BEAT_INTENSITY: f32 = 1.4;
 const REGULAR_BEAT_INTENSITY: f32 = 1.0;
+/// The analyzer's beat strength decays over the frames after an onset instead
+/// of dropping to zero, so a regular beat waits this long after the previous
+/// beat or drop. Otherwise that tail re-triggers it, restarting the zoom and
+/// cutting a drop's stronger intensity short after a single frame.
+const BEAT_RETRIGGER_SECONDS: f32 = 0.15;
 /// Smoothing factors below were tuned per frame at this rate; they are scaled
 /// by the real frame time so `--fps` does not change how fast visuals react.
 const REFERENCE_FPS: f32 = 60.0;
@@ -283,7 +288,9 @@ fn apply_audio_reactivity(
     // Use configurable beat sensitivity (higher sensitivity = lower threshold)
     let adjusted_threshold = regular_beat_threshold(params);
 
-    if features.beat_strength > adjusted_threshold {
+    let since_last_beat = params.real_time - params.beat_distortion_time;
+
+    if features.beat_strength > adjusted_threshold && since_last_beat >= BEAT_RETRIGGER_SECONDS {
       // Regular beat triggers subtle distortion + subtle zoom
       params.noise_strength = features.beat_strength * (0.3 + features.treble * 0.7);
 
@@ -312,10 +319,8 @@ fn apply_audio_reactivity(
   // Saturation reacts to bass and beats - colors "pop" on bass hits
   let bass_saturation = features.bass * 0.3; // Bass makes colors more vibrant
   let beat_saturation = features.beat_strength * 0.2; // Extra pop on beats
-  params.saturation = params
-    .saturation
-    .max(0.7 + bass_saturation + beat_saturation)
-    .min(1.2);
+  let target_saturation = (0.7 + bass_saturation + beat_saturation).min(1.2);
+  params.saturation = blend_towards(params.saturation, target_saturation, half_retain);
 }
 
 #[cfg(test)]
@@ -530,6 +535,87 @@ mod tests {
     // The user-set strengths survive the beat.
     assert_eq!(params.beat_distortion_strength, 0.6);
     assert_eq!(params.beat_zoom_strength, 0.3);
+  }
+
+  #[test]
+  fn test_saturation_falls_back_after_a_bass_hit() {
+    let mut params = ShaderParams::default();
+    let hit = AudioFeatures {
+      bass: 1.0,
+      overall: 0.6,
+      beat_strength: 1.0,
+      ..AudioFeatures::default()
+    };
+    let quiet = AudioFeatures {
+      bass: 0.0,
+      overall: 0.3,
+      ..AudioFeatures::default()
+    };
+    let mut debug_log = test_debug_log();
+
+    for _ in 0..30 {
+      apply_audio_reactivity(&mut params, &hit, 1.0 / REFERENCE_FPS, &mut debug_log);
+    }
+    let after_hit = params.saturation;
+    for _ in 0..30 {
+      apply_audio_reactivity(&mut params, &quiet, 1.0 / REFERENCE_FPS, &mut debug_log);
+    }
+
+    assert!(after_hit > 1.15 && after_hit <= 1.2);
+    assert!((params.saturation - 0.7).abs() < 0.01);
+  }
+
+  #[test]
+  fn test_beat_tail_after_a_drop_keeps_the_drop_running() {
+    let mut params = ShaderParams {
+      real_time: 10.0,
+      ..ShaderParams::default()
+    };
+    let drop = AudioFeatures {
+      bass: 0.9,
+      overall: 0.6,
+      beat_strength: 0.6,
+      is_drop: true,
+      ..AudioFeatures::default()
+    };
+    // The analyzer's decaying beat pulse on the frames right after an onset.
+    let tail = AudioFeatures {
+      beat_strength: 0.3,
+      is_drop: false,
+      ..drop
+    };
+    let mut debug_log = test_debug_log();
+
+    apply_audio_reactivity(&mut params, &drop, 1.0 / REFERENCE_FPS, &mut debug_log);
+    params.real_time += 1.0 / REFERENCE_FPS;
+    apply_audio_reactivity(&mut params, &tail, 1.0 / REFERENCE_FPS, &mut debug_log);
+
+    assert_eq!(params.beat_distortion_time, 10.0);
+    assert_eq!(params.beat_intensity, DROP_BEAT_INTENSITY);
+  }
+
+  #[test]
+  fn test_regular_beats_retrigger_once_the_previous_one_has_passed() {
+    let mut params = ShaderParams {
+      real_time: 10.0,
+      ..ShaderParams::default()
+    };
+    let beat = AudioFeatures {
+      overall: 0.6,
+      beat_strength: 0.6,
+      ..AudioFeatures::default()
+    };
+    let mut debug_log = test_debug_log();
+
+    apply_audio_reactivity(&mut params, &beat, 1.0 / REFERENCE_FPS, &mut debug_log);
+    params.real_time = 10.0 + BEAT_RETRIGGER_SECONDS / 2.0;
+    apply_audio_reactivity(&mut params, &beat, 1.0 / REFERENCE_FPS, &mut debug_log);
+    assert_eq!(params.beat_distortion_time, 10.0);
+
+    // 120 BPM: the next kick half a second later starts a new beat.
+    params.real_time = 10.5;
+    apply_audio_reactivity(&mut params, &beat, 1.0 / REFERENCE_FPS, &mut debug_log);
+    assert_eq!(params.beat_distortion_time, 10.5);
   }
 
   #[test]

@@ -51,8 +51,10 @@ fn compute_pattern(uv: vec2<f32>, time: f32, pattern_type: u32) -> vec2<f32> {
         return fluid_pattern(uv, time);
     } else if pattern_type == 24u {
         return infinity_pattern(uv, time);
-    } else {
+    } else if pattern_type == 25u {
         return vortex_corner_pattern(uv, time);
+    } else {
+        return borealis_pattern(uv, time);
     }
 }
 
@@ -76,6 +78,15 @@ fn centered_uv(uv: vec2<f32>) -> vec2<f32> {
     return uv - PATTERN_CENTER;
 }
 
+// Patterns with an empty backdrop (Infinity, Borealis) return a gradient below
+// this for pixels that should stay pure black, whatever the colour mode.
+const BLACK_BACKDROP_GRADIENT: f32 = -900.0;
+
+// Backdrop patterns lower this to fade their faint fringes towards black.
+// Colour modes such as Rainbow and Aurora never reach black on their own, so
+// without it a barely lit pixel draws as boldly as a bright one.
+var<private> pattern_coverage: f32 = 1.0;
+
 fn plasma_effect(position: vec2<f32>, time: f32) -> vec3<f32> {
     // Apply beat zoom first
     var processed_position = apply_beat_zoom(position);
@@ -89,13 +100,14 @@ fn plasma_effect(position: vec2<f32>, time: f32) -> vec3<f32> {
     let combined = pattern_result.x;
     let gradient = pattern_result.y;
 
-    if uniforms.pattern_type == 24u && gradient < -900.0 {
+    if gradient < BLACK_BACKDROP_GRADIENT {
         return vec3<f32>(0.0);
     }
     
     var color = apply_color_mode(combined, gradient, uniforms.color_mode);
     
-    color = apply_color_adjustments(color);
+    // Fade after the adjustments: contrast below 1 lifts black towards grey.
+    color = apply_color_adjustments(color) * pattern_coverage;
     
     color = apply_effect(position, uv, color, time);
     

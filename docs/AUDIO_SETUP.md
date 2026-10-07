@@ -22,7 +22,7 @@ Older instructions used `cargo build --release --features audio`. That command s
 
 | Platform | Capture method |
 | --- | --- |
-| Linux | Records the monitor of the default PulseAudio or PipeWire output through libpulse. If no sound server is reachable, falls back to CPAL device selection. If the sound server restarts, Chroma reconnects on its own. |
+| Linux | Records the monitor of the default PulseAudio or PipeWire output through libpulse. If you switch the default output, Chroma moves to the new output's monitor within about two seconds, unless `--audio-device` picked the source. If no sound server is reachable, falls back to CPAL device selection. If the sound server restarts, Chroma reconnects on its own. |
 | Windows | WASAPI loopback of the default output device. No "Stereo Mix" input has to be enabled. If you switch the default output or unplug the captured device, Chroma rebuilds the capture on the new default within about a second. |
 | macOS | CPAL loopback capture of the output device on recent macOS releases. Older systems can use a virtual loopback driver such as BlackHole, which Chroma recognises by name. |
 

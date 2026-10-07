@@ -38,7 +38,7 @@ This makes combinations predictable. `chroma --preset 4 -c mine.toml --vignette 
 
 ### Built-in presets
 
-`--preset NUM` starts from one of the presets embedded in the binary. They are numbered `0` to `25`, and larger numbers wrap around, so `--preset 27` is preset `1`. `--preset random` picks one for you. The same looks are available as editable files in the `examples/` directory.
+`--preset NUM` starts from one of the presets embedded in the binary. They are numbered `0` to `26`, and larger numbers wrap around, so `--preset 28` is preset `1`. `--preset random` picks one for you. The same looks are available as editable files in the `examples/` directory.
 
 `--preset-interval SECONDS` keeps switching presets while Chroma runs, without a restart. It takes a whole number of at least `1` and requires `--preset`, which also decides the order: a number steps through the presets in order starting from that preset, and `random` keeps picking a random preset that differs from the current one.
 

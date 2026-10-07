@@ -97,7 +97,7 @@ pub struct CliArgs {
   #[arg(short = 'r', long)]
   pub random: bool,
 
-  /// Use a built-in preset by number (0-25) or "random". Wraps around if exceeds max.
+  /// Use a built-in preset by number (0-26) or "random". Wraps around if exceeds max.
   /// Presets are embedded in the binary, no external files needed.
   #[arg(long, value_name = "NUM|random")]
   pub preset: Option<String>,
@@ -146,7 +146,7 @@ pub struct CliArgs {
   #[arg(short = 'H', long, value_name = "DEGREES")]
   pub hue: Option<f32>,
 
-  /// Pattern type: plasma, waves, ripples, vortex, noise, geometric, voronoi, truchet, hexagonal, interference, fractal, glitch, spiral, rings, grid, diamonds, sphere, octgrams, warped, kaleidoscope, tunnel, metaballs, world, fluid, infinity, vortex-corner
+  /// Pattern type: plasma, waves, ripples, vortex, noise, geometric, voronoi, truchet, hexagonal, interference, fractal, glitch, spiral, rings, grid, diamonds, sphere, octgrams, warped, kaleidoscope, tunnel, metaballs, world, fluid, infinity, vortex-corner, borealis
   #[arg(short = 'p', long, value_name = "PATTERN")]
   pub pattern: Option<String>,
 

@@ -89,7 +89,7 @@ Stream mode uses the same pipeline and only changes the last step. A closed pipe
 | `src/cli.rs`, `src/list_commands.rs` | Flags and the `--list-*` commands |
 | `src/app/` | The render loop, input, audio reactivity, config watcher, preset cycling, status bar, frame output |
 | `src/params/` | `ShaderParams`, the pattern, colour-mode, and palette enums, clamping, save and load, randomisation |
-| `src/presets/` | The built-in presets `p0` to `p25` and the cycle timer |
+| `src/presets/` | The built-in presets `p0` to `p26` and the cycle timer |
 | `src/shader/` | The wgpu pipeline and the uniform layout |
 | `src/shader_common/`, `src/shader_patterns/` | WGSL sources |
 | `src/audio/` | Capture, device selection, FFT analysis |

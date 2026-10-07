@@ -36,11 +36,14 @@ const PATTERN_WEIGHTS: &[(PatternType, u32)] = &[
   (PatternType::World, 2),
   (PatternType::Fluid, 2),
   (PatternType::Infinity, 2),
+  (PatternType::Borealis, 2),
   // Simpler patterns get lower weight
   (PatternType::Noise, 1),
 ];
 
-/// Weighted palette selection for randomization
+/// Weighted palette selection for randomization. A curated subset: palettes
+/// left out on purpose are listed in `PALETTES_EXCLUDED_FROM_RANDOM` in the
+/// tests, which fail when a palette is in neither list.
 const PALETTE_WEIGHTS: &[(PaletteType, u32)] = &[
   (PaletteType::Circles, 4),
   (PaletteType::Braille, 3),
@@ -131,6 +134,17 @@ pub fn randomize_with_rng(params: &mut ShaderParams, rng: &mut impl Rng) {
 mod tests {
   use super::*;
 
+  /// Palettes `R` deliberately never picks; they stay reachable with `P` and
+  /// `--palette`.
+  const PALETTES_EXCLUDED_FROM_RANDOM: &[PaletteType] = &[
+    PaletteType::Standard,
+    PaletteType::Blocks,
+    PaletteType::Smooth,
+    PaletteType::Geometric,
+    PaletteType::Shades,
+    PaletteType::Simple,
+  ];
+
   #[test]
   fn pattern_weights_include_every_pattern_type() {
     for pattern in PatternType::all() {
@@ -140,6 +154,21 @@ mod tests {
           .any(|(weighted_pattern, _)| weighted_pattern == pattern),
         "missing randomizer weight for pattern {:?}",
         pattern
+      );
+    }
+  }
+
+  #[test]
+  fn every_palette_is_weighted_or_explicitly_excluded() {
+    for palette in PaletteType::all() {
+      let weighted = PALETTE_WEIGHTS
+        .iter()
+        .any(|(weighted_palette, _)| weighted_palette == palette);
+      let excluded = PALETTES_EXCLUDED_FROM_RANDOM.contains(palette);
+
+      assert!(
+        weighted != excluded,
+        "palette {palette:?} must be in exactly one of PALETTE_WEIGHTS and PALETTES_EXCLUDED_FROM_RANDOM"
       );
     }
   }
