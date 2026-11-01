@@ -35,6 +35,8 @@ chroma --audio-device "Monitor of Built-in Audio"
 
 On Windows, `--audio-device` takes the name of an output device to loop back.
 
+On macOS, use `--audio-device default-output` to loop back whichever output is playing when Chroma starts. Headsets list a microphone and an output under the same name and inputs are searched first, so passing a headset's name opens its microphone.
+
 ### When nothing reacts
 
 Start with `chroma --list-audio-devices` to confirm that a monitor or loopback device is visible. On Linux, if automatic capture picks the wrong source, open `pavucontrol` while Chroma is running, find Chroma on the Recording tab, and set its source to "Monitor of" your output device.
