@@ -22,6 +22,12 @@ fn get_device_name(device: &Device) -> Option<String> {
     .map(|desc| desc.name().to_string())
 }
 
+/// `--audio-device` value that captures whichever output macOS is playing through.
+///
+/// Headsets expose a microphone and an output under the same name, and name lookup checks
+/// inputs first, so naming one opens its microphone instead of looping back its output.
+const DEFAULT_OUTPUT_DEVICE: &str = "default-output";
+
 /// Keywords that identify system audio monitor/loopback sources
 const MONITOR_KEYWORDS: &[&str] = &[
   // Linux PulseAudio/PipeWire monitor sources
@@ -36,7 +42,7 @@ const MONITOR_KEYWORDS: &[&str] = &[
   // macOS ScreenCaptureKit
   "ScreenCapture",
   // macOS CoreAudio loopback (cpal 0.17+ on macOS 14.2+)
-  "default-output",
+  DEFAULT_OUTPUT_DEVICE,
   // Windows
   "Stereo Mix",
   "What U Hear",
@@ -213,7 +219,34 @@ pub fn find_device_by_name(host: &Host, device_name: &str) -> anyhow::Result<Dev
   ))
 }
 
+#[cfg(target_os = "macos")]
+fn is_default_output_request(device_name: &str) -> bool {
+  device_name.eq_ignore_ascii_case(DEFAULT_OUTPUT_DEVICE)
+}
+
+#[cfg(target_os = "macos")]
+fn find_default_output_device() -> anyhow::Result<(Host, Device)> {
+  let host = get_best_host();
+  let device = host
+    .default_output_device()
+    .ok_or_else(|| anyhow::anyhow!("No default output device found for loopback capture."))?;
+  append_debug_line(
+    "audio",
+    format!(
+      "Selected default output '{}' on host {:?} for loopback capture",
+      get_device_name(&device).unwrap_or_else(|| "<unnamed-output>".to_string()),
+      host.id()
+    ),
+  );
+  Ok((host, device))
+}
+
 pub fn find_device_by_name_auto(device_name: &str) -> anyhow::Result<(Host, Device)> {
+  #[cfg(target_os = "macos")]
+  if is_default_output_request(device_name) {
+    return find_default_output_device();
+  }
+
   let mut host_ids = Vec::new();
   let best_host_id = get_best_host().id();
   let default_host_id = cpal::default_host().id();
@@ -579,6 +612,26 @@ pub fn list_devices(host: &Host) -> anyhow::Result<()> {
 
   println!("\nTo manually specify a device:");
   println!("  chroma --audio-device \"DEVICE_NAME\"");
+  #[cfg(target_os = "macos")]
+  println!("  chroma --audio-device {DEFAULT_OUTPUT_DEVICE}");
 
   Ok(())
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+  use super::is_default_output_request;
+
+  #[test]
+  fn default_output_request_ignores_case() {
+    assert!(is_default_output_request("default-output"));
+    assert!(is_default_output_request("Default-Output"));
+  }
+
+  #[test]
+  fn default_output_request_rejects_real_device_names() {
+    assert!(!is_default_output_request("Bad Pods Pro"));
+    assert!(!is_default_output_request("default-output-2"));
+    assert!(!is_default_output_request(""));
+  }
 }
