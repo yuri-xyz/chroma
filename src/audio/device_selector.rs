@@ -22,6 +22,12 @@ fn get_device_name(device: &Device) -> Option<String> {
     .map(|desc| desc.name().to_string())
 }
 
+/// `--audio-device` value that captures whichever output macOS is playing through.
+///
+/// Headsets expose a microphone and an output under the same name, and name lookup checks
+/// inputs first, so naming one opens its microphone instead of looping back its output.
+const DEFAULT_OUTPUT_DEVICE: &str = "default-output";
+
 /// Keywords that identify system audio monitor/loopback sources
 const MONITOR_KEYWORDS: &[&str] = &[
   // Linux PulseAudio/PipeWire monitor sources
@@ -36,7 +42,7 @@ const MONITOR_KEYWORDS: &[&str] = &[
   // macOS ScreenCaptureKit
   "ScreenCapture",
   // macOS CoreAudio loopback (cpal 0.17+ on macOS 14.2+)
-  "default-output",
+  DEFAULT_OUTPUT_DEVICE,
   // Windows
   "Stereo Mix",
   "What U Hear",
@@ -212,13 +218,6 @@ pub fn find_device_by_name(host: &Host, device_name: &str) -> anyhow::Result<Dev
     device_name
   ))
 }
-
-/// `--audio-device` value that captures whichever output macOS is playing through.
-///
-/// Headsets expose a microphone and an output under the same name, and name lookup checks
-/// inputs first, so naming one opens its microphone instead of looping back its output.
-#[cfg(target_os = "macos")]
-const DEFAULT_OUTPUT_DEVICE: &str = "default-output";
 
 #[cfg(target_os = "macos")]
 fn is_default_output_request(device_name: &str) -> bool {

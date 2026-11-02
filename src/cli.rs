@@ -61,7 +61,7 @@ pub struct CliArgs {
   pub config: Option<String>,
 
   /// Audio device name for capture. Use --list-audio-devices to see available devices. On macOS,
-  /// `default-output` captures whichever output is playing when Chroma starts
+  /// `default-output` loops back the current default output device
   #[arg(short = 'a', long, value_name = "DEVICE")]
   pub audio_device: Option<String>,
 
